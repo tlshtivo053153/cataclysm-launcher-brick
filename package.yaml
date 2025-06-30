@@ -1,0 +1,77 @@
+name:                cataclysm-launcher-brick-gemini
+version:             0.1.0.0
+github:              "tlshtivo053153/cataclysm-launcher-brick-gemini"
+license:             BSD-3-Clause
+author:              "tlshtivo053153"
+maintainer:          "muq8inubwlxpcv4oemcazmpfwowkrco-git@yahoo.co.jp"
+copyright:           "2025 tlshtivo053153"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/tlshtivo053153/cataclysm-launcher-brick-gemini#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- brick
+- dhall
+- http-conduit
+- aeson
+- text
+- filepath
+- directory
+- bytestring
+- containers
+- unordered-containers
+- vector
+- katip
+- async
+- tar
+- zip-archive
+- vty
+- vty-crossplatform
+- zlib
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  cataclysm-launcher-brick-gemini-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - cataclysm-launcher-brick-gemini
+
+tests:
+  cataclysm-launcher-brick-gemini-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - cataclysm-launcher-brick-gemini
