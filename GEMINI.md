@@ -164,3 +164,31 @@ Use `Handle` within `ReaderT` environment for implicit dependency threading.
 - Use property-based tests for general laws and invariants
 - Use example-based tests for specific behaviors
 - Mock external dependencies using Handle pattern or typeclasses
+
+## HASKELL DEVELOPMENT RULES (Strictly Enforced)
+
+These rules are designed to minimize build errors and rework when developing in Haskell. They supplement the general development guidelines.
+
+### 1. Dependency and API Verification (Top Priority)
+
+-   **Rule 1.1: Verify Before Using:** Before using a function from a module that has not yet been used in the current file, **you must first verify its existence and package using Stackage.**
+-   **Action:** Use a web search with the project's specific LTS version (e.g., `"lts-22.44 brick Brick.BChan"`) to confirm that the module is part of the specified package and that the function is exported.
+-   **Rationale:** This prevents incorrect assumptions about library contents (e.g., `brick-bchan`) and outdated API knowledge (e.g., `mkVty`), which have been the primary source of build failures.
+
+### 2. Rigorous Documentation Adherence
+
+-   **Rule 2.1: Implement from Documentation First:** When external documentation for an API (especially one I have previously failed to use) is provided, the implementation **must** be based directly on the examples and type signatures in that documentation.
+-   **Action:** If sample code is available, adapt the sample code. Do not attempt to write the implementation from scratch based on a faulty mental model.
+-   **Rationale:** This prevents repeated trial-and-error cycles caused by misinterpreting complex APIs like `foldEntries`.
+
+### 3. Cautious Concurrency
+
+-   **Rule 3.1: Explicit Exception Handling in Threads:** When using `forkIO`, you **must** ensure that any exceptions within the forked thread are explicitly handled and communicated back to the main thread.
+-   **Action:** Do not rely on `throwIO` inside a forked thread. Instead, use mechanisms like `try` combined with `MVar` or `BChan` to pass an `Either SomeException a` result back to the UI thread for safe processing.
+-   **Rationale:** This prevents silent failures in background threads, which make debugging extremely difficult, as seen with the archive extraction issues.
+
+### 4. Proactive Dependency Management
+
+-   **Rule 4.1: Add Dependencies Before Build:** When a standard library function (e.g., from `System.Process` or `System.Posix.Files`) is needed, proactively add the corresponding package (`process`, `unix`) to `package.yaml` *before* attempting to build.
+-   **Rationale:** This reduces the number of build-fail-fix cycles for common, predictable dependencies.
+
