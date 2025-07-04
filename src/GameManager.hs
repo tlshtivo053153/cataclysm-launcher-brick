@@ -159,11 +159,14 @@ launchGame :: Config -> InstalledVersion -> IO ()
 launchGame _ iv = do
     let installDir = ivPath iv
         executableName = "cataclysm-launcher"
-        executablePath = installDir </> executableName
+    
+    foundPaths <- findFilesRecursively installDir [executableName]
 
-    exists <- doesFileExist executablePath
-    if exists
-    then do
-        void $ createProcess (proc executablePath []) { cwd = Just installDir }
-    else
-        putStrLn $ "Error: Executable not found at " ++ executablePath
+    case foundPaths of
+        [executablePath] -> do
+            let workDir = takeDirectory executablePath
+            void $ createProcess (proc executablePath []) { cwd = Just workDir }
+        [] ->
+            putStrLn $ "Error: Executable not found in " ++ installDir
+        _ ->
+            putStrLn $ "Error: Multiple executables found in " ++ installDir
