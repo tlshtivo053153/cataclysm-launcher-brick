@@ -55,8 +55,9 @@ getInstalledVersions :: Config -> IO [InstalledVersion]
 getInstalledVersions config = do
     let gameDir = T.unpack (sysRepoDirectory config) </> "game"
     createDirectoryIfMissing True gameDir
-    dirs <- listDirectory gameDir
-    return $ map (\d -> InstalledVersion (T.pack d) (gameDir </> d)) dirs
+    absGameDir <- makeAbsolute gameDir
+    dirs <- listDirectory absGameDir
+    return $ map (\d -> InstalledVersion (T.pack d) (absGameDir </> d)) dirs
 
 findCommonPrefix :: [FilePath] -> Maybe FilePath
 findCommonPrefix paths =
