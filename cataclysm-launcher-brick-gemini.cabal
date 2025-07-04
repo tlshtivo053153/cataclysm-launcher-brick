@@ -33,6 +33,7 @@ library
       Lib
       ModHandler
       SandboxController
+      Types
   other-modules:
       Paths_cataclysm_launcher_brick_gemini
   autogen-modules:
@@ -52,8 +53,10 @@ library
     , filepath
     , http-conduit
     , katip
+    , process
     , tar
     , text
+    , unix
     , unordered-containers
     , vector
     , vty
@@ -84,8 +87,10 @@ executable cataclysm-launcher-brick-gemini-exe
     , filepath
     , http-conduit
     , katip
+    , process
     , tar
     , text
+    , unix
     , unordered-containers
     , vector
     , vty
@@ -98,7 +103,7 @@ test-suite cataclysm-launcher-brick-gemini-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      IntegrationSpec
+      GameManagerSpec
       Paths_cataclysm_launcher_brick_gemini
   autogen-modules:
       Paths_cataclysm_launcher_brick_gemini
@@ -116,10 +121,13 @@ test-suite cataclysm-launcher-brick-gemini-test
     , dhall
     , directory
     , filepath
+    , hspec
     , http-conduit
     , katip
+    , process
     , tar
     , text
+    , unix
     , unordered-containers
     , vector
     , vty

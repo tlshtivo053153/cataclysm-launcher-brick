@@ -5,7 +5,8 @@ module GameManager (
     getGameVersions,
     downloadAndInstall,
     getInstalledVersions,
-    launchGame
+    launchGame,
+    findCommonPrefix -- For testing
 ) where
 
 import qualified Codec.Archive.Tar as Tar
@@ -63,6 +64,7 @@ findCommonPrefix :: [FilePath] -> Maybe FilePath
 findCommonPrefix paths =
   case paths of
     [] -> Nothing
+    [p] -> Just (joinPath (init (splitDirectories p)) ++ "/")
     (p:ps) ->
       let pathComponents = map splitDirectories (p:ps)
           commonComponents = foldl1' commonPrefix' pathComponents
@@ -70,6 +72,7 @@ findCommonPrefix paths =
          then Nothing
          else Just (joinPath commonComponents ++ "/")
   where
+    commonPrefix' :: [String] -> [String] -> [String]
     commonPrefix' a b = map fst $ takeWhile (uncurry (==)) $ zip a b
     foldl1' f (x:xs) = foldl' f x xs
     foldl1' _ []     = []
