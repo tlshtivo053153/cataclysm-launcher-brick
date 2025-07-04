@@ -11,7 +11,7 @@ import Data.Aeson
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as B
 import Data.List (partition)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 import Network.HTTP.Simple
@@ -69,23 +69,26 @@ processReleases rels =
     let (devs, stables) = partition prerelease rels
         stableVersions = filter (isStableRelease . tag_name) stables
         devVersions = take 10 devs
-    in map toGameVersion (stableVersions ++ devVersions)
+    in mapMaybe toGameVersion (stableVersions ++ devVersions)
 
 isStableRelease :: T.Text -> Bool
 isStableRelease tag = "0.G" `T.isPrefixOf` tag || "0.H" `T.isPrefixOf` tag
 
-toGameVersion :: ReleaseInfo -> GameVersion
-toGameVersion rel = GameVersion
-    { gvVersionId   = tag_name rel
-    , gvVersion     = name rel
-    , gvUrl         = fromMaybe "" (findDownloadUrl (assets rel))
-    , gvReleaseType = if prerelease rel then Development else Stable
-    }
+toGameVersion :: ReleaseInfo -> Maybe GameVersion
+toGameVersion rel =
+  case findDownloadUrl (assets rel) of
+    Nothing -> Nothing
+    Just url -> Just GameVersion
+      { gvVersionId   = tag_name rel
+      , gvVersion     = name rel
+      , gvUrl         = url
+      , gvReleaseType = if prerelease rel then Development else Stable
+      }
 
 findDownloadUrl :: [Asset] -> Maybe T.Text
 findDownloadUrl = fmap browser_download_url . safeHead . filter isLinuxPackage
   where
-    isLinuxPackage asset = "linux-tiles-x64" `T.isInfixOf` browser_download_url asset
+    isLinuxPackage asset = "linux-with-graphics-and-sounds-x64" `T.isInfixOf` browser_download_url asset
     safeHead [] = Nothing
     safeHead (x:_) = Just x
 
