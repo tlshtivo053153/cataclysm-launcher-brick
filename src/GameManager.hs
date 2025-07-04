@@ -10,6 +10,7 @@ module GameManager (
 
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Zip as Zip
+import qualified Codec.Compression.GZip as GZip
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
@@ -43,10 +44,12 @@ downloadAndInstall config gv = do
     case result of
         Left (e :: SomeException) -> return $ Left (show e)
         Right assetData -> do
-            let isZip = ".zip" `T.isSuffixOf` gvUrl gv
-            if isZip
-            then extractZip installDir assetData
-            else extractTar installDir assetData
+            let urlText = gvUrl gv
+            if ".zip" `T.isSuffixOf` urlText
+                then extractZip installDir assetData
+                else if ".tar.gz" `T.isSuffixOf` urlText
+                    then extractTar installDir assetData
+                    else pure $ Left $ "Unsupported archive format for URL: " ++ T.unpack urlText
 
 getInstalledVersions :: Config -> IO [InstalledVersion]
 getInstalledVersions config = do
@@ -71,8 +74,9 @@ findCommonPrefix paths =
     foldl1' _ []     = []
 
 extractTar :: FilePath -> B.ByteString -> IO (Either String String)
-extractTar installDir tarData = do
-  let entries = Tar.read (LBS.fromStrict tarData)
+extractTar installDir tarGzData = do
+  let lazyTarData = GZip.decompress (LBS.fromStrict tarGzData)
+  let entries = Tar.read lazyTarData
   let allPaths = Tar.foldEntries (\e paths -> Tar.entryPath e : paths) [] (const []) entries
   let commonPrefix = findCommonPrefix (filter (not . null) allPaths)
   
