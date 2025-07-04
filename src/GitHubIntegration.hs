@@ -3,29 +3,34 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module GitHubIntegration (
-    ReleaseInfo(..),
-    Asset(..),
-    fetchReleases
+    fetchGameVersions,
+    downloadAsset
 ) where
 
 import Data.Aeson
-import Data.Text (Text)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as B
+import Data.List (partition)
+import Data.Maybe (fromMaybe)
+import qualified Data.Text as T
 import GHC.Generics (Generic)
 import Network.HTTP.Simple
-import System.Directory (doesFileExist, createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath ((</>))
-import qualified Data.ByteString.Lazy as B
 
+import Types (Config(..), GameVersion(..), ReleaseType(..))
+
+-- Internal types for JSON parsing
 data ReleaseInfo = ReleaseInfo
-    { name        :: Text
-    , tag_name    :: Text
+    { name        :: T.Text
+    , tag_name    :: T.Text
     , prerelease  :: Bool
-    , published_at :: Text
+    , published_at :: T.Text
     , assets      :: [Asset]
     } deriving (Generic, Show)
 
 data Asset = Asset
-    { browser_download_url :: Text
+    { browser_download_url :: T.Text
     } deriving (Generic, Show)
 
 instance FromJSON ReleaseInfo
@@ -33,21 +38,60 @@ instance ToJSON ReleaseInfo
 instance FromJSON Asset
 instance ToJSON Asset
 
-fetchReleases :: FilePath -> String -> IO (Either String [ReleaseInfo])
-fetchReleases cacheDir apiUrl = do
+fetchGameVersions :: Config -> IO (Either String [GameVersion])
+fetchGameVersions config = do
+    let cacheDir = T.unpack $ cacheDirectory config
+        apiUrl = T.unpack $ githubApiUrl config
+    
     createDirectoryIfMissing True cacheDir
     let cacheFile = cacheDir </> "releases.json"
     fileExists <- doesFileExist cacheFile
-    if fileExists
-        then do
-            content <- B.readFile cacheFile
-            return $ eitherDecode content
-        else do
-            request' <- parseRequest apiUrl
-            let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
-            response <- httpJSONEither request
-            case getResponseBody response of
-                Left err -> return $ Left $ show err
-                Right (releases :: [ReleaseInfo]) -> do
-                    B.writeFile cacheFile (encode releases)
-                    return $ Right releases
+    
+    releasesE <- if fileExists
+        then eitherDecode <$> B.readFile cacheFile
+        else fetchAndCacheReleases cacheFile apiUrl
+
+    return $ processReleases <$> releasesE
+
+fetchAndCacheReleases :: FilePath -> String -> IO (Either String [ReleaseInfo])
+fetchAndCacheReleases cacheFile apiUrl = do
+    request' <- parseRequest apiUrl
+    let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
+    response <- httpJSONEither request
+    case getResponseBody response of
+        Left err -> return $ Left $ show err
+        Right (releases :: [ReleaseInfo]) -> do
+            B.writeFile cacheFile (encode releases)
+            return $ Right releases
+
+processReleases :: [ReleaseInfo] -> [GameVersion]
+processReleases rels =
+    let (devs, stables) = partition prerelease rels
+        stableVersions = filter (isStableRelease . tag_name) stables
+        devVersions = take 10 devs
+    in map toGameVersion (stableVersions ++ devVersions)
+
+isStableRelease :: T.Text -> Bool
+isStableRelease tag = "0.G" `T.isPrefixOf` tag || "0.H" `T.isPrefixOf` tag
+
+toGameVersion :: ReleaseInfo -> GameVersion
+toGameVersion rel = GameVersion
+    { gvVersionId   = tag_name rel
+    , gvVersion     = name rel
+    , gvUrl         = fromMaybe "" (findDownloadUrl (assets rel))
+    , gvReleaseType = if prerelease rel then Development else Stable
+    }
+
+findDownloadUrl :: [Asset] -> Maybe T.Text
+findDownloadUrl = fmap browser_download_url . safeHead . filter isLinuxPackage
+  where
+    isLinuxPackage asset = "linux-tiles-x64" `T.isInfixOf` browser_download_url asset
+    safeHead [] = Nothing
+    safeHead (x:_) = Just x
+
+downloadAsset :: T.Text -> IO BS.ByteString
+downloadAsset url = do
+    request' <- parseRequest (T.unpack url)
+    let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
+    response <- httpBS request
+    return $ getResponseBody response

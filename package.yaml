@@ -38,6 +38,8 @@ dependencies:
 - zip-archive
 - vty
 - vty-crossplatform
+- process
+- unix
 - zlib
 
 ghc-options:
