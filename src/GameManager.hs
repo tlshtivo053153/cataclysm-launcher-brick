@@ -125,15 +125,28 @@ extractZip installDir zipData = do
 setPermissions :: FilePath -> IO ()
 setPermissions installDir = do
   let executables = ["cataclysm-launcher", "cataclysm-tiles"]
-  mapM_ (setExecutablePermission installDir) executables
+  foundPaths <- findFilesRecursively installDir executables
+  mapM_ setExecutablePermission foundPaths
   where
-    setExecutablePermission baseDir fileName = do
-      let filePath = baseDir </> fileName
-      exists <- doesFileExist filePath
-      when exists $ do
-        status <- getFileStatus filePath
-        let mode = fileMode status
-        setFileMode filePath (foldl' unionFileModes mode [ownerExecuteMode, groupExecuteMode, otherExecuteMode])
+    setExecutablePermission path = do
+      status <- getFileStatus path
+      let mode = fileMode status
+      setFileMode path (foldl' unionFileModes mode [ownerExecuteMode, groupExecuteMode, otherExecuteMode])
+
+findFilesRecursively :: FilePath -> [String] -> IO [FilePath]
+findFilesRecursively baseDir names = do
+    contents <- listDirectory baseDir
+    paths <- fmap concat $ mapM (processItem) contents
+    return paths
+  where
+    processItem item = do
+        let path = baseDir </> item
+        isDir <- doesDirectoryExist path
+        if isDir
+        then findFilesRecursively path names
+        else if item `elem` names
+             then return [path]
+             else return []
 
 isSafePath :: FilePath -> FilePath -> IO Bool
 isSafePath baseDir targetPath = do
