@@ -68,7 +68,7 @@ handleEvent (VtyEvent (V.EvKey V.KEnter [])) = do
             case listSelectedElement (appAvailableVersions st) of
                 Nothing -> return ()
                 Just (_, gv) -> do
-                    liftIO $ forkIO $ do
+                    liftIO $ void $ forkIO $ do
                         writeBChan chan $ LogMessage "Downloading and installing..."
                         result <- downloadAndInstall (appConfig st) gv
                         writeBChan chan $ InstallFinished result
@@ -77,8 +77,10 @@ handleEvent (VtyEvent (V.EvKey V.KEnter [])) = do
             case listSelectedElement (appInstalledVersions st) of
                 Nothing -> return ()
                 Just (_, iv) -> do
-                    liftIO $ void $ forkIO $ launchGame (appConfig st) iv
-                    halt
+                    result <- liftIO $ launchGame (appConfig st) iv
+                    case result of
+                        Right () -> halt
+                        Left err -> modify $ \s -> s { appStatus = T.pack err }
 
 handleEvent (VtyEvent (V.EvKey (V.KChar '\t') [])) = do
     modify $ \st -> st { appActiveList = if appActiveList st == AvailableList then InstalledList else AvailableList }

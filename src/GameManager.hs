@@ -155,7 +155,7 @@ isSafePath baseDir targetPath = do
   absTarget <- makeAbsolute normalisedTarget
   return $ isPrefixOf (normalise absBase) absTarget
 
-launchGame :: Config -> InstalledVersion -> IO ()
+launchGame :: Config -> InstalledVersion -> IO (Either String ())
 launchGame _ iv = do
     let installDir = ivPath iv
         executableName = "cataclysm-launcher"
@@ -166,7 +166,8 @@ launchGame _ iv = do
         [executablePath] -> do
             let workDir = takeDirectory executablePath
             void $ createProcess (proc executablePath []) { cwd = Just workDir }
+            return $ Right ()
         [] ->
-            putStrLn $ "Error: Executable not found in " ++ installDir
+            return $ Left $ "Error: Executable '" ++ executableName ++ "' not found in " ++ installDir
         _ ->
-            putStrLn $ "Error: Multiple executables found in " ++ installDir
+            return $ Left $ "Error: Multiple executables named '" ++ executableName ++ "' found in " ++ installDir
