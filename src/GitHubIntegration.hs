@@ -14,6 +14,8 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Text as T
 import Network.HTTP.Simple
+import System.Directory (doesFileExist, createDirectoryIfMissing)
+import System.FilePath ((</>))
 
 import GitHubIntegration.Internal
 import Types (Config(..), GameVersion(..))
@@ -27,16 +29,24 @@ data Handle m = Handle
 -- Live implementation of the Handle using http-conduit
 liveHandle :: MonadIO m => Config -> Handle m
 liveHandle config = Handle
-  { hFetchReleases = liftIO $ fetchAndCacheReleases'
+  { hFetchReleases = liftIO fetchAndCacheReleases'
   , hDownloadAsset = liftIO . downloadAsset'
   }
   where
-    cacheFile = T.unpack (cacheDirectory config) ++ "/releases.json"
+    cacheDir = T.unpack $ cacheDirectory config
     apiUrl = T.unpack $ githubApiUrl config
+    cacheFile = cacheDir </> "releases.json"
+
+    fetchAndCacheReleases' :: IO (Either String [ReleaseInfo])
     fetchAndCacheReleases' = do
-        -- This part remains mostly the same, but adapted for the handle
-        -- For simplicity, caching logic is kept here.
-        -- A more advanced version might abstract file system access too.
+        createDirectoryIfMissing True cacheDir
+        fileExists <- doesFileExist cacheFile
+        if fileExists
+            then eitherDecode <$> B.readFile cacheFile
+            else fetchAndWriteCache
+
+    fetchAndWriteCache :: IO (Either String [ReleaseInfo])
+    fetchAndWriteCache = do
         request' <- parseRequest apiUrl
         let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
         response <- httpJSONEither request
@@ -45,6 +55,7 @@ liveHandle config = Handle
             Right (releases :: [ReleaseInfo]) -> do
                 B.writeFile cacheFile (encode releases)
                 return $ Right releases
+
     downloadAsset' url = do
         request' <- parseRequest (T.unpack url)
         let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
