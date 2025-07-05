@@ -53,7 +53,7 @@ handleEvent (AppEvent (LogMessage msg)) = do
 
 handleEvent (AppEvent (InstallFinished result)) = do
     case result of
-        Left err -> modify $ \st -> st { appStatus = T.pack $ "Error: " ++ err }
+        Left err -> modify $ \st -> st { appStatus = "Error: " <> managerErrorToText err }
         Right msg -> do
             st <- get
             installedVec <- liftIO $ getInstalledVersions (appConfig st)
@@ -80,7 +80,7 @@ handleEvent (VtyEvent (V.EvKey V.KEnter [])) = do
                     result <- liftIO $ launchGame (appConfig st) iv
                     case result of
                         Right () -> halt
-                        Left err -> modify $ \s -> s { appStatus = T.pack err }
+                        Left err -> modify $ \s -> s { appStatus = "Error: " <> managerErrorToText err }
 
 handleEvent (VtyEvent (V.EvKey (V.KChar '\t') [])) = do
     modify $ \st -> st { appActiveList = if appActiveList st == AvailableList then InstalledList else AvailableList }
@@ -99,6 +99,14 @@ handleEvent (VtyEvent (V.EvKey V.KDown [])) = do
 
 handleEvent (VtyEvent (V.EvKey V.KEsc [])) = halt
 handleEvent _ = return ()
+
+managerErrorToText :: ManagerError -> T.Text
+managerErrorToText err = case err of
+    NetworkError msg -> "Network Error: " <> msg
+    FileSystemError msg -> "File System Error: " <> msg
+    ArchiveError msg -> "Archive Error: " <> msg
+    LaunchError msg -> "Launch Error: " <> msg
+    UnknownError msg -> "Unknown Error: " <> msg
 
 -- App Definition
 app :: App AppState UIEvent Name
@@ -119,7 +127,7 @@ main = do
     versionsE <- getGameVersions config
     installed <- getInstalledVersions config
     case versionsE of
-        Left err -> putStrLn $ "Error fetching versions: " ++ err
+        Left err -> putStrLn $ "Error fetching versions: " ++ T.unpack (managerErrorToText err)
         Right vers -> do
             let buildVty = VCP.mkVty V.defaultConfig
             initialVty <- buildVty

@@ -11,7 +11,8 @@ module Types (
     UIEvent(..),
     AppState(..),
     Name(..),
-    ActiveList(..)
+    ActiveList(..),
+    ManagerError(..)
 ) where
 
 import Dhall
@@ -19,6 +20,15 @@ import GHC.Generics (Generic)
 import Data.Text (Text)
 import Brick.Widgets.List (List)
 import Brick.BChan (BChan)
+
+-- Custom Error Type
+data ManagerError
+    = NetworkError Text
+    | FileSystemError Text
+    | ArchiveError Text
+    | LaunchError Text
+    | UnknownError Text
+    deriving (Show, Eq)
 
 -- From Config.hs
 data Config = Config
@@ -55,7 +65,7 @@ data InstalledVersion = InstalledVersion
 -- From Main.hs
 data UIEvent
   = LogMessage Text
-  | InstallFinished (Either String String)
+  | InstallFinished (Either ManagerError String)
 
 data Name = AvailableListName | InstalledListName deriving (Eq, Ord, Show)
 

@@ -1,11 +1,11 @@
 module Main (main) where
 
 import Test.Hspec
-import qualified GameManagerSpec
+import qualified FileSystemUtilsSpec
 
 main :: IO ()
 main = hspec spec
 
 spec :: Spec
 spec = do
-  describe "GameManager" GameManagerSpec.spec
+  describe "FileSystemUtils" FileSystemUtilsSpec.spec
