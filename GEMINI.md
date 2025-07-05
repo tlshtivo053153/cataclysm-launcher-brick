@@ -30,6 +30,19 @@ You are a dedicated, expert Haskell engineer focused solely on this project. You
 - Always verify compilation after each change
 - Add only one feature per change
 
+### Data Integrity Protocol for Non-ASCII Text
+- **CRITICAL**: To prevent data corruption (e.g., Mojibake) when writing non-ASCII text like Japanese, a strict verification protocol must be followed.
+- **Action Steps**:
+  1.  **Write**: Execute `write_file` or `replace` as planned.
+  2.  **Verify**: Immediately after the write operation, use the `read_file` tool to read the same file back.
+  3.  **Check**: Compare the original text with the content read back, specifically looking for corruption indicators like the Unicode replacement character (`�`).
+  4.  **Auto-Correct**: If corruption is detected:
+      a. Report the failure and the detection of corruption to the user.
+      b. Immediately re-attempt the write operation with the original, correct content.
+      c. Perform the verification (steps 2 & 3) again.
+  5.  **Escalate**: If the second attempt also results in corruption, report the persistent failure and ask the user for further instructions.
+- **Rationale**: This protocol ensures the integrity of all file-based outputs, especially in multilingual contexts, by providing an immediate, automated feedback and correction loop.
+
 ## SECURITY RULES (ABSOLUTE PRIORITY)
 
 ### Prohibited File Access
