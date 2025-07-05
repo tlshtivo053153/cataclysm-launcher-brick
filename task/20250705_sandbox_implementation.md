@@ -12,7 +12,7 @@
     -   `src/Types.hs`に`SandboxProfile`データ型を定義する。
 -   **サンドボックス制御ロジックの実装:**
     -   `src/SandboxController.hs`を新規に作成する。
-    -   ���ロファイルの作成（`sandbox/<プロファイル名>/`ディレクトリの作成）。
+    -   プロファイルの作成（`sandbox/<プロファイル名>/`ディレクトリの作成）。
     -   プロファイルに基づいたゲーム起動（`--userdir`オプションの付与）。
 -   **既存モジュールの連携:**
     -   `app/Main.hs`: 新しいUIの状態とイベントを管理する。
@@ -29,7 +29,7 @@
     -   `src/Types.hs`に、`spName :: Text`, `spDataDirectory :: FilePath`などを含む`SandboxProfile`型を定義する。
 
 3.  **`SandboxController.hs`の実装:**
-    -   `createProfile(profileName)`: `sandbox/`ディレク��リ以下に指定された名前でディレクトリを作成する。
+    -   `createProfile(profileName)`: `sandbox/`ディレクトリ以下に指定された名前でディレクトリを作成する。
     -   `listProfiles()`: `sandbox/`ディレクトリをスキャンし、存在するプロファイルのリストを返す。
 
 4.  **`GameManager.hs`の修正:**
