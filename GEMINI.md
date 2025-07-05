@@ -192,3 +192,18 @@ These rules are designed to minimize build errors and rework when developing in 
 -   **Rule 4.1: Add Dependencies Before Build:** When a standard library function (e.g., from `System.Process` or `System.Posix.Files`) is needed, proactively add the corresponding package (`process`, `unix`) to `package.yaml` *before* attempting to build.
 -   **Rationale:** This reduces the number of build-fail-fix cycles for common, predictable dependencies.
 
+### 5. Self-Accountability Principle
+
+-   **Rule 5.1: Suspect Your Own Changes First:** When an unexpected error occurs (especially related to API responses or external data parsing), **thoroughly review your own recent changes with `git diff HEAD` before suspecting external factors.** The root cause is often a subtle typo or logic error you just introduced.
+
+### 6. Execution Context Normalization
+
+-   **Rule 6.1: Always Use Absolute Paths:** When handling paths to managed resources (installed games, cache, configs), **immediately convert them to absolute paths upon generation or loading.** This prevents runtime errors like `execvp: does not exist` caused by changes in the current working directory.
+
+-   **Rule 6.2: Synchronize Asynchronous UI Operations:** When launching a background process from the UI thread with `forkIO`, **always ensure its result (success or error) is communicated back to the UI thread via a channel (`BChan`, `MVar`, etc.).** Never create a race condition by `halt`ing the UI before the background task can complete.
+
+### 7. Stepwise Refinement Principle
+
+-   **Rule 7.1: Refactor to Separate Concerns Proactively:** As soon as a function or module begins to handle multiple responsibilities (e.g., business logic, file I/O, UI updates), **plan and execute a refactoring without delay.** Early separation of concerns, like splitting `FileSystemUtils` from `GameManager`, prevents future bugs and improves maintainability.
+
+
