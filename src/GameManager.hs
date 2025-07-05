@@ -30,7 +30,8 @@ import Types
 
 getGameVersions :: Config -> IO (Either ManagerError [GameVersion])
 getGameVersions config = do
-    result <- GH.fetchGameVersions config
+    let handle = GH.liveHandle config
+    result <- GH.fetchGameVersions handle
     return $ case result of
         Left err -> Left $ NetworkError (T.pack err)
         Right versions -> Right versions
@@ -44,7 +45,8 @@ downloadAndInstall config gv = do
     when dirExists $ removeDirectoryRecursive installDir
     createDirectoryIfMissing True installDir
 
-    result <- try (GH.downloadAsset (gvUrl gv))
+    let handle = GH.liveHandle config
+    result <- try (GH.downloadAsset handle (gvUrl gv))
     case result of
         Left (e :: SomeException) -> return $ Left $ NetworkError (T.pack $ show e)
         Right assetData -> do

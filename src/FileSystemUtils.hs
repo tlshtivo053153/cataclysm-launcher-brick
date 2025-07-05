@@ -1,13 +1,29 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module FileSystemUtils (
+    MonadFileSystem(..),
     findCommonPrefix,
     findFilesRecursively,
     isSafePath
 ) where
 
-import System.FilePath ((</>), normalise)
-import System.FilePath.Posix (splitDirectories, joinPath)
+import Control.Monad (forM, filterM)
+import System.FilePath ((</>), normalise, joinPath, splitDirectories)
 import System.Directory (makeAbsolute, listDirectory, doesDirectoryExist)
 import Data.List (isPrefixOf, foldl')
+import Control.Monad.IO.Class (MonadIO, liftIO)
+
+-- Typeclass for abstracting file system operations
+class Monad m => MonadFileSystem m where
+    fsListDirectory :: FilePath -> m [FilePath]
+    fsDoesDirectoryExist :: FilePath -> m Bool
+    fsMakeAbsolute :: FilePath -> m FilePath
+
+-- IO instance for the typeclass
+instance MonadFileSystem IO where
+    fsListDirectory = listDirectory
+    fsDoesDirectoryExist = doesDirectoryExist
+    fsMakeAbsolute = makeAbsolute
 
 findCommonPrefix :: [FilePath] -> Maybe FilePath
 findCommonPrefix paths =
@@ -26,24 +42,22 @@ findCommonPrefix paths =
     foldl1' f (x:xs) = foldl' f x xs
     foldl1' _ []     = []
 
-findFilesRecursively :: FilePath -> [String] -> IO [FilePath]
+findFilesRecursively :: MonadFileSystem m => FilePath -> [String] -> m [FilePath]
 findFilesRecursively baseDir names = do
-    contents <- listDirectory baseDir
-    paths <- fmap concat $ mapM (processItem) contents
-    return paths
-  where
-    processItem item = do
+    contents <- fsListDirectory baseDir
+    paths <- fmap concat $ forM contents $ \item -> do
         let path = baseDir </> item
-        isDir <- doesDirectoryExist path
+        isDir <- fsDoesDirectoryExist path
         if isDir
         then findFilesRecursively path names
         else if item `elem` names
              then return [path]
              else return []
+    return paths
 
-isSafePath :: FilePath -> FilePath -> IO Bool
+isSafePath :: MonadFileSystem m => FilePath -> FilePath -> m Bool
 isSafePath baseDir targetPath = do
-  absBase <- makeAbsolute baseDir
+  absBase <- fsMakeAbsolute baseDir
   let normalisedTarget = normalise targetPath
-  absTarget <- makeAbsolute normalisedTarget
+  absTarget <- fsMakeAbsolute normalisedTarget
   return $ isPrefixOf (normalise absBase) absTarget

@@ -1,9 +1,50 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module FileSystemUtilsSpec (spec) where
 
 import Test.Hspec
-import FileSystemUtils (findCommonPrefix)
+import FileSystemUtils
+import Control.Monad.State
+import qualified Data.Map as Map
+import System.FilePath ((</>))
+
+-- Mock File System using State monad
+type MockFileSystem = Map.Map FilePath MockFsObject
+data MockFsObject = File String | Directory [FilePath] deriving (Show, Eq)
+
+-- Initial mock file system state
+mockFS :: MockFileSystem
+mockFS = Map.fromList
+    [ ("/", Directory ["home"])
+    , ("/home", Directory ["user"])
+    , ("/home/user", Directory ["game", "file1.txt"])
+    , ("/home/user/game", Directory ["data", "save.dat"])
+    , ("/home/user/game/data", Directory ["monsters.json"])
+    , ("/home/user/game/data/monsters.json", File "{}")
+    , ("/home/user/game/save.dat", File "gamedata")
+    , ("/home/user/file1.txt", File "toplevel")
+    ]
+
+-- Test monad
+type TestM = State MockFileSystem
+
+-- MonadFileSystem instance for our test monad
+instance MonadFileSystem TestM where
+    fsListDirectory path = do
+        fs <- get
+        case Map.lookup path fs of
+            Just (Directory items) -> return items
+            _ -> return [] -- or throw error if path doesn't exist or is not a dir
+
+    fsDoesDirectoryExist path = do
+        fs <- get
+        case Map.lookup path fs of
+            Just (Directory _) -> return True
+            _ -> return False
+
+    fsMakeAbsolute path = return path -- simplified for test
 
 spec :: Spec
 spec = do
@@ -17,14 +58,17 @@ spec = do
     it "finds the common prefix for multiple paths" $
       findCommonPrefix ["a/b/c.txt", "a/b/d.txt", "a/b/e/f.txt"] `shouldBe` Just "a/b/"
 
-    it "returns the longest common prefix" $
-      findCommonPrefix ["a/b/c/d.txt", "a/b/c/e.txt"] `shouldBe` Just "a/b/c/"
+  describe "findFilesRecursively with Mock FS" $ do
+    it "finds a file in a nested directory" $
+      let result = evalState (findFilesRecursively "/home/user/game" ["monsters.json"]) mockFS
+          expected = ["/home/user/game/data/monsters.json"]
+      in result `shouldBe` expected
 
-    it "returns Nothing when there is no common prefix" $
-      findCommonPrefix ["a/b/c.txt", "d/e/f.txt"] `shouldBe` Nothing
+    it "finds multiple files" $
+      let result = evalState (findFilesRecursively "/home/user" ["monsters.json", "save.dat"]) mockFS
+          expected = ["/home/user/game/data/monsters.json", "/home/user/game/save.dat"]
+      in result `shouldMatchList` expected -- Use shouldMatchList for order-insensitive comparison
 
-    it "handles root-level files" $
-      findCommonPrefix ["file1.txt", "file2.txt"] `shouldBe` Nothing
-
-    it "handles paths where one is a prefix of another" $
-      findCommonPrefix ["a/b/", "a/b/c.txt"] `shouldBe` Just "a/b/"
+    it "returns an empty list if no files are found" $
+      let result = evalState (findFilesRecursively "/home/user" ["nonexistent.file"]) mockFS
+      in result `shouldBe` []

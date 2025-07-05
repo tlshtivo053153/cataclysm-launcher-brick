@@ -25,12 +25,14 @@ source-repository head
 
 library
   exposed-modules:
+      Lib
       BackupSystem
       Config
       ContentManager
+      FileSystemUtils
       GameManager
       GitHubIntegration
-      Lib
+      GitHubIntegration.Internal
       ModHandler
       SandboxController
       Types
@@ -103,10 +105,8 @@ test-suite cataclysm-launcher-brick-gemini-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      GameManagerSpec
-      Paths_cataclysm_launcher_brick_gemini
-  autogen-modules:
-      Paths_cataclysm_launcher_brick_gemini
+      FileSystemUtilsSpec
+      GitHubIntegrationSpec
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -124,6 +124,7 @@ test-suite cataclysm-launcher-brick-gemini-test
     , hspec
     , http-conduit
     , katip
+    , mtl
     , process
     , tar
     , text

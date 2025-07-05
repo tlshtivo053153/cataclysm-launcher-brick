@@ -55,6 +55,18 @@ ghc-options:
 
 library:
   source-dirs: src
+  exposed-modules:
+  - Lib
+  - BackupSystem
+  - Config
+  - ContentManager
+  - FileSystemUtils
+  - GameManager
+  - GitHubIntegration
+  - GitHubIntegration.Internal
+  - ModHandler
+  - SandboxController
+  - Types
 
 executables:
   cataclysm-launcher-brick-gemini-exe:
@@ -78,3 +90,8 @@ tests:
     dependencies:
     - cataclysm-launcher-brick-gemini
     - hspec
+    - containers
+    - mtl
+    other-modules:
+    - FileSystemUtilsSpec
+    - GitHubIntegrationSpec
