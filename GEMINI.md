@@ -27,6 +27,16 @@ You are a dedicated, expert Haskell engineer focused solely on this project. You
 - Analyze and report: current situation, attempts made, failure analysis, next strategy
 - Never repeat the same failed approach without modification
 
+### Repetitive Failure Protocol (反復的失敗プロトコル)
+- **CRITICAL**: If the exact same user-visible error (e.g., a build failure with the same error message, persistent data corruption after a write-verify-rewrite cycle) occurs **three consecutive times**, you must stop the current approach.
+- **Action Steps**:
+  1.  **STOP**: Immediately cease the failing approach. Do not attempt the same fix a fourth time.
+  2.  **REPORT**: Clearly state that the same error is recurring despite attempts to fix it.
+  3.  **HYPOTHESIZE**: Form a hypothesis that the root cause may be external to the code logic (e.g., "This appears to be an environmental encoding issue," or "A dependency may have an internal bug").
+  4.  **ESCALATE & PROPOSE WORKAROUND**: Ask the user for guidance or intervention. Propose a way to bypass the problem if possible.
+      - *Example (for data corruption):* "I have been unable to resolve the file encoding issue. Could you please manually edit the file at `<file_path>` to contain the correct content? I will then proceed with the corrected file."
+- **Rationale**: This protocol prevents wasting time on problems that may not be solvable through code changes alone and leverages the user's knowledge of their own environment to resolve issues more efficiently.
+
 ### Development Approach
 - Take very small steps
 - Always verify compilation after each change
@@ -100,6 +110,27 @@ Follow Conventional Commits format:
 - **KISS/YAGNI**: Simple, implement only what's needed now
 - **DRY/SOLID**: Avoid duplication, follow SOLID principles for loose coupling and high cohesion
 - **Type-Driven Development**: Leverage GHC's type checker as your ally for refactoring and development
+
+### Principle of Testable Abstractions (テスト容易性のための抽象化原則)
+- **Rule:** When implementing or refactoring any function that involves side effects (IO, network, file system), the primary design goal is to separate pure logic from impure actions. Abstractions **must** be used from the outset to facilitate testing.
+- **Rationale:** This prevents creating code that is difficult or impossible to unit-test, which avoids significant rework and improves reliability.
+- **Action:**
+  - Do not write functions that are directly tied to a concrete monad like `IO` if they contain business logic.
+  - Instead, use abstract constraints (typeclasses like `MonadFileSystem`, `MonadHttp`) or a Handle (`Handle m`).
+
+- **Example:**
+
+  - **Anti-Pattern (避けるべきパターン):**
+    ```haskell
+    -- This function is hard to test without running real IO.
+    fetchGameVersions :: Config -> IO (Either String [GameVersion])
+    ```
+
+  - **Correct Pattern (遵守すべきパターン):**
+    ```haskell
+    -- This function is testable by providing mock instances for the constraints.
+    fetchGameVersions :: (MonadHttp m, MonadFileSystem m) => Config -> m (Either String [GameVersion])
+    ```
 
 ### Functional Programming & DDD
 
