@@ -8,11 +8,12 @@ import Test.Hspec
 import FileSystemUtils
 import Control.Monad.State
 import qualified Data.Map as Map
-import System.FilePath ((</>))
+import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as B8
 
 -- Mock File System using State monad
 type MockFileSystem = Map.Map FilePath MockFsObject
-data MockFsObject = File String | Directory [FilePath] deriving (Show, Eq)
+data MockFsObject = File B.ByteString | Directory [FilePath] deriving (Show, Eq)
 
 -- Initial mock file system state
 mockFS :: MockFileSystem
@@ -22,9 +23,9 @@ mockFS = Map.fromList
     , ("/home/user", Directory ["game", "file1.txt"])
     , ("/home/user/game", Directory ["data", "save.dat"])
     , ("/home/user/game/data", Directory ["monsters.json"])
-    , ("/home/user/game/data/monsters.json", File "{}")
-    , ("/home/user/game/save.dat", File "gamedata")
-    , ("/home/user/file1.txt", File "toplevel")
+    , ("/home/user/game/data/monsters.json", File (B8.pack "{}"))
+    , ("/home/user/game/save.dat", File (B8.pack "gamedata"))
+    , ("/home/user/file1.txt", File (B8.pack "toplevel"))
     ]
 
 -- Test monad
@@ -36,7 +37,7 @@ instance MonadFileSystem TestM where
         fs <- get
         case Map.lookup path fs of
             Just (Directory items) -> return items
-            _ -> return [] -- or throw error if path doesn't exist or is not a dir
+            _ -> return []
 
     fsDoesDirectoryExist path = do
         fs <- get
@@ -45,6 +46,17 @@ instance MonadFileSystem TestM where
             _ -> return False
 
     fsMakeAbsolute path = return path -- simplified for test
+
+    fsReadFileLBS path = do
+        fs <- get
+        case Map.lookup path fs of
+            Just (File content) -> return content
+            _ -> return B.empty
+
+    fsWriteFileLBS path content = modify $ \fs -> Map.insert path (File content) fs
+
+    fsCreateDirectoryIfMissing _ _ = return ()
+
 
 spec :: Spec
 spec = do

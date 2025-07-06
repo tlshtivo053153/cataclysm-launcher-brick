@@ -7,23 +7,30 @@ module FileSystemUtils (
     isSafePath
 ) where
 
-import Control.Monad (forM, filterM)
+import Control.Monad (forM)
 import System.FilePath ((</>), normalise, joinPath, splitDirectories)
-import System.Directory (makeAbsolute, listDirectory, doesDirectoryExist)
+import System.Directory (makeAbsolute, listDirectory, doesDirectoryExist, createDirectoryIfMissing)
+import qualified Data.ByteString.Lazy as B
 import Data.List (isPrefixOf, foldl')
-import Control.Monad.IO.Class (MonadIO, liftIO)
 
 -- Typeclass for abstracting file system operations
 class Monad m => MonadFileSystem m where
     fsListDirectory :: FilePath -> m [FilePath]
     fsDoesDirectoryExist :: FilePath -> m Bool
     fsMakeAbsolute :: FilePath -> m FilePath
+    fsReadFileLBS :: FilePath -> m B.ByteString
+    fsWriteFileLBS :: FilePath -> B.ByteString -> m ()
+    fsCreateDirectoryIfMissing :: Bool -> FilePath -> m ()
+
 
 -- IO instance for the typeclass
 instance MonadFileSystem IO where
     fsListDirectory = listDirectory
     fsDoesDirectoryExist = doesDirectoryExist
     fsMakeAbsolute = makeAbsolute
+    fsReadFileLBS = B.readFile
+    fsWriteFileLBS = B.writeFile
+    fsCreateDirectoryIfMissing = createDirectoryIfMissing
 
 findCommonPrefix :: [FilePath] -> Maybe FilePath
 findCommonPrefix paths =
