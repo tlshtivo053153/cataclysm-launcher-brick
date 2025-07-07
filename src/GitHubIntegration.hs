@@ -45,7 +45,7 @@ fetchAndCacheReleases config = do
         cacheFile = cacheDir </> "releases.json"
     
     fsCreateDirectoryIfMissing True cacheDir
-    fileExists <- fsDoesDirectoryExist cacheFile
+    fileExists <- fsDoesFileExist cacheFile
     if fileExists
         then do
             content <- fsReadFileLBS cacheFile

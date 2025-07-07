@@ -9,7 +9,7 @@ module FileSystemUtils (
 
 import Control.Monad (forM)
 import System.FilePath ((</>), normalise, joinPath, splitDirectories)
-import System.Directory (makeAbsolute, listDirectory, doesDirectoryExist, createDirectoryIfMissing)
+import System.Directory (makeAbsolute, listDirectory, doesDirectoryExist, doesFileExist, createDirectoryIfMissing)
 import qualified Data.ByteString.Lazy as B
 import Data.List (isPrefixOf, foldl')
 
@@ -17,6 +17,7 @@ import Data.List (isPrefixOf, foldl')
 class Monad m => MonadFileSystem m where
     fsListDirectory :: FilePath -> m [FilePath]
     fsDoesDirectoryExist :: FilePath -> m Bool
+    fsDoesFileExist :: FilePath -> m Bool
     fsMakeAbsolute :: FilePath -> m FilePath
     fsReadFileLBS :: FilePath -> m B.ByteString
     fsWriteFileLBS :: FilePath -> B.ByteString -> m ()
@@ -27,6 +28,7 @@ class Monad m => MonadFileSystem m where
 instance MonadFileSystem IO where
     fsListDirectory = listDirectory
     fsDoesDirectoryExist = doesDirectoryExist
+    fsDoesFileExist = doesFileExist
     fsMakeAbsolute = makeAbsolute
     fsReadFileLBS = B.readFile
     fsWriteFileLBS = B.writeFile
