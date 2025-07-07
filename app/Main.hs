@@ -24,9 +24,17 @@ import Types
 drawUI :: AppState -> [Widget Name]
 drawUI st = [ui]
   where
-    available = borderWithLabel (str "Available Versions") $
+    attrAvailable = case appActiveList st of
+        AvailableList -> attrPaneFocus
+        InstalledList -> attrPaneDef
+    available = overrideAttr borderAttr attrAvailable $
+                borderWithLabel (str "Available Versions") $
                 renderList listDrawElement (isActive AvailableList) (appAvailableVersions st)
-    installed = borderWithLabel (str "Installed Versions") $
+    attrInstalled = case appActiveList st of
+        AvailableList -> attrPaneDef
+        InstalledList -> attrPaneFocus
+    installed = overrideAttr borderAttr attrInstalled $
+                borderWithLabel (str "Installed Versions") $
                 renderList installedListDrawElement (isActive InstalledList) (appInstalledVersions st)
     status = str $ T.unpack $ appStatus st
     ui = center $ vBox [ available
@@ -37,14 +45,10 @@ drawUI st = [ui]
     isActive l = appActiveList st == l
 
 listDrawElement :: Bool -> GameVersion -> Widget Name
-listDrawElement sel a =
-    let selStr s = if sel then withAttr listSelectedAttr (str s) else str s
-    in selStr $ T.unpack $ gvVersion a
+listDrawElement _ a = str $ T.unpack $ gvVersion a
 
 installedListDrawElement :: Bool -> InstalledVersion -> Widget Name
-installedListDrawElement sel a =
-    let selStr s = if sel then withAttr listSelectedAttr (str s) else str s
-    in selStr $ T.unpack $ ivVersion a
+installedListDrawElement _ a = str $ T.unpack $ ivVersion a
 
 -- Event Handling
 handleEvent :: BrickEvent Name UIEvent -> EventM Name AppState ()
@@ -108,6 +112,20 @@ managerErrorToText err = case err of
     LaunchError msg -> "Launch Error: " <> msg
     UnknownError msg -> "Unknown Error: " <> msg
 
+attrPaneDef :: AttrName
+attrPaneDef = attrName "panedef"
+
+attrPaneFocus :: AttrName
+attrPaneFocus = attrName "panefocus"
+
+theMap :: AttrMap
+theMap = attrMap V.defAttr
+    [ (attrPaneDef, fg V.white)
+    , (attrPaneFocus, fg V.yellow `V.withStyle` V.bold)
+    , (listSelectedAttr, V.black `on` V.cyan)
+    , (listSelectedFocusedAttr, V.black `on` V.yellow)
+    ]
+
 -- App Definition
 app :: App AppState UIEvent Name
 app = App
@@ -115,7 +133,7 @@ app = App
     , appChooseCursor = showFirstCursor
     , appHandleEvent = handleEvent
     , appStartEvent = return ()
-    , appAttrMap = const $ attrMap V.defAttr [(listSelectedAttr, V.black `on` V.white)]
+    , appAttrMap = const theMap
     }
 
 -- Main
