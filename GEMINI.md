@@ -280,4 +280,20 @@ These rules are designed to minimize build errors and rework when developing in 
 
 **Rationale:** This rule is a countermeasure to the problem where I repeatedly failed builds and tests due to mismatches in type definitions and misunderstandings of function specifications. It is a principle to thoroughly "understand correctly and write correctly" from the beginning, rather than taking an inefficient "fix it as you go" approach. Adhering to this will significantly reduce the cycle of wasteful trial and error.
 
+### 10. Build Configuration File Synchronization Principle
+
+-   **Principle**: The `package.yaml` and `<project-name>.cabal` files **must** always be synchronized within the same commit.
+-   **Rationale**: `package.yaml` is the human-readable source for the project's build configuration. The `stack` tool uses it to automatically generate the machine-readable `.cabal` file. Any desynchronization between these two files compromises build reproducibility and can cause unexpected build failures for other developers.
+-   **Action Steps**:
+    1.  After modifying `package.yaml` (e.g., adding dependencies, changing module information), always run a command like `stack build` to update the `.cabal` file *before* committing.
+    2.  When creating a commit, always verify with `git status` that both `package.yaml` and `<project-name>.cabal` are staged together.
+
+### 11. File Header Cleanliness Principle
+
+-   **Principle**: The file header (language pragmas, module declaration, import statements) **must** be kept clean and free of duplicates.
+-   **Rationale**: Duplicate pragmas or unnecessary imports degrade code readability and trigger compiler warnings. This directly impacts code quality and can lead to oversights during refactoring.
+-   **Action Steps**:
+    1.  Before adding or modifying code, always check the file header to understand existing pragmas and imports.
+    2.  After performing a broad replacement with the `replace` tool, always verify that no unintended duplicates have been introduced in the header section.
+
 
