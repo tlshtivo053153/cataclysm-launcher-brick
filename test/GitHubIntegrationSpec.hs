@@ -7,97 +7,158 @@
 module GitHubIntegrationSpec (spec) where
 
 import Test.Hspec
-import qualified Data.Text as T
-import qualified Data.ByteString.Lazy as B
-import Data.Aeson (encode)
-import Control.Monad.State
+import Control.Monad.State.Strict
 import qualified Data.Map as Map
-import Numeric.Natural (Natural)
+import qualified Data.ByteString.Lazy as B
+import Data.Aeson (encode, eitherDecode)
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import GitHubIntegration
-import GitHubIntegration.Internal
 import FileSystemUtils
 import Types
+import GitHubIntegration.Internal (ReleaseInfo(..), Asset(..), processReleases)
 
--- Default Config for testing
-defaultTestConfig :: Config
-defaultTestConfig = Config
-    { launcherRootDirectory = "/app"
-    , userRepoDirectory = "/user"
-    , sysRepoDirectory = "/sys"
-    , sandboxDirectory = "/sandbox"
-    , cacheDirectory = "/cache"
-    , backupDirectory = "/backup"
-    , githubApiUrl = "api.test.com"
-    , maxBackupCount = 5
-    , downloadThreads = 4
-    , logLevel = "Debug"
-    }
+-- Test State
+data TestState = TestState
+  { tsFileSystem :: Map.Map FilePath B.ByteString
+  , tsApiContent :: Either String [ReleaseInfo]
+  , tsApiCalled :: Bool
+  , tsFilesWritten :: Map.Map FilePath B.ByteString
+  } deriving (Show, Eq)
 
--- Mock State for testing both FS and HTTP
-data MockState = MockState
-    { mockFS :: Map.Map FilePath B.ByteString
-    , mockAPI :: Map.Map String [ReleaseInfo] -- URL -> Releases
-    , apiCalls :: [String]
-    } deriving (Show, Eq)
+-- Test Monad
+newtype TestM a = TestM { runTestM :: StateT TestState (Either String) a }
+  deriving (Functor, Applicative, Monad, MonadState TestState)
 
-newtype TestM a = TestM { runTestM :: State MockState a }
-    deriving (Functor, Applicative, Monad, MonadState MockState)
-
-initialState :: MockState
-initialState = MockState Map.empty Map.empty []
-
--- Test Instances
 instance MonadFileSystem TestM where
-    fsListDirectory _ = return []
-    fsDoesDirectoryExist path = gets (Map.member path . mockFS)
-    fsMakeAbsolute path = return path
-    fsReadFileLBS path = gets (Map.findWithDefault "" path . mockFS)
-    fsWriteFileLBS path content = modify $ \s -> s { mockFS = Map.insert path content (mockFS s) }
-    fsCreateDirectoryIfMissing _ _ = return ()
+  fsDoesFileExist path = gets (Map.member path . tsFileSystem)
+  fsReadFileLBS path = do
+    mcontent <- gets (Map.lookup path . tsFileSystem)
+    case mcontent of
+      Just content -> return content
+      Nothing      -> TestM $ lift $ Left ("File not found: " ++ path)
+  fsWriteFileLBS path content = modify $ \s -> s { tsFilesWritten = Map.insert path content (tsFilesWritten s) }
+  -- Unused functions
+  fsListDirectory _ = return []
+  fsDoesDirectoryExist _ = return False
+  fsMakeAbsolute p = return p
+  fsCreateDirectoryIfMissing _ _ = return ()
 
 instance MonadHttp TestM where
-    fetchReleasesFromAPI url = do
-        modify $ \s -> s { apiCalls = url : apiCalls s }
-        releases <- gets (Map.findWithDefault [] url . mockAPI)
-        return $ Right releases
+  fetchReleasesFromAPI _ = do
+    modify $ \s -> s { tsApiCalled = True }
+    gets tsApiContent
+
+-- Helper to run tests
+runTest :: TestState -> TestM a -> Either String (a, TestState)
+runTest st (TestM m) = runStateT m st
+
+-- Mock data
+mockConfig :: Config
+mockConfig = Config
+  { launcherRootDirectory = "/root"
+  , cacheDirectory = "/root/cache"
+  , sysRepoDirectory = "/root/sys-repo"
+  , userRepoDirectory = "/root/user-repo"
+  , sandboxDirectory = "/root/sandbox"
+  , backupDirectory = "/root/backup"
+  , maxBackupCount = 5
+  , githubApiUrl = "http://test.api/releases"
+  , downloadThreads = 4
+  , logLevel = "Info"
+  }
+
+mockReleases :: [ReleaseInfo]
+mockReleases =
+  [ ReleaseInfo "Version 1.0" "v1.0" False "2025-01-01T00:00:00Z" []
+  , ReleaseInfo "Version 0.9" "v0.9" True  "2024-12-01T00:00:00Z" []
+  ]
+
+encodedMockReleases :: B.ByteString
+encodedMockReleases = encode mockReleases
 
 spec :: Spec
 spec = do
   describe "GitHubIntegration.Internal" $ do
     it "processReleases correctly filters and sorts releases" $ do
       let releases =
-            [ ReleaseInfo "Release 1" "0.H" False "2025-01-01" [Asset "url_stable_1"]
-            , ReleaseInfo "Release 2" "dev-1" True "2025-01-02" [Asset "url_dev_1"]
+            [ ReleaseInfo "Release 1" "0.H" False "2025-01-01" [Asset "cataclysm-dda-0.H-10515-linux-with-graphics-and-sounds-x64.tar.gz"]
+            , ReleaseInfo "Release 2" "dev-1" True "2025-01-02" [Asset "cataclysm-dda-0.H-10514-linux-with-graphics-and-sounds-x64.tar.gz"]
             ]
       let expected =
-            [ GameVersion "0.H" "Release 1" "url_stable_1" Stable
-            , GameVersion "dev-1" "Release 2" "url_dev_1" Development
+            [ GameVersion "0.H" "Release 1" "cataclysm-dda-0.H-10515-linux-with-graphics-and-sounds-x64.tar.gz" Stable
+            , GameVersion "dev-1" "Release 2" "cataclysm-dda-0.H-10514-linux-with-graphics-and-sounds-x64.tar.gz" Development
             ]
-      processReleases releases `shouldBe` expected
+      let processed = processReleases releases
+      let gvToTuple gv = (gvVersionId gv, gvVersion gv, gvUrl gv, gvReleaseType gv)
+      map gvToTuple processed `shouldBe` map gvToTuple expected
 
   describe "fetchAndCacheReleases" $ do
-    let testConfig = defaultTestConfig
-        cacheFile = T.unpack (cacheDirectory testConfig) ++ "/releases.json"
-        apiUrl = T.unpack $ githubApiUrl testConfig
-        mockReleases = [ReleaseInfo "Test Release" "1.0" False "" [Asset "some_url"]]
-        encodedMockReleases = encode mockReleases
 
-    it "fetches from API and caches when no cache exists (cache miss)" $ do
-      let apiData = Map.singleton apiUrl mockReleases
-      let startState = initialState { mockAPI = apiData }
-      let (result, finalState) = runState (runTestM (fetchAndCacheReleases testConfig)) startState
-      
-      result `shouldBe` Right mockReleases
-      apiCalls finalState `shouldBe` [apiUrl]
-      Map.lookup cacheFile (mockFS finalState) `shouldBe` Just encodedMockReleases
+    it "fetches from API and caches when no cache exists" $ do
+      let cacheFilePath = "/root/cache/releases.json"
+      let initialState = TestState
+            { tsFileSystem = Map.empty
+            , tsApiContent = Right mockReleases
+            , tsApiCalled = False
+            , tsFilesWritten = Map.empty
+            }
+      let result = runTest initialState (fetchAndCacheReleases mockConfig)
+      case result of
+        Right (Right releases, finalState) -> do
+          finalState `shouldSatisfy` tsApiCalled
+          releases `shouldBe` mockReleases
+          tsFilesWritten finalState `shouldBe` Map.fromList [(cacheFilePath, encodedMockReleases)]
+        _ -> expectationFailure "Test failed unexpectedly"
 
-    it "reads from cache when it exists (cache hit)" $ do
-      let fsWithCache = Map.singleton cacheFile encodedMockReleases
-      let apiData = Map.singleton apiUrl mockReleases
-      let startState = initialState { mockFS = fsWithCache, mockAPI = apiData }
-      let (result, finalState) = runState (runTestM (fetchAndCacheReleases testConfig)) startState
+    it "loads from cache when cache file exists" $ do
+      let cacheFilePath = "/root/cache/releases.json"
+      let initialState = TestState
+            { tsFileSystem = Map.fromList [(cacheFilePath, encodedMockReleases)]
+            , tsApiContent = Right [] -- API should not be called
+            , tsApiCalled = False
+            , tsFilesWritten = Map.empty
+            }
+      let result = runTest initialState (fetchAndCacheReleases mockConfig)
+      case result of
+        Right (Right releases, finalState) -> do
+          finalState `shouldNotSatisfy` tsApiCalled
+          releases `shouldBe` mockReleases
+          tsFilesWritten finalState `shouldBe` Map.empty
+        _ -> expectationFailure "Test failed unexpectedly"
 
-      result `shouldBe` Right mockReleases
-      apiCalls finalState `shouldBe` []
-      Map.lookup cacheFile (mockFS finalState) `shouldBe` Just encodedMockReleases
+    it "returns an error if API call fails" $ do
+      let apiError = "API is down"
+      let initialState = TestState
+            { tsFileSystem = Map.empty
+            , tsApiContent = Left apiError
+            , tsApiCalled = False
+            , tsFilesWritten = Map.empty
+            }
+      let result = runTest initialState (fetchAndCacheReleases mockConfig)
+      case result of
+        Right (Left err, finalState) -> do
+          finalState `shouldSatisfy` tsApiCalled
+          err `shouldBe` apiError
+          tsFilesWritten finalState `shouldBe` Map.empty
+        _ -> expectationFailure "Test failed unexpectedly"
+
+    it "returns an error if cache file is corrupt" $ do
+      let cacheFilePath = "/root/cache/releases.json"
+      let corruptJson = "{\"key\":}"
+      let initialState = TestState
+            { tsFileSystem = Map.fromList [(cacheFilePath, corruptJson)]
+            , tsApiContent = Right mockReleases
+            , tsApiCalled = False
+            , tsFilesWritten = Map.empty
+            }
+      let result = runTest initialState (fetchAndCacheReleases mockConfig)
+      case result of
+        Right (Left _, finalState) -> do
+          finalState `shouldNotSatisfy` tsApiCalled
+          tsFilesWritten finalState `shouldBe` Map.empty
+        _ -> expectationFailure "Test failed unexpectedly"
+
+
+
