@@ -1,7 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main (main) where
 
 import Control.Monad (void)
