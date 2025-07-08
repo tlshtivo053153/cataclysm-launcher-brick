@@ -252,4 +252,30 @@ These rules are designed to minimize build errors and rework when developing in 
 
 -   **Rule 7.1: Refactor to Separate Concerns Proactively:** As soon as a function or module begins to handle multiple responsibilities (e.g., business logic, file I/O, UI updates), **plan and execute a refactoring without delay.** Early separation of concerns, like splitting `FileSystemUtils` from `GameManager`, prevents future bugs and improves maintainability.
 
+### 8. File Modification Protocol
+
+**CRITICAL**: Before modifying or overwriting an existing file, the following steps must be strictly followed. This is the most important protocol to prevent unintentional code destruction or loss of changes.
+
+1.  **Existence Check:** Before running `write_file` or `replace`, always check if the target file path already exists using `glob` or `list_directory`.
+
+2.  **Difference Check:** If the file exists, run `git diff HEAD <file_path>` to check for uncommitted changes (changes in the working tree). If there are differences, report the content and ask for instructions on how to handle the changes (whether to keep or discard them).
+
+3.  **Content Analysis:** If the file exists and there are no uncommitted changes, read its contents completely with `read_file` to understand the structure and purpose of the existing code.
+
+4.  **Modification Strategy Selection:**
+    *   If only a **partial change** is needed, always use `replace`. The `old_string` must include enough context (at least 3 lines before and after) to accurately identify the location to be changed.
+    *   Use `write_file` only when a **complete rewrite** is necessary (e.g., a major rewrite from a template). In this case, clearly explain why the rewrite is the best option and obtain user approval.
+
+**Rationale:** This rule directly addresses the failure where I completely overwrote existing test code. Steps 1 and 3 would have allowed me to understand the file's contents beforehand and avoid the overwrite. Step 2 prevents the loss of any changes I might have made during my work. Step 4 establishes the use of the safe `replace` as a principle and limits the use of the dangerous `write_file` to exceptional cases.
+
+### 9. Context-First Principle
+
+**Rule:** Before writing or changing even a single line of code, always check the definitions and implementations of all data types, functions, and modules that the code interacts with using `read_file`.
+
+-   **Data Types:** Read the definitions of `data` and `newtype` to accurately grasp all fields.
+-   **Functions:** Read not only the signature but also the internal implementation to understand its behavior (especially edge cases, filtering conditions, etc.).
+-   **Test Code:** Start writing tests only after fully understanding the code to be tested.
+
+**Rationale:** This rule is a countermeasure to the problem where I repeatedly failed builds and tests due to mismatches in type definitions and misunderstandings of function specifications. It is a principle to thoroughly "understand correctly and write correctly" from the beginning, rather than taking an inefficient "fix it as you go" approach. Adhering to this will significantly reduce the cycle of wasteful trial and error.
+
 
