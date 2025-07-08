@@ -45,6 +45,12 @@ instance MonadFileSystem TestM where
             Just (Directory _) -> return True
             _ -> return False
 
+    fsDoesFileExist path = do
+        fs <- get
+        case Map.lookup path fs of
+            Just (File _) -> return True
+            _ -> return False
+
     fsMakeAbsolute path = return path -- simplified for test
 
     fsReadFileLBS path = do
