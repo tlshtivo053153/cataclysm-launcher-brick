@@ -70,9 +70,8 @@ library
 executable cataclysm-launcher-brick-gemini-exe
   main-is: Main.hs
   other-modules:
-      Paths_cataclysm_launcher_brick_gemini
-  autogen-modules:
-      Paths_cataclysm_launcher_brick_gemini
+      UI
+      Events
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N

@@ -78,6 +78,9 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - cataclysm-launcher-brick-gemini
+    other-modules:
+    - UI
+    - Events
 
 tests:
   cataclysm-launcher-brick-gemini-test:
