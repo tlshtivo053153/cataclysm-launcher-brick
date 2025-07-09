@@ -15,15 +15,18 @@
     -   プロファイルの作成（`sandbox/<プロファイル名>/`ディレクトリの作成）。
     -   プロファイルに基づいたゲーム起動（`--userdir`オプションの付与）。
 -   **既存モジュールの連携:**
-    -   `app/Main.hs`: 新しいUIの状態とイベントを管理する。
+    -   `app/Main.hs`: アプリケーションのメインループを管理する。
+    -   `app/UI.hs`: 新しいUIレイアウトの描画を担当する。
+    -   `app/Events.hs`: 新しいUIに関連するイベント処理を担当する。
+    -   `src/Types.hs`: `AppState`にサンドボックス関連の状態を追加する。
     -   `GameManager.hs`: `launchGame`関数を修正し、サンドボックスのパスを引数として受け取れるようにする。
 
 ## 4. Detailed Steps
 
 1.  **UI拡張:**
-    -   `app/Main.hs`の`AppState`に、サンドボックスプロファイルのリスト（`List Name SandboxProfile`）と、アクティブなペインを示す状態を追加する。
-    -   `drawUI`関数を修正し、3ペインレイアウトを描画するように変更する。
-    -   `handleEvent`関数に、プロファイルリストの操作（移動、作成、選択）を追加する。
+    -   `src/Types.hs`の`AppState`に、サンドボックスプロファイルのリスト（`List Name SandboxProfile`）と、アクティブなペインを示す状態を追加する。
+    -   `app/UI.hs`の`drawUI`関数を修正し、3ペインレイアウトを描画するように変更する。
+    -   `app/Events.hs`の`handleEvent`関数に、プロファイルリストの操作（移動、作成、選択）を追加する。
 
 2.  **型定義:**
     -   `src/Types.hs`に、`spName :: Text`, `spDataDirectory :: FilePath`などを含む`SandboxProfile`型を定義する。
