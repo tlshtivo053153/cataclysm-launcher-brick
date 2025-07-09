@@ -296,4 +296,20 @@ These rules are designed to minimize build errors and rework when developing in 
     1.  Before adding or modifying code, always check the file header to understand existing pragmas and imports.
     2.  After performing a broad replacement with the `replace` tool, always verify that no unintended duplicates have been introduced in the header section.
 
+### 12. Principle of First-Time Compilation
+
+-   **Principle**: Compilation is not a debugging tool; it is the final verification step for code that has been prepared correctly. The highest priority is to make the first `stack build` after a code change succeed.
+
+-   **Rationale**: Repeated build failures are the most inefficient form of rework, arising from a lack of understanding of the existing code's context, such as API signatures, data type definitions, and module dependencies. This principle is introduced to shift from a reactive "fix-it-as-it-fails" development style to a proactive "understand-then-implement" mindset, thereby eliminating wasteful build cycles.
+
+-   **Action Steps**:
+    1.  **Identify Dependencies**: Before implementing or modifying a function, mentally list all functions and data types from external modules that it will use.
+    2.  **Verify Definitions**: For each item on the list, **you must** use `read_file` to check its source code definition. Pay close attention to the following:
+        -   The exact type signature of the function.
+        -   All fields of the data type.
+        -   The module it belongs to and whether it is correctly exported.
+    3.  **Implement Code**: Begin writing the actual code **only after** the verification in the previous step is complete.
+    4.  **Self-Correct on Build Failure**: If `stack build` fails, the first step in correcting it is to **re-execute** Step 2 ("Verify Definitions") for the functions or types mentioned in the GHC error message. Do not attempt to fix the issue by guesswork.
+
+
 
