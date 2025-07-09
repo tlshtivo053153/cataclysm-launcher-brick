@@ -122,8 +122,8 @@ setPermissions installDir = do
       let mode = fileMode status
       setFileMode path (foldl' unionFileModes mode [ownerExecuteMode, groupExecuteMode, otherExecuteMode])
 
-launchGame :: Config -> InstalledVersion -> IO (Either ManagerError ())
-launchGame _ iv = do
+launchGame :: Config -> InstalledVersion -> Maybe SandboxProfile -> IO (Either ManagerError ())
+launchGame _ iv mProfile = do
     let installDir = ivPath iv
         executableName = "cataclysm-launcher"
     
@@ -132,7 +132,10 @@ launchGame _ iv = do
     case foundPaths of
         [executablePath] -> do
             let workDir = takeDirectory executablePath
-            void $ createProcess (proc executablePath []) { cwd = Just workDir }
+                args = case mProfile of
+                    Just profile -> ["--userdir", spDataDirectory profile]
+                    Nothing      -> []
+            void $ createProcess (proc executablePath args) { cwd = Just workDir }
             return $ Right ()
         [] ->
             return $ Left $ LaunchError $ "Executable '" <> T.pack executableName <> "' not found in " <> T.pack installDir

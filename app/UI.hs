@@ -21,31 +21,32 @@ import Types
 drawUI :: AppState -> [Widget Name]
 drawUI st = [ui]
   where
-    attrAvailable = case appActiveList st of
-        AvailableList -> attrPaneFocus
-        InstalledList -> attrPaneDef
-    available = overrideAttr borderAttr attrAvailable $
-                borderWithLabel (str "Available Versions") $
-                renderList listDrawElement (isActive AvailableList) (appAvailableVersions st)
-    attrInstalled = case appActiveList st of
-        AvailableList -> attrPaneDef
-        InstalledList -> attrPaneFocus
-    installed = overrideAttr borderAttr attrInstalled $
-                borderWithLabel (str "Installed Versions") $
-                renderList installedListDrawElement (isActive InstalledList) (appInstalledVersions st)
+    available = renderListPane "Available Versions" (appActiveList st == AvailableList) $
+                renderList (renderGameVersion) (appActiveList st == AvailableList) (appAvailableVersions st)
+    installed = renderListPane "Installed Versions" (appActiveList st == InstalledList) $
+                renderList (renderInstalledVersion) (appActiveList st == InstalledList) (appInstalledVersions st)
+    sandboxes = renderListPane "Sandbox Profiles" (appActiveList st == SandboxProfileList) $
+                renderList (renderSandboxProfile) (appActiveList st == SandboxProfileList) (appSandboxProfiles st)
     status = str $ T.unpack $ appStatus st
-    ui = center $ vBox [ available
-                       , installed
+    panes = hBox [available, installed, sandboxes]
+    ui = center $ vBox [ panes
                        , hBorder
                        , status
                        ]
-    isActive l = appActiveList st == l
 
-listDrawElement :: Bool -> GameVersion -> Widget Name
-listDrawElement _ a = str $ T.unpack $ gvVersion a
+renderListPane :: String -> Bool -> Widget Name -> Widget Name
+renderListPane label hasFocus =
+    overrideAttr borderAttr (if hasFocus then attrPaneFocus else attrPaneDef) .
+    borderWithLabel (str label)
 
-installedListDrawElement :: Bool -> InstalledVersion -> Widget Name
-installedListDrawElement _ a = str $ T.unpack $ ivVersion a
+renderGameVersion :: Bool -> GameVersion -> Widget Name
+renderGameVersion _ a = str $ T.unpack $ gvVersion a
+
+renderInstalledVersion :: Bool -> InstalledVersion -> Widget Name
+renderInstalledVersion _ a = str $ T.unpack $ ivVersion a
+
+renderSandboxProfile :: Bool -> SandboxProfile -> Widget Name
+renderSandboxProfile _ a = str $ T.unpack $ spName a
 
 attrPaneDef :: AttrName
 attrPaneDef = attrName "panedef"

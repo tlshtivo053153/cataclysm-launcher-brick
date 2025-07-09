@@ -7,6 +7,7 @@ module Types (
     GameVersion(..),
     ReleaseType(..),
     InstalledVersion(..),
+    SandboxProfile(..),
     -- UI-related types
     UIEvent(..),
     AppState(..),
@@ -62,18 +63,25 @@ data InstalledVersion = InstalledVersion
     , ivPath    :: FilePath
     } deriving (Show, Eq)
 
+data SandboxProfile = SandboxProfile
+    { spName          :: Text
+    , spDataDirectory :: FilePath
+    } deriving (Show, Eq)
+
 -- From Main.hs
 data UIEvent
   = LogMessage Text
   | InstallFinished (Either ManagerError String)
+  | ProfileCreated (Either ManagerError ())
 
-data Name = AvailableListName | InstalledListName deriving (Eq, Ord, Show)
+data Name = AvailableListName | InstalledListName | SandboxProfileListName deriving (Eq, Ord, Show)
 
-data ActiveList = AvailableList | InstalledList deriving (Eq)
+data ActiveList = AvailableList | InstalledList | SandboxProfileList deriving (Eq)
 
 data AppState = AppState
     { appAvailableVersions :: List Name GameVersion
     , appInstalledVersions :: List Name InstalledVersion
+    , appSandboxProfiles   :: List Name SandboxProfile
     , appConfig            :: Config
     , appStatus            :: Text
     , appActiveList        :: ActiveList

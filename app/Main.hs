@@ -15,6 +15,7 @@ import Brick.Widgets.List (list)
 import Config (loadConfig)
 import Events (handleEvent)
 import GameManager (getGameVersions, getInstalledVersions)
+import SandboxController (listProfiles)
 import Types
 import UI (drawUI, theMap)
 
@@ -46,14 +47,17 @@ main = do
     putStrLn "Fetching game versions..."
     versionsE <- getGameVersions config
     installed <- getInstalledVersions config
-    case versionsE of
-        Left err -> putStrLn $ "Error fetching versions: " ++ T.unpack (managerErrorToText err)
-        Right vers -> do
+    profilesE <- listProfiles config
+    case (versionsE, profilesE) of
+        (Left err, _) -> putStrLn $ "Error fetching versions: " ++ T.unpack (managerErrorToText err)
+        (_, Left err) -> putStrLn $ "Error listing profiles: " ++ T.unpack (managerErrorToText err)
+        (Right vers, Right profs) -> do
             let buildVty = VCP.mkVty V.defaultConfig
             initialVty <- buildVty
             let initialState = AppState
                     { appAvailableVersions = list AvailableListName (fromList vers) 1
                     , appInstalledVersions = list InstalledListName (fromList installed) 1
+                    , appSandboxProfiles = list SandboxProfileListName (fromList profs) 1
                     , appConfig = config
                     , appStatus = "Tab to switch lists, Enter to install/launch, Esc to quit."
                     , appActiveList = AvailableList
