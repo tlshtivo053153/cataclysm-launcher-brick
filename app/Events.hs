@@ -76,8 +76,8 @@ handleInstalledEvents (V.EvKey V.KEnter []) = do
     case listSelectedElement (appInstalledVersions st) of
         Nothing -> return ()
         Just (_, iv) -> do
-            -- TODO: Pass the selected sandbox profile
-            result <- liftIO $ launchGame (appConfig st) iv Nothing
+            let mSelectedProfile = snd <$> listSelectedElement (appSandboxProfiles st)
+            result <- liftIO $ launchGame (appConfig st) iv mSelectedProfile
             case result of
                 Right () -> halt
                 Left err -> modify $ \s -> s { appStatus = "Error: " <> managerErrorToText err }
