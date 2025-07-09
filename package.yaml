@@ -98,3 +98,5 @@ tests:
     other-modules:
     - FileSystemUtilsSpec
     - GitHubIntegrationSpec
+    - GameManagerSpec
+    - SandboxControllerSpec
