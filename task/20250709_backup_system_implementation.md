@@ -6,7 +6,7 @@
 
 ## 3. Scope
 -   **UIの変更:**
-    -   UIに4つ目のペインとして「Backups」を追加する。このペインは、サンドボックスプロファイルが選択��れた時に、そのプロファイルのバックアップを表示する。
+    -   UIに4つ目のペインとして「Backups」を追加する。このペインは、サンドボックスプロファイルが選択された時に、そのプロファイルのバックアップを表示する。
 -   **データモデルの拡張:**
     -   `src/Types.hs`に`BackupInfo`データ型を定義する。
 -   **バックアップ制御ロジックの実装:**
@@ -21,7 +21,7 @@
 ## 4. Detailed Steps
 
 1.  **型定義:**
-    -   `src/Types.hs`に、バックアップ名、作成日時、ファイルパスなどを含む`BackupInfo`型を定義す��。
+    -   `src/Types.hs`に、バックアップ名、作成日時、ファイルパスなどを含む`BackupInfo`型を定義する。
     -   `AppState`に`appBackups :: List Name BackupInfo`を追加する。
     -   `Name`データコンストラクタに`BackupListName`を追加する。
     -   `ActiveList`に`BackupList`を追加する。
