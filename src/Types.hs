@@ -8,6 +8,7 @@ module Types (
     ReleaseType(..),
     InstalledVersion(..),
     SandboxProfile(..),
+    BackupInfo(..),
     -- UI-related types
     UIEvent(..),
     AppState(..),
@@ -73,15 +74,24 @@ data UIEvent
   = LogMessage Text
   | InstallFinished (Either ManagerError String)
   | ProfileCreated (Either ManagerError ())
+  | BackupCreated (Either ManagerError ())
+  | BackupsListed (Either ManagerError [BackupInfo])
 
-data Name = AvailableListName | InstalledListName | SandboxProfileListName deriving (Eq, Ord, Show)
+data BackupInfo = BackupInfo
+    { biName      :: Text
+    , biTimestamp :: Text
+    , biFilePath  :: FilePath
+    } deriving (Show, Eq)
 
-data ActiveList = AvailableList | InstalledList | SandboxProfileList deriving (Eq)
+data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName deriving (Eq, Ord, Show)
+
+data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList deriving (Eq)
 
 data AppState = AppState
     { appAvailableVersions :: List Name GameVersion
     , appInstalledVersions :: List Name InstalledVersion
     , appSandboxProfiles   :: List Name SandboxProfile
+    , appBackups           :: List Name BackupInfo
     , appConfig            :: Config
     , appStatus            :: Text
     , appActiveList        :: ActiveList

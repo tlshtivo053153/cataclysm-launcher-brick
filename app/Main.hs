@@ -58,8 +58,9 @@ main = do
                     { appAvailableVersions = list AvailableListName (fromList vers) 1
                     , appInstalledVersions = list InstalledListName (fromList installed) 1
                     , appSandboxProfiles = list SandboxProfileListName (fromList profs) 1
+                    , appBackups = list BackupListName (fromList []) 1
                     , appConfig = config
-                    , appStatus = "Tab to switch lists, Enter to install/launch, Esc to quit."
+                    , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."
                     , appActiveList = AvailableList
                     , appEventChannel = chan
                     }

@@ -41,6 +41,7 @@ dependencies:
 - process
 - unix
 - zlib
+- time
 
 ghc-options:
 - -Wall
@@ -95,8 +96,10 @@ tests:
     - hspec
     - containers
     - mtl
+    - temporary
     other-modules:
     - FileSystemUtilsSpec
     - GitHubIntegrationSpec
     - GameManagerSpec
     - SandboxControllerSpec
+    - BackupSystemSpec

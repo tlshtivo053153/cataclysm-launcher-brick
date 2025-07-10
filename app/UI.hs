@@ -22,13 +22,15 @@ drawUI :: AppState -> [Widget Name]
 drawUI st = [ui]
   where
     available = renderListPane "Available Versions" (appActiveList st == AvailableList) $
-                renderList (renderGameVersion) (appActiveList st == AvailableList) (appAvailableVersions st)
+                renderList renderGameVersion (appActiveList st == AvailableList) (appAvailableVersions st)
     installed = renderListPane "Installed Versions" (appActiveList st == InstalledList) $
-                renderList (renderInstalledVersion) (appActiveList st == InstalledList) (appInstalledVersions st)
+                renderList renderInstalledVersion (appActiveList st == InstalledList) (appInstalledVersions st)
     sandboxes = renderListPane "Sandbox Profiles" (appActiveList st == SandboxProfileList) $
-                renderList (renderSandboxProfile) (appActiveList st == SandboxProfileList) (appSandboxProfiles st)
+                renderList renderSandboxProfile (appActiveList st == SandboxProfileList) (appSandboxProfiles st)
+    backups = renderListPane "Backups" (appActiveList st == BackupList) $
+              renderList renderBackupInfo (appActiveList st == BackupList) (appBackups st)
     status = str $ T.unpack $ appStatus st
-    panes = hBox [available, installed, sandboxes]
+    panes = hBox [available, installed, sandboxes, backups]
     ui = center $ vBox [ panes
                        , hBorder
                        , status
@@ -47,6 +49,9 @@ renderInstalledVersion _ a = str $ T.unpack $ ivVersion a
 
 renderSandboxProfile :: Bool -> SandboxProfile -> Widget Name
 renderSandboxProfile _ a = str $ T.unpack $ spName a
+
+renderBackupInfo :: Bool -> BackupInfo -> Widget Name
+renderBackupInfo _ a = str $ T.unpack $ biName a
 
 attrPaneDef :: AttrName
 attrPaneDef = attrName "panedef"

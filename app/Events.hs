@@ -7,13 +7,15 @@ import Brick
 import Brick.BChan (writeBChan)
 import Brick.Widgets.List (List, list, listSelectedElement, listMoveUp, listMoveDown, listElements)
 import Control.Concurrent (forkIO)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import qualified Data.Vector as Vec
 import Data.Vector (fromList)
+import Data.Maybe (fromMaybe)
 import qualified Graphics.Vty as V
 
+import BackupSystem (listBackups, createBackup)
 import GameManager (downloadAndInstall, getInstalledVersions, launchGame)
 import SandboxController (createProfile, listProfiles)
 import Types
@@ -45,6 +47,20 @@ handleAppEvent (ProfileCreated result) = do
                 Right profs -> do
                     let newList = list SandboxProfileListName (fromList profs) 1
                     modify $ \s -> s { appStatus = "Profile created.", appSandboxProfiles = newList }
+handleAppEvent (BackupCreated result) = do
+    case result of
+        Left err -> modify $ \st -> st { appStatus = "Backup failed: " <> managerErrorToText err }
+        Right () -> do
+            modify $ \st -> st { appStatus = "Backup created successfully." }
+            st <- get
+            let mSelectedProfile = snd <$> listSelectedElement (appSandboxProfiles st)
+            fromMaybe (return ()) (refreshBackups <$> mSelectedProfile)
+handleAppEvent (BackupsListed result) = do
+    case result of
+        Left err -> modify $ \st -> st { appStatus = "Failed to list backups: " <> managerErrorToText err }
+        Right backups -> do
+            let newList = list BackupListName (fromList backups) 1
+            modify $ \st -> st { appBackups = newList }
 
 handleVtyEvent :: V.Event -> EventM Name AppState ()
 handleVtyEvent (V.EvKey (V.KChar '\t') []) = modify toggleActiveList
@@ -55,6 +71,7 @@ handleVtyEvent ev = do
         AvailableList      -> handleAvailableEvents ev
         InstalledList      -> handleInstalledEvents ev
         SandboxProfileList -> handleSandboxProfileEvents ev
+        BackupList         -> handleBackupEvents ev
 
 handleAvailableEvents :: V.Event -> EventM Name AppState ()
 handleAvailableEvents (V.EvKey V.KEnter []) = do
@@ -94,7 +111,28 @@ handleSandboxProfileEvents (V.EvKey V.KEnter []) = do
         result <- createProfile (appConfig st) newProfileName
         writeBChan chan $ ProfileCreated (void result)
     return ()
-handleSandboxProfileEvents ev = handleListEvents ev SandboxProfileList
+handleSandboxProfileEvents (V.EvKey (V.KChar 'b') []) = do
+    st <- get
+    case listSelectedElement (appSandboxProfiles st) of
+        Nothing -> modify $ \s -> s { appStatus = "No profile selected to back up." }
+        Just (_, profile) -> do
+            let chan = appEventChannel st
+            liftIO $ void $ forkIO $ do
+                writeBChan chan $ LogMessage $ "Creating backup for " <> spName profile <> "..."
+                result <- createBackup (appConfig st) profile
+                writeBChan chan $ BackupCreated result
+            return ()
+handleSandboxProfileEvents ev = do
+    oldSt <- get
+    handleListEvents ev SandboxProfileList
+    st <- get
+    when (listSelectedElement (appSandboxProfiles oldSt) /= listSelectedElement (appSandboxProfiles st)) $
+        case listSelectedElement (appSandboxProfiles st) of
+            Just (_, profile) -> refreshBackups profile
+            Nothing           -> return ()
+
+handleBackupEvents :: V.Event -> EventM Name AppState ()
+handleBackupEvents ev = handleListEvents ev BackupList
 
 handleListEvents :: V.Event -> ActiveList -> EventM Name AppState ()
 handleListEvents (V.EvKey V.KUp []) activeList = modify $ \st -> handleListMove st listMoveUp activeList
@@ -107,6 +145,15 @@ handleListMove st moveFn activeList =
         AvailableList      -> st { appAvailableVersions = moveFn (appAvailableVersions st) }
         InstalledList      -> st { appInstalledVersions = moveFn (appInstalledVersions st) }
         SandboxProfileList -> st { appSandboxProfiles = moveFn (appSandboxProfiles st) }
+        BackupList         -> st { appBackups = moveFn (appBackups st) }
+
+refreshBackups :: SandboxProfile -> EventM Name AppState ()
+refreshBackups profile = do
+    st <- get
+    let chan = appEventChannel st
+    liftIO $ void $ forkIO $ do
+        result <- listBackups (appConfig st) profile
+        writeBChan chan $ BackupsListed result
 
 toggleActiveList :: AppState -> AppState
 toggleActiveList st = st { appActiveList = nextActiveList }
@@ -114,7 +161,8 @@ toggleActiveList st = st { appActiveList = nextActiveList }
     nextActiveList = case appActiveList st of
         AvailableList      -> InstalledList
         InstalledList      -> SandboxProfileList
-        SandboxProfileList -> AvailableList
+        SandboxProfileList -> BackupList
+        BackupList         -> AvailableList
 
 managerErrorToText :: ManagerError -> T.Text
 managerErrorToText err = case err of

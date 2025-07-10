@@ -58,6 +58,7 @@ library
     , process
     , tar
     , text
+    , time
     , unix
     , unordered-containers
     , vector
@@ -91,6 +92,7 @@ executable cataclysm-launcher-brick-gemini-exe
     , process
     , tar
     , text
+    , time
     , unix
     , unordered-containers
     , vector
@@ -108,6 +110,7 @@ test-suite cataclysm-launcher-brick-gemini-test
       GitHubIntegrationSpec
       GameManagerSpec
       SandboxControllerSpec
+      BackupSystemSpec
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -128,7 +131,9 @@ test-suite cataclysm-launcher-brick-gemini-test
     , mtl
     , process
     , tar
+    , temporary
     , text
+    , time
     , unix
     , unordered-containers
     , vector
