@@ -311,5 +311,29 @@ These rules are designed to minimize build errors and rework when developing in 
     3.  **Implement Code**: Begin writing the actual code **only after** the verification in the previous step is complete.
     4.  **Self-Correct on Build Failure**: If `stack build` fails, the first step in correcting it is to **re-execute** Step 2 ("Verify Definitions") for the functions or types mentioned in the GHC error message. Do not attempt to fix the issue by guesswork.
 
+### 13. Principle of Planned Execution for Test Implementation
 
+-   **Principle**: When implementing test code, especially for setting up temporary test environments involving file system I/O, avoid trial-and-error. Instead, create a complete plan before implementation.
 
+-   **Rationale**: During this task, multiple build and test failures occurred due to incorrect use of `createDirectory` (which does not create parent directories automatically) and failure to create necessary directories. This was caused by not sufficiently considering the test environment's requirements (which files and directories are needed, and in what order) before implementation. This principle aims to eliminate such inefficient rework.
+
+-   **Action Steps**:
+    1.  **Plan Before Coding**: Before writing an `it` block, clarify the following points mentally or in notes:
+        -   **Pre-conditions**: What file or directory structure does the function under test expect?
+        -   **Setup**: How will this structure be created? Which files, with what content, will be placed where?
+        -   **Execution**: With what arguments will the function be called?
+        -   **Assertion**: What is the expected outcome? Which files should exist, what should their content be, and what is the function's return value?
+    2.  **Robust Implementation**: In setup code, prefer robust functions that ensure the desired state, such as `createDirectoryIfMissing True`, over less predictable ones like `createDirectory`.
+    3.  **Self-Review**: **Before** running `stack build` or `stack test`, review the written test code to confirm that the planned pre-conditions are met by the code.
+
+### 14. Principle of Temporary Dependency Cleanup
+
+-   **Principle**: When cleaning up dependencies added for debugging or temporary tests, always confirm that the final production code does not still require them before removal.
+
+-   **Rationale**: In this task, the `process-extras` package was added for a temporary test. After the test code was removed, the package was also removed from `package.yaml`, even though the production code (`GameManager`) still depended on it, causing a build failure. This occurred because the perception of the dependency as "temporary" did not reflect the final state of the implementation.
+
+-   **Action Steps**:
+    1.  **Acknowledge Temporariness**: It is acceptable to add dependencies temporarily for debugging or testing.
+    2.  **Verify Before Removal**: **Before** removing a dependency from `package.yaml`, use the `search_file_content` tool to ensure that no modules from that package are imported in the `src/` directory.
+        -   **Example Command**: `search_file_content --include "src/**/*.hs" --pattern "System.Process.ByteString.Lazy"`
+    3.  **Safe Removal**: Only remove the dependency from `package.yaml` if the above search returns no results. If results are found, the dependency is required by the production code and must not be removed.
