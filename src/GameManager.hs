@@ -5,7 +5,8 @@ module GameManager (
     getGameVersions,
     downloadAndInstall,
     getInstalledVersions,
-    launchGame
+    launchGame,
+    extractTar
 ) where
 
 import qualified Codec.Archive.Zip as Zip
