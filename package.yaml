@@ -39,6 +39,7 @@ dependencies:
 - vty
 - vty-crossplatform
 - process
+- process-extras
 - unix
 - zlib
 - time

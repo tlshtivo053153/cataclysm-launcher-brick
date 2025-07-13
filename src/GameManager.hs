@@ -8,21 +8,20 @@ module GameManager (
     launchGame
 ) where
 
-import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Zip as Zip
-import qualified Codec.Compression.GZip as GZip
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Lazy.Char8 as LBS_Char8
 import qualified Data.Text as T
 import Control.Exception (try, SomeException)
 import Control.Monad (when, void)
-import Control.Monad.IO.Class (liftIO)
-import Data.List (stripPrefix, foldl')
-import Data.Maybe (fromMaybe)
+import Data.List (foldl')
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, makeAbsolute, removeDirectoryRecursive)
+import System.Exit (ExitCode(..))
 import System.FilePath ((</>), takeDirectory)
 import System.Posix.Files (setFileMode, ownerExecuteMode, groupExecuteMode, otherExecuteMode, unionFileModes, getFileStatus, fileMode)
 import System.Process (createProcess, proc, cwd)
+import qualified System.Process.ByteString.Lazy as LBS_Process
 
 import qualified GitHubIntegration as GH
 import FileSystemUtils
@@ -66,43 +65,14 @@ getInstalledVersions config = do
 
 extractTar :: FilePath -> B.ByteString -> IO (Either ManagerError String)
 extractTar installDir tarGzData = do
-  let lazyTarData = GZip.decompress (LBS.fromStrict tarGzData)
-  let entries = Tar.read lazyTarData
-  let allPaths = Tar.foldEntries (\e paths -> Tar.entryPath e : paths) [] (const []) entries
-  let commonPrefix = findCommonPrefix (filter (not . null) allPaths)
-  
-  result <- Tar.foldEntries (handleEntry commonPrefix) (pure (Right [])) (pure . Left . ArchiveError . T.pack . show) entries
-  
-  case result of
-    Left err -> pure $ Left err
-    Right [] -> pure $ Left $ ArchiveError "No files were extracted from tar."
-    Right extractedFiles -> do
-      setPermissions installDir
-      pure $ Right $ "Extracted " ++ show (length extractedFiles) ++ " files."
-  where
-    handleEntry commonPrefix entry accIO = do
-      acc <- accIO
-      case acc of
-        Left err -> pure $ Left err
-        Right files -> do
-          let originalPath = Tar.entryPath entry
-          let pathSuffix = fromMaybe originalPath (commonPrefix >>= \p -> stripPrefix p originalPath)
-          
-          if null pathSuffix then pure $ Right files else do
-            let targetPath = installDir </> pathSuffix
-            isSecure <- liftIO $ isSafePath installDir targetPath
-            if not isSecure then
-              pure $ Left (FileSystemError $ "Path traversal attempt detected: " <> T.pack targetPath)
-            else
-              case Tar.entryContent entry of
-                Tar.NormalFile content _ -> do
-                  liftIO $ createDirectoryIfMissing True (takeDirectory targetPath)
-                  liftIO $ LBS.writeFile targetPath content
-                  pure $ Right (targetPath : files)
-                Tar.Directory -> do
-                  liftIO $ createDirectoryIfMissing True targetPath
-                  pure $ Right files
-                _ -> pure $ Right files
+    let cmd = "tar"
+    let args = ["-xzf", "-", "-C", installDir, "--strip-components=1"]
+    (exitCode, _, stderr) <- LBS_Process.readProcessWithExitCode cmd args (LBS.fromStrict tarGzData)
+    case exitCode of
+        ExitSuccess -> do
+            setPermissions installDir
+            pure $ Right "Extracted files using tar command."
+        ExitFailure _ -> pure $ Left $ ArchiveError $ "tar command failed: " <> (T.pack . LBS_Char8.unpack) stderr
 
 extractZip :: FilePath -> B.ByteString -> IO (Either ManagerError String)
 extractZip installDir zipData = do

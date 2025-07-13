@@ -56,6 +56,7 @@ library
     , http-conduit
     , katip
     , process
+    , process-extras
     , tar
     , text
     , time
@@ -90,6 +91,7 @@ executable cataclysm-launcher-brick-gemini-exe
     , http-conduit
     , katip
     , process
+    , process-extras
     , tar
     , text
     , time
@@ -130,6 +132,7 @@ test-suite cataclysm-launcher-brick-gemini-test
     , katip
     , mtl
     , process
+    , process-extras
     , tar
     , temporary
     , text
