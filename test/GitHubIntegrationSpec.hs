@@ -63,6 +63,7 @@ mockConfig = Config
   , userRepoDirectory = "/root/user-repo"
   , sandboxDirectory = "/root/sandbox"
   , backupDirectory = "/root/backup"
+  , downloadCacheDirectory = "/root/cache/downloads"
   , maxBackupCount = 5
   , githubApiUrl = "http://test.api/releases"
   , downloadThreads = 4

@@ -45,6 +45,7 @@ defaultConfig = Config
     , userRepoDirectory = "/tmp/user-repo"
     , sandboxDirectory = "/tmp/sandbox"
     , backupDirectory = "/tmp/backups"
+    , downloadCacheDirectory = "/tmp/cache/downloads"
     , maxBackupCount = 5
     , githubApiUrl = "https://api.github.com"
     , downloadThreads = 4

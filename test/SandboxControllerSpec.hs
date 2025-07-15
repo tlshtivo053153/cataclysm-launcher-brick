@@ -33,6 +33,7 @@ spec = around withTempSandboxDir $ do
         , userRepoDirectory = ""
         , sandboxDirectory = T.pack tempDir
         , backupDirectory = ""
+        , downloadCacheDirectory = ""
         , maxBackupCount = 0
         , githubApiUrl = ""
         , downloadThreads = 1

@@ -78,6 +78,7 @@ data UIEvent
   | ProfileCreated (Either ManagerError ())
   | BackupCreated (Either ManagerError ())
   | BackupsListed (Either ManagerError [BackupInfo])
+  deriving (Show)
 
 data BackupInfo = BackupInfo
     { biName      :: Text

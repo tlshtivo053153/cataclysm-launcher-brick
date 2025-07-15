@@ -5,6 +5,9 @@
 module GameManager (
     getGameVersions,
     downloadAndInstall,
+    downloadAndInstallIO,
+    Handle(..),
+    liveHandle,
     getInstalledVersions,
     launchGame,
     extractTar
@@ -17,7 +20,7 @@ import qualified Data.ByteString.Lazy.Char8 as LBS_Char8
 import qualified Data.Text as T
 import Control.Exception (try, SomeException)
 import Control.Monad (when, void)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.List (foldl')
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, makeAbsolute, removeDirectoryRecursive, doesFileExist)
 import System.Exit (ExitCode(..))
@@ -31,6 +34,38 @@ import qualified GitHubIntegration as GH
 import FileSystemUtils
 import Types
 
+data Handle m = Handle
+    { hDoesFileExist       :: FilePath -> m Bool
+    , hReadFile            :: FilePath -> m B.ByteString
+    , hWriteFile           :: FilePath -> B.ByteString -> m ()
+    , hDownloadAsset       :: T.Text -> m (Either ManagerError B.ByteString)
+    , hCreateDirectoryIfMissing :: Bool -> FilePath -> m ()
+    , hDoesDirectoryExist  :: FilePath -> m Bool
+    , hRemoveDirectoryRecursive :: FilePath -> m ()
+    , hWriteBChan          :: BChan UIEvent -> UIEvent -> m ()
+    , hExtractTar          :: FilePath -> B.ByteString -> m (Either ManagerError String)
+    , hExtractZip          :: FilePath -> B.ByteString -> m (Either ManagerError String)
+    }
+
+liveHandle :: MonadIO m => Handle m
+liveHandle = Handle
+    { hDoesFileExist = liftIO . doesFileExist
+    , hReadFile = liftIO . B.readFile
+    , hWriteFile = \fp content -> liftIO $ B.writeFile fp content
+    , hDownloadAsset = \url -> liftIO $ do
+        let ghHandle = GH.liveHandle
+        result <- try (GH.downloadAsset ghHandle url)
+        return $ case result of
+            Left (e :: SomeException) -> Left $ NetworkError (T.pack $ show e)
+            Right assetData -> Right assetData
+    , hCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
+    , hDoesDirectoryExist = liftIO . doesDirectoryExist
+    , hRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
+    , hWriteBChan = \chan event -> liftIO $ writeBChan chan event
+    , hExtractTar = \fp content -> liftIO $ extractTar fp content
+    , hExtractZip = \fp content -> liftIO $ extractZip fp content
+    }
+
 getGameVersions :: Config -> IO (Either ManagerError [GameVersion])
 getGameVersions config = do
     result <- GH.fetchGameVersions config
@@ -38,8 +73,11 @@ getGameVersions config = do
         Left err -> Left $ NetworkError (T.pack err)
         Right versions -> Right versions
 
-downloadAndInstall :: Config -> BChan UIEvent -> GameVersion -> IO (Either ManagerError String)
-downloadAndInstall config eventChan gv = do
+downloadAndInstallIO :: Config -> BChan UIEvent -> GameVersion -> IO (Either ManagerError String)
+downloadAndInstallIO = downloadAndInstall liveHandle
+
+downloadAndInstall :: Monad m => Handle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
+downloadAndInstall handle config eventChan gv = do
     -- 1. Setup directories
     let baseDir = T.unpack $ sysRepoDirectory config
         installDir = baseDir </> "game" </> T.unpack (gvVersionId gv)
@@ -47,28 +85,27 @@ downloadAndInstall config eventChan gv = do
         fileName = takeFileName (T.unpack $ gvUrl gv)
         cacheFilePath = cacheDir </> fileName
 
-    createDirectoryIfMissing True cacheDir
+    hCreateDirectoryIfMissing handle True cacheDir
     
-    dirExists <- doesDirectoryExist installDir
-    when dirExists $ removeDirectoryRecursive installDir
-    createDirectoryIfMissing True installDir
+    dirExists <- hDoesDirectoryExist handle installDir
+    when dirExists $ hRemoveDirectoryRecursive handle installDir
+    hCreateDirectoryIfMissing handle True installDir
 
     -- 2. Check for cache and download if necessary
     assetDataEither <- do
-        cacheExists <- doesFileExist cacheFilePath
+        cacheExists <- hDoesFileExist handle cacheFilePath
         if cacheExists
             then do
-                writeBChan eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
-                Right . LBS.toStrict <$> LBS.readFile cacheFilePath
+                hWriteBChan handle eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
+                Right <$> hReadFile handle cacheFilePath
             else do
-                writeBChan eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
-                let handle = GH.liveHandle
-                downloadResult <- try (GH.downloadAsset handle (gvUrl gv))
+                hWriteBChan handle eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
+                downloadResult <- hDownloadAsset handle (gvUrl gv)
                 case downloadResult of
-                    Left (e :: SomeException) -> return $ Left $ NetworkError (T.pack $ show e)
+                    Left err -> return $ Left err
                     Right assetData -> do
                         -- 3. Save to cache
-                        LBS.writeFile cacheFilePath (LBS.fromStrict assetData)
+                        hWriteFile handle cacheFilePath assetData
                         return $ Right assetData
 
     -- 4. Extract
@@ -77,9 +114,9 @@ downloadAndInstall config eventChan gv = do
         Right assetData -> do
             let urlText = gvUrl gv
             if ".zip" `T.isSuffixOf` urlText
-                then extractZip installDir assetData
+                then hExtractZip handle installDir assetData
                 else if ".tar.gz" `T.isSuffixOf` urlText
-                    then extractTar installDir assetData
+                    then hExtractTar handle installDir assetData
                     else pure $ Left $ ArchiveError $ "Unsupported archive format for URL: " <> urlText
 
 getInstalledVersions :: Config -> IO [InstalledVersion]

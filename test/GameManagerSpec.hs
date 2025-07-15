@@ -1,21 +1,117 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
 
 module GameManagerSpec (spec) where
 
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Map as Map
+import qualified Data.Text as T
+import           Control.Monad.State.Strict (StateT, runStateT, execStateT, gets, modify)
+import           Control.Monad.Identity (Identity(..))
 import           Control.Monad (void)
 import           System.Directory (createDirectory, doesFileExist, createDirectoryIfMissing)
 import           System.FilePath ((</>))
 import           System.IO.Temp (withSystemTempDirectory)
 import           System.Process (callProcess)
 import           Test.Hspec
+import           Brick.BChan (newBChan)
 
 import           FileSystemUtils (findCommonPrefix)
-import           GameManager (extractTar)
-import           Types (ManagerError(..))
+import           GameManager
+import           Types
+
+-- Test State for mocking file system and network
+data TestState = TestState
+    { tsFileSystem :: Map.Map FilePath B.ByteString
+    , tsDownloads  :: Map.Map T.Text B.ByteString
+    , tsLog        :: [String]
+    } deriving (Show, Eq)
+
+type TestM = StateT TestState Identity
+
+-- Initial empty state
+initialState :: TestState
+initialState = TestState Map.empty Map.empty []
+
+-- Test Handle using StateT
+testHandle :: Handle TestM
+testHandle = Handle
+    { hDoesFileExist = \fp -> gets (Map.member fp . tsFileSystem)
+    , hReadFile = \fp -> gets (Map.lookup fp . tsFileSystem) >>= maybe (error "File not found") return
+    , hWriteFile = \fp content -> modify $ \s -> s { tsFileSystem = Map.insert fp content (tsFileSystem s) }
+    , hDownloadAsset = \url -> do
+        modify $ \s -> s { tsLog = ("download:" ++ T.unpack url) : tsLog s }
+        gets (Map.lookup url . tsDownloads) >>= \case
+            Just content -> return $ Right content
+            Nothing      -> return $ Left (NetworkError "Not found")
+    , hCreateDirectoryIfMissing = \_ _ -> return ()
+    , hDoesDirectoryExist = \_ -> return True
+    , hRemoveDirectoryRecursive = \_ -> return ()
+    , hWriteBChan = \_ event -> modify $ \s -> s { tsLog = show event : tsLog s }
+    , hExtractTar = \_ _ -> return $ Right "tar extracted"
+    , hExtractZip = \_ _ -> return $ Right "zip extracted"
+    }
+
+-- Helper to run tests
+runTest :: TestM a -> TestState -> (a, TestState)
+runTest m s = runIdentity (runStateT m s)
 
 spec :: Spec
 spec = do
+  describe "downloadAndInstall" $ do
+    let config = Config
+            { launcherRootDirectory = "/tmp/launcher"
+            , cacheDirectory = "/tmp/launcher/cache"
+            , sysRepoDirectory = "/tmp/launcher/sys-repo"
+            , userRepoDirectory = "/tmp/launcher/user-repo"
+            , sandboxDirectory = "/tmp/launcher/sandbox"
+            , backupDirectory = "/tmp/launcher/backups"
+            , downloadCacheDirectory = "/tmp/launcher/cache/downloads"
+            , maxBackupCount = 10
+            , githubApiUrl = "http://test.com/api"
+            , downloadThreads = 1
+            , logLevel = "Info"
+            }
+    let gv = GameVersion "test-123" "Test Version" "http://test.com/game.tar.gz" Development
+
+    it "should download and cache the file if not in cache" $ do
+      eventChan <- newBChan 10
+      let downloadContent = "downloaded data"
+      let initialStateWithDownload = initialState { tsDownloads = Map.singleton (gvUrl gv) downloadContent }
+
+      let testAction = downloadAndInstall testHandle config eventChan gv
+      let (result, finalState) = runTest testAction initialStateWithDownload
+
+      -- Assertions
+      result `shouldBe` Right "tar extracted"
+      -- Check logs
+      tsLog finalState `shouldContain` ["download:http://test.com/game.tar.gz"]
+      tsLog finalState `shouldContain` [show (LogMessage "Downloading: game.tar.gz")]
+      -- Check cache
+      let cachePath = T.unpack (downloadCacheDirectory config) </> "game.tar.gz"
+      Map.lookup cachePath (tsFileSystem finalState) `shouldBe` Just downloadContent
+
+    it "should use the cached file if it exists" $ do
+      eventChan <- newBChan 10
+      let cachedContent = "cached data"
+      let cachePath = T.unpack (downloadCacheDirectory config) </> "game.tar.gz"
+      let initialStateWithCache = initialState { tsFileSystem = Map.singleton cachePath cachedContent }
+
+      let testAction = downloadAndInstall testHandle config eventChan gv
+      let (result, finalState) = runTest testAction initialStateWithCache
+
+      -- Assertions
+      result `shouldBe` Right "tar extracted"
+      -- Check logs to ensure no download happened
+      tsLog finalState `shouldNotContain` ["download:http://test.com/game.tar.gz"]
+      tsLog finalState `shouldContain` [show (CacheHit "Using cached file: game.tar.gz")]
+      -- Check that the cache content was used (implicitly by successful extraction)
+      -- and that the file system still contains the original cached data.
+      Map.lookup cachePath (tsFileSystem finalState) `shouldBe` Just cachedContent
+
+
   describe "findCommonPrefix" $ do
     it "returns Nothing for empty list" $
       findCommonPrefix [] `shouldBe` Nothing

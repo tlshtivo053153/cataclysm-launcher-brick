@@ -16,7 +16,7 @@ import Data.Maybe (fromMaybe)
 import qualified Graphics.Vty as V
 
 import BackupSystem (listBackups, createBackup)
-import GameManager (downloadAndInstall, getInstalledVersions, launchGame)
+import GameManager (downloadAndInstallIO, getInstalledVersions, launchGame)
 import SandboxController (createProfile, listProfiles)
 import Types
 
@@ -83,7 +83,7 @@ handleAvailableEvents (V.EvKey V.KEnter []) = do
             let chan = appEventChannel st
             liftIO $ void $ forkIO $ do
                 -- The initial message is now sent from within downloadAndInstall
-                result <- downloadAndInstall (appConfig st) chan gv
+                result <- downloadAndInstallIO (appConfig st) chan gv
                 writeBChan chan $ InstallFinished result
             return ()
 handleAvailableEvents ev = handleListEvents ev AvailableList
