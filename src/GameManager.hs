@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MonadComprehensions #-}
 
 module GameManager (
     getGameVersions,
@@ -16,13 +17,15 @@ import qualified Data.ByteString.Lazy.Char8 as LBS_Char8
 import qualified Data.Text as T
 import Control.Exception (try, SomeException)
 import Control.Monad (when, void)
+import Control.Monad.IO.Class (liftIO)
 import Data.List (foldl')
-import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, makeAbsolute, removeDirectoryRecursive)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, makeAbsolute, removeDirectoryRecursive, doesFileExist)
 import System.Exit (ExitCode(..))
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath ((</>), takeDirectory, takeFileName)
 import System.Posix.Files (setFileMode, ownerExecuteMode, groupExecuteMode, otherExecuteMode, unionFileModes, getFileStatus, fileMode)
 import System.Process (createProcess, proc, cwd)
 import qualified System.Process.ByteString.Lazy as LBS_Process
+import Brick.BChan (BChan, writeBChan)
 
 import qualified GitHubIntegration as GH
 import FileSystemUtils
@@ -35,19 +38,42 @@ getGameVersions config = do
         Left err -> Left $ NetworkError (T.pack err)
         Right versions -> Right versions
 
-downloadAndInstall :: Config -> GameVersion -> IO (Either ManagerError String)
-downloadAndInstall config gv = do
+downloadAndInstall :: Config -> BChan UIEvent -> GameVersion -> IO (Either ManagerError String)
+downloadAndInstall config eventChan gv = do
+    -- 1. Setup directories
     let baseDir = T.unpack $ sysRepoDirectory config
         installDir = baseDir </> "game" </> T.unpack (gvVersionId gv)
+        cacheDir = T.unpack $ downloadCacheDirectory config
+        fileName = takeFileName (T.unpack $ gvUrl gv)
+        cacheFilePath = cacheDir </> fileName
+
+    createDirectoryIfMissing True cacheDir
     
     dirExists <- doesDirectoryExist installDir
     when dirExists $ removeDirectoryRecursive installDir
     createDirectoryIfMissing True installDir
 
-    let handle = GH.liveHandle
-    result <- try (GH.downloadAsset handle (gvUrl gv))
-    case result of
-        Left (e :: SomeException) -> return $ Left $ NetworkError (T.pack $ show e)
+    -- 2. Check for cache and download if necessary
+    assetDataEither <- do
+        cacheExists <- doesFileExist cacheFilePath
+        if cacheExists
+            then do
+                writeBChan eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
+                Right . LBS.toStrict <$> LBS.readFile cacheFilePath
+            else do
+                writeBChan eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
+                let handle = GH.liveHandle
+                downloadResult <- try (GH.downloadAsset handle (gvUrl gv))
+                case downloadResult of
+                    Left (e :: SomeException) -> return $ Left $ NetworkError (T.pack $ show e)
+                    Right assetData -> do
+                        -- 3. Save to cache
+                        LBS.writeFile cacheFilePath (LBS.fromStrict assetData)
+                        return $ Right assetData
+
+    -- 4. Extract
+    case assetDataEither of
+        Left err -> return $ Left err
         Right assetData -> do
             let urlText = gvUrl gv
             if ".zip" `T.isSuffixOf` urlText

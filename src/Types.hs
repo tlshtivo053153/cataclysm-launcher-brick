@@ -40,6 +40,7 @@ data Config = Config
     , userRepoDirectory     :: Text
     , sandboxDirectory      :: Text
     , backupDirectory       :: Text
+    , downloadCacheDirectory :: Text
     , maxBackupCount        :: Natural
     , githubApiUrl          :: Text
     , downloadThreads       :: Natural
@@ -72,6 +73,7 @@ data SandboxProfile = SandboxProfile
 -- From Main.hs
 data UIEvent
   = LogMessage Text
+  | CacheHit Text
   | InstallFinished (Either ManagerError String)
   | ProfileCreated (Either ManagerError ())
   | BackupCreated (Either ManagerError ())

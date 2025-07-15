@@ -12,6 +12,7 @@ in {
   , userRepoDirectory = launcherRoot ++ "/user-repo"
   , sandboxDirectory = launcherRoot ++ "/sandbox"
   , backupDirectory = launcherRoot ++ "/backups"
+  , downloadCacheDirectory = launcherRoot ++ "/cache/downloads"
 
   -- その他の設定
   , maxBackupCount = 10

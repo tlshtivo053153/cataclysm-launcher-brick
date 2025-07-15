@@ -28,6 +28,7 @@ handleEvent _            = return ()
 
 handleAppEvent :: UIEvent -> EventM Name AppState ()
 handleAppEvent (LogMessage msg) = modify $ \st -> st { appStatus = msg }
+handleAppEvent (CacheHit msg) = modify $ \st -> st { appStatus = msg }
 handleAppEvent (InstallFinished result) = do
     case result of
         Left err -> modify $ \st -> st { appStatus = "Error: " <> managerErrorToText err }
@@ -81,8 +82,8 @@ handleAvailableEvents (V.EvKey V.KEnter []) = do
         Just (_, gv) -> do
             let chan = appEventChannel st
             liftIO $ void $ forkIO $ do
-                writeBChan chan $ LogMessage "Downloading and installing..."
-                result <- downloadAndInstall (appConfig st) gv
+                -- The initial message is now sent from within downloadAndInstall
+                result <- downloadAndInstall (appConfig st) chan gv
                 writeBChan chan $ InstallFinished result
             return ()
 handleAvailableEvents ev = handleListEvents ev AvailableList
