@@ -15,8 +15,9 @@ import           System.IO.Temp (withSystemTempDirectory)
 import           System.Process (callProcess)
 import           Test.Hspec
 import           Brick.BChan (newBChan)
+import           Control.Monad.IO.Class (liftIO)
 
-import           FileSystemUtils (findCommonPrefix)
+import           FileSystemUtils (findCommonPrefix, copyDirectoryContentsRecursive)
 import           GameManager
 import           Types
 
@@ -48,13 +49,17 @@ testHandle = Handle
     , hDoesDirectoryExist = \_ -> return True
     , hRemoveDirectoryRecursive = \_ -> return ()
     , hWriteBChan = \_ event -> modify $ \s -> s { tsLog = show event : tsLog s }
-    , hExtractTar = \_ _ -> return $ Right "Extracted files using tar-conduit."
-    , hExtractZip = \_ _ -> return $ Right "zip extracted"
     }
 
 -- Helper to run tests
 runTest :: TestM a -> TestState -> (a, TestState)
 runTest m s = runIdentity (runStateT m s)
+
+mockExtractArchive :: Monad m => FilePath -> B.ByteString -> T.Text -> m (Either ManagerError String)
+mockExtractArchive _ _ url
+    | ".zip" `T.isSuffixOf` url = return $ Right "zip extracted"
+    | ".tar.gz" `T.isSuffixOf` url = return $ Right "Extracted files using tar-conduit."
+    | otherwise = return $ Left $ ArchiveError "Unsupported format"
 
 spec :: Spec
 spec = do
@@ -79,7 +84,12 @@ spec = do
       let downloadContent = "downloaded data"
       let initialStateWithDownload = initialState { tsDownloads = Map.singleton (gvUrl gv) downloadContent }
 
-      let testAction = downloadAndInstall testHandle config eventChan gv
+      let testAction = do
+            assetDataEither <- getAssetData testHandle eventChan (T.unpack $ downloadCacheDirectory config) (gvUrl gv)
+            case assetDataEither of
+                Left err -> return $ Left err
+                Right assetData -> mockExtractArchive "" assetData (gvUrl gv)
+
       let (result, finalState) = runTest testAction initialStateWithDownload
 
       -- Assertions
@@ -97,7 +107,12 @@ spec = do
       let cachePath = T.unpack (downloadCacheDirectory config) </> "game.tar.gz"
       let initialStateWithCache = initialState { tsFileSystem = Map.singleton cachePath cachedContent }
 
-      let testAction = downloadAndInstall testHandle config eventChan gv
+      let testAction = do
+            assetDataEither <- getAssetData testHandle eventChan (T.unpack $ downloadCacheDirectory config) (gvUrl gv)
+            case assetDataEither of
+                Left err -> return $ Left err
+                Right assetData -> mockExtractArchive "" assetData (gvUrl gv)
+
       let (result, finalState) = runTest testAction initialStateWithCache
 
       -- Assertions

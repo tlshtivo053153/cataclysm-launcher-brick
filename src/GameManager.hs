@@ -10,7 +10,9 @@ module GameManager (
     liveHandle,
     getInstalledVersions,
     launchGame,
-    extractTar
+    extractTar,
+    extractZip,
+    getAssetData
 ) where
 
 import qualified Codec.Archive.Zip as Zip
@@ -23,7 +25,7 @@ import Control.Monad (when, void, forM_)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Resource (runResourceT, MonadResource)
 import Data.List (foldl', isPrefixOf)
-import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, makeAbsolute, removeDirectoryRecursive, doesFileExist, copyFile)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, makeAbsolute, removeDirectoryRecursive, doesFileExist)
 import System.FilePath ((</>), takeDirectory, takeFileName)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Posix.Files (setFileMode, ownerExecuteMode, groupExecuteMode, otherExecuteMode, unionFileModes, getFileStatus, fileMode)
@@ -47,8 +49,6 @@ data Handle m = Handle
     , hDoesDirectoryExist  :: FilePath -> m Bool
     , hRemoveDirectoryRecursive :: FilePath -> m ()
     , hWriteBChan          :: BChan UIEvent -> UIEvent -> m ()
-    , hExtractTar          :: FilePath -> B.ByteString -> m (Either ManagerError String)
-    , hExtractZip          :: FilePath -> B.ByteString -> m (Either ManagerError String)
     }
 
 liveHandle :: MonadIO m => Handle m
@@ -66,8 +66,6 @@ liveHandle = Handle
     , hDoesDirectoryExist = liftIO . doesDirectoryExist
     , hRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
     , hWriteBChan = \chan event -> liftIO $ writeBChan chan event
-    , hExtractTar = \fp content -> liftIO $ extractTar fp content
-    , hExtractZip = \fp content -> liftIO $ extractZip fp content
     }
 
 getGameVersions :: Config -> IO (Either ManagerError [GameVersion])
@@ -80,48 +78,52 @@ getGameVersions config = do
 downloadAndInstallIO :: Config -> BChan UIEvent -> GameVersion -> IO (Either ManagerError String)
 downloadAndInstallIO = downloadAndInstall liveHandle
 
-downloadAndInstall :: Monad m => Handle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
+downloadAndInstall :: MonadIO m => Handle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
 downloadAndInstall handle config eventChan gv = do
-    -- 1. Setup directories
     let baseDir = T.unpack $ sysRepoDirectory config
         installDir = baseDir </> "game" </> T.unpack (gvVersionId gv)
         cacheDir = T.unpack $ downloadCacheDirectory config
-        fileName = takeFileName (T.unpack $ gvUrl gv)
-        cacheFilePath = cacheDir </> fileName
 
+    setupResult <- setupDirectories handle installDir cacheDir
+    case setupResult of
+        Left err -> return $ Left err
+        Right () -> do
+            assetDataEither <- getAssetData handle eventChan cacheDir (gvUrl gv)
+            case assetDataEither of
+                Left err -> return $ Left err
+                Right assetData -> extractArchive installDir assetData (gvUrl gv)
+
+setupDirectories :: Monad m => Handle m -> FilePath -> FilePath -> m (Either ManagerError ())
+setupDirectories handle installDir cacheDir = do
     hCreateDirectoryIfMissing handle True cacheDir
-    
     dirExists <- hDoesDirectoryExist handle installDir
     when dirExists $ hRemoveDirectoryRecursive handle installDir
     hCreateDirectoryIfMissing handle True installDir
+    return $ Right ()
 
-    -- 2. Check for cache and download if necessary
-    assetDataEither <- do
-        cacheExists <- hDoesFileExist handle cacheFilePath
-        if cacheExists
-            then do
-                hWriteBChan handle eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
-                Right <$> hReadFile handle cacheFilePath
-            else do
-                hWriteBChan handle eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
-                downloadResult <- hDownloadAsset handle (gvUrl gv)
-                case downloadResult of
-                    Left err -> return $ Left err
-                    Right assetData -> do
-                        -- 3. Save to cache
-                        hWriteFile handle cacheFilePath assetData
-                        return $ Right assetData
+getAssetData :: Monad m => Handle m -> BChan UIEvent -> FilePath -> T.Text -> m (Either ManagerError B.ByteString)
+getAssetData handle eventChan cacheDir url = do
+    let fileName = takeFileName (T.unpack url)
+        cacheFilePath = cacheDir </> fileName
+    cacheExists <- hDoesFileExist handle cacheFilePath
+    if cacheExists
+        then do
+            hWriteBChan handle eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
+            Right <$> hReadFile handle cacheFilePath
+        else do
+            hWriteBChan handle eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
+            downloadResult <- hDownloadAsset handle url
+            case downloadResult of
+                Left err -> return $ Left err
+                Right assetData -> do
+                    hWriteFile handle cacheFilePath assetData
+                    return $ Right assetData
 
-    -- 4. Extract
-    case assetDataEither of
-        Left err -> return $ Left err
-        Right assetData -> do
-            let urlText = gvUrl gv
-            if ".zip" `T.isSuffixOf` urlText
-                then hExtractZip handle installDir assetData
-                else if ".tar.gz" `T.isSuffixOf` urlText
-                    then hExtractTar handle installDir assetData
-                    else pure $ Left $ ArchiveError $ "Unsupported archive format for URL: " <> urlText
+extractArchive :: MonadIO m => FilePath -> B.ByteString -> T.Text -> m (Either ManagerError String)
+extractArchive installDir assetData urlText
+    | ".zip" `T.isSuffixOf` urlText = liftIO $ extractZip installDir assetData
+    | ".tar.gz" `T.isSuffixOf` urlText = liftIO $ extractTar installDir assetData
+    | otherwise = pure $ Left $ ArchiveError $ "Unsupported archive format for URL: " <> urlText
 
 getInstalledVersions :: Config -> IO [InstalledVersion]
 getInstalledVersions config = do
@@ -168,18 +170,6 @@ extractTar installDir tarGzData = do
                     sinkFile fp
                 Tar.FTDirectory -> liftIO $ createDirectoryIfMissing True fp
                 _ -> return () -- Ignore other file types
-
-copyDirectoryContentsRecursive :: FilePath -> FilePath -> IO ()
-copyDirectoryContentsRecursive src dest = do
-    createDirectoryIfMissing True dest
-    contents <- listDirectory src
-    forM_ contents $ \name -> do
-        let srcPath = src </> name
-        let destPath = dest </> name
-        isDirectory <- doesDirectoryExist srcPath
-        if isDirectory
-            then copyDirectoryContentsRecursive srcPath destPath
-            else copyFile srcPath destPath
 
 
 extractZip :: FilePath -> B.ByteString -> IO (Either ManagerError String)

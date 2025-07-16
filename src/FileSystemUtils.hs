@@ -4,12 +4,13 @@ module FileSystemUtils (
     MonadFileSystem(..),
     findCommonPrefix,
     findFilesRecursively,
-    isSafePath
+    isSafePath,
+    copyDirectoryContentsRecursive
 ) where
 
-import Control.Monad (forM)
+import Control.Monad (forM, forM_)
 import System.FilePath ((</>), normalise, joinPath, splitDirectories)
-import System.Directory (makeAbsolute, listDirectory, doesDirectoryExist, doesFileExist, createDirectoryIfMissing)
+import System.Directory (makeAbsolute, listDirectory, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, copyFile)
 import qualified Data.ByteString.Lazy as B
 import Data.List (isPrefixOf, foldl')
 
@@ -22,6 +23,7 @@ class Monad m => MonadFileSystem m where
     fsReadFileLBS :: FilePath -> m B.ByteString
     fsWriteFileLBS :: FilePath -> B.ByteString -> m ()
     fsCreateDirectoryIfMissing :: Bool -> FilePath -> m ()
+    fsCopyFile :: FilePath -> FilePath -> m ()
 
 
 -- IO instance for the typeclass
@@ -33,6 +35,7 @@ instance MonadFileSystem IO where
     fsReadFileLBS = B.readFile
     fsWriteFileLBS = B.writeFile
     fsCreateDirectoryIfMissing = createDirectoryIfMissing
+    fsCopyFile = copyFile
 
 findCommonPrefix :: [FilePath] -> Maybe FilePath
 findCommonPrefix paths =
@@ -70,3 +73,15 @@ isSafePath baseDir targetPath = do
   let normalisedTarget = normalise targetPath
   absTarget <- fsMakeAbsolute normalisedTarget
   return $ isPrefixOf (normalise absBase) absTarget
+
+copyDirectoryContentsRecursive :: MonadFileSystem m => FilePath -> FilePath -> m ()
+copyDirectoryContentsRecursive src dest = do
+    fsCreateDirectoryIfMissing True dest
+    contents <- fsListDirectory src
+    forM_ contents $ \name -> do
+        let srcPath = src </> name
+        let destPath = dest </> name
+        isDirectory <- fsDoesDirectoryExist srcPath
+        if isDirectory
+            then copyDirectoryContentsRecursive srcPath destPath
+            else fsCopyFile srcPath destPath
