@@ -337,3 +337,40 @@ These rules are designed to minimize build errors and rework when developing in 
     2.  **Verify Before Removal**: **Before** removing a dependency from `package.yaml`, use the `search_file_content` tool to ensure that no modules from that package are imported in the `src/` directory.
         -   **Example Command**: `search_file_content --include "src/**/*.hs" --pattern "System.Process.ByteString.Lazy"`
     3.  **Safe Removal**: Only remove the dependency from `package.yaml` if the above search returns no results. If results are found, the dependency is required by the production code and must not be removed.
+
+### 15. Principle of API Diligence (API精査の原則)
+
+-   **Principle**: When using a function or data type from an external library for the first time in the project, the following steps are mandatory **before** writing any implementation code.
+-   **Rationale**: This protocol directly addresses the repeated build failures caused by misunderstanding an external library's API. It forces a "document-first" approach, preventing incorrect assumptions about function signatures and data type structures, which can be a root cause of inefficiency.
+-   **Action Steps**:
+    1.  **Locate Documentation**: Find the official Haddock documentation for the exact version of the library specified in `stack.yaml`. If not available online, generate it locally.
+    2.  **Verify Key Types**: Read the definitions of all key data types you intend to use (e.g., `FileInfo`, `Header`). Understand their fields and whether their constructors and accessors are exported.
+    3.  **Study Function Signatures**: Examine the full type signatures of the functions you plan to call (e.g., `untar`, `restoreFileInto`). Pay close attention to the types of arguments, return values, and any monadic contexts or constraints.
+    4.  **Review Usage Examples**: Actively search for and analyze usage examples within the documentation or the library's test suite. This is often the fastest way to understand the intended workflow (e.g., how conduits should be chained).
+    5.  **Formulate a Plan**: Based on the above, formulate a clear implementation plan before writing code.
+
+### 16. Principle of Runtime Environment Analysis (実行時環境分析の原則)
+
+-   **Principle**: When a runtime error occurs that is not a pure logic bug (e.g., "permission denied", "file not found", "connection refused"), a systematic analysis of the environment interaction is required.
+-   **Rationale**: This rule formalizes the successful approach taken to resolve errors like `setOwnerAndGroup: permission denied`. It encourages treating runtime exceptions not just as code failures, but as signals about the execution context, leading to more robust solutions that respect environmental limitations.
+-   **Action Steps**:
+    1.  **Identify the System Call**: Analyze the error message to identify the underlying system call or operation that failed (e.g., `setOwnerAndGroup`, `openFile`).
+    2.  **Hypothesize Environmental Cause**: Formulate a hypothesis that the error is caused by an interaction with the environment rather than a flaw in the code's logic. Examples:
+        -   "The 'permission denied' error likely stems from the application running without sufficient privileges to change file ownership."
+        -   "The 'file not found' error might be due to an incorrect working directory or a race condition."
+    3.  **Consult API for Control**: Review the library's documentation for options to control or disable the specific feature causing the error (e.g., a flag to prevent restoring ownership metadata).
+    4.  **Isolate and Abstract**: If direct control is not possible, abstract the problematic operation and replace it with a custom implementation that avoids the environmental constraint (as was done with `customRestoreAction` to bypass ownership changes). Do not simply ignore the error.
+
+### 17. Principle of String-Type Hygiene (文字列型の衛生原則)
+
+-   **Principle**: When dealing with data that represents text, especially file paths or network data, strict type hygiene must be maintained.
+-   **Rationale**: This rule addresses common errors like `Couldn't match type ‘B.ByteString’ with ‘[Char]’`. It establishes a best practice of being explicit and careful about string-like data, forcing an early consideration of types and encodings, which prevents common runtime errors and data corruption bugs.
+-   **Action Steps**:
+    1.  **Acknowledge the Boundary**: Recognize that I/O boundaries (like file system APIs or network sockets) are primary sources of `String` vs. `ByteString` mismatches.
+    2.  **Check Library's Choice**: Before using a library, determine its string-like type of choice (e.g., `tar-conduit` uses `ByteString` for paths).
+    3.  **Convert at the Boundary**: Perform conversions between `String`, `Text`, and `ByteString` immediately at the boundary where the type is required. Do not let mixed types propagate through the application logic.
+    4.  **Choose Converters Wisely**: When converting from `ByteString` to a `String`-like type, explicitly acknowledge the encoding assumption.
+        -   Use `Data.ByteString.Char8.unpack` for ASCII or when the encoding is unknown but likely compatible.
+        -   Prefer `Data.Text.Encoding.decodeUtf8` when UTF-8 is expected.
+        -   Add a comment justifying the choice of conversion function if the encoding is not guaranteed.
+--- End of Context from: GEMINI.md ---
