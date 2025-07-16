@@ -39,10 +39,14 @@ dependencies:
 - vty
 - vty-crossplatform
 - process
-- process-extras
 - unix
 - zlib
 - time
+- tar-conduit
+- conduit-extra
+- resourcet
+- temporary
+- conduit
 
 ghc-options:
 - -Wall

@@ -5,13 +5,11 @@
 module GameManagerSpec (spec) where
 
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
 import qualified Data.Text as T
-import           Control.Monad.State.Strict (StateT, runStateT, execStateT, gets, modify)
+import           Control.Monad.State.Strict (StateT, runStateT, gets, modify)
 import           Control.Monad.Identity (Identity(..))
-import           Control.Monad (void)
-import           System.Directory (createDirectory, doesFileExist, createDirectoryIfMissing)
+import           System.Directory (doesFileExist, createDirectoryIfMissing)
 import           System.FilePath ((</>))
 import           System.IO.Temp (withSystemTempDirectory)
 import           System.Process (callProcess)
@@ -50,7 +48,7 @@ testHandle = Handle
     , hDoesDirectoryExist = \_ -> return True
     , hRemoveDirectoryRecursive = \_ -> return ()
     , hWriteBChan = \_ event -> modify $ \s -> s { tsLog = show event : tsLog s }
-    , hExtractTar = \_ _ -> return $ Right "tar extracted"
+    , hExtractTar = \_ _ -> return $ Right "Extracted files using tar-conduit."
     , hExtractZip = \_ _ -> return $ Right "zip extracted"
     }
 
@@ -85,7 +83,7 @@ spec = do
       let (result, finalState) = runTest testAction initialStateWithDownload
 
       -- Assertions
-      result `shouldBe` Right "tar extracted"
+      result `shouldBe` Right "Extracted files using tar-conduit."
       -- Check logs
       tsLog finalState `shouldContain` ["download:http://test.com/game.tar.gz"]
       tsLog finalState `shouldContain` [show (LogMessage "Downloading: game.tar.gz")]
@@ -103,7 +101,7 @@ spec = do
       let (result, finalState) = runTest testAction initialStateWithCache
 
       -- Assertions
-      result `shouldBe` Right "tar extracted"
+      result `shouldBe` Right "Extracted files using tar-conduit."
       -- Check logs to ensure no download happened
       tsLog finalState `shouldNotContain` ["download:http://test.com/game.tar.gz"]
       tsLog finalState `shouldContain` [show (CacheHit "Using cached file: game.tar.gz")]
@@ -157,7 +155,7 @@ spec = do
         result <- extractTar destDir tarData
 
         -- 4. Assertions
-        result `shouldBe` Right "Extracted files using tar command."
+        result `shouldBe` Right "Extracted files using tar-conduit."
 
         let extractedFile = destDir </> longFilename
         fileExists <- doesFileExist extractedFile

@@ -16,19 +16,23 @@ module GameManager (
 import qualified Codec.Archive.Zip as Zip
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Lazy.Char8 as LBS_Char8
+import qualified Data.ByteString.Char8 as BS.Char8
 import qualified Data.Text as T
 import Control.Exception (try, SomeException)
-import Control.Monad (when, void)
+import Control.Monad (when, void, forM_)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.List (foldl')
-import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, makeAbsolute, removeDirectoryRecursive, doesFileExist)
-import System.Exit (ExitCode(..))
+import Control.Monad.Trans.Resource (runResourceT, MonadResource)
+import Data.List (foldl', isPrefixOf)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, makeAbsolute, removeDirectoryRecursive, doesFileExist, copyFile)
 import System.FilePath ((</>), takeDirectory, takeFileName)
+import System.IO.Temp (withSystemTempDirectory)
 import System.Posix.Files (setFileMode, ownerExecuteMode, groupExecuteMode, otherExecuteMode, unionFileModes, getFileStatus, fileMode)
 import System.Process (createProcess, proc, cwd)
-import qualified System.Process.ByteString.Lazy as LBS_Process
 import Brick.BChan (BChan, writeBChan)
+import Data.Conduit (runConduit, (.|), ConduitM)
+import Data.Conduit.Binary (sourceLbs, sinkFile)
+import qualified Data.Conduit.Tar as Tar
+import Data.Conduit.Zlib (ungzip)
 
 import qualified GitHubIntegration as GH
 import FileSystemUtils
@@ -129,14 +133,54 @@ getInstalledVersions config = do
 
 extractTar :: FilePath -> B.ByteString -> IO (Either ManagerError String)
 extractTar installDir tarGzData = do
-    let cmd = "tar"
-    let args = ["-xzf", "-", "-C", installDir, "--strip-components=1"]
-    (exitCode, _, stderr) <- LBS_Process.readProcessWithExitCode cmd args (LBS.fromStrict tarGzData)
-    case exitCode of
-        ExitSuccess -> do
-            setPermissions installDir
-            pure $ Right "Extracted files using tar command."
-        ExitFailure _ -> pure $ Left $ ArchiveError $ "tar command failed: " <> (T.pack . LBS_Char8.unpack) stderr
+    result <- try $ withSystemTempDirectory "cataclysm-extract" $ \tempDir -> do
+        runResourceT $ runConduit $
+            sourceLbs (LBS.fromStrict tarGzData)
+            .| ungzip
+            .| Tar.untar (customRestoreAction tempDir)
+
+        -- --strip-components=1 の代替処理
+        contents <- listDirectory tempDir
+        case contents of
+            [subDir] -> do
+                let sourceDir = tempDir </> subDir
+                isDir <- doesDirectoryExist sourceDir
+                if isDir
+                    then copyDirectoryContentsRecursive sourceDir installDir
+                    else copyDirectoryContentsRecursive tempDir installDir
+            _ -> do
+                copyDirectoryContentsRecursive tempDir installDir
+
+        setPermissions installDir
+    case result of
+        Right _ -> pure $ Right "Extracted files using tar-conduit."
+        Left (e :: SomeException) -> pure $ Left $ ArchiveError $ "tar-conduit extraction failed: " <> T.pack (show e)
+  where
+    customRestoreAction :: MonadResource m => FilePath -> Tar.FileInfo -> ConduitM B.ByteString o m ()
+    customRestoreAction destDir fi = do
+        let fp = destDir </> BS.Char8.unpack (Tar.filePath fi)
+        absDestDir <- liftIO $ makeAbsolute destDir
+        absFp <- liftIO $ makeAbsolute fp
+        when (isPrefixOf absDestDir absFp) $ do
+            case Tar.fileType fi of
+                Tar.FTNormal -> do
+                    liftIO $ createDirectoryIfMissing True (takeDirectory fp)
+                    sinkFile fp
+                Tar.FTDirectory -> liftIO $ createDirectoryIfMissing True fp
+                _ -> return () -- Ignore other file types
+
+copyDirectoryContentsRecursive :: FilePath -> FilePath -> IO ()
+copyDirectoryContentsRecursive src dest = do
+    createDirectoryIfMissing True dest
+    contents <- listDirectory src
+    forM_ contents $ \name -> do
+        let srcPath = src </> name
+        let destPath = dest </> name
+        isDirectory <- doesDirectoryExist srcPath
+        if isDirectory
+            then copyDirectoryContentsRecursive srcPath destPath
+            else copyFile srcPath destPath
+
 
 extractZip :: FilePath -> B.ByteString -> IO (Either ManagerError String)
 extractZip installDir zipData = do

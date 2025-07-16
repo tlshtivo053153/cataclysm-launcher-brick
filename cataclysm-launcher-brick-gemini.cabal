@@ -49,6 +49,8 @@ library
     , base >=4.7 && <5
     , brick
     , bytestring
+    , conduit
+    , conduit-extra
     , containers
     , dhall
     , directory
@@ -56,8 +58,10 @@ library
     , http-conduit
     , katip
     , process
-    , process-extras
+    , resourcet
     , tar
+    , tar-conduit
+    , temporary
     , text
     , time
     , unix
@@ -84,6 +88,8 @@ executable cataclysm-launcher-brick-gemini-exe
     , brick
     , bytestring
     , cataclysm-launcher-brick-gemini
+    , conduit
+    , conduit-extra
     , containers
     , dhall
     , directory
@@ -91,8 +97,10 @@ executable cataclysm-launcher-brick-gemini-exe
     , http-conduit
     , katip
     , process
-    , process-extras
+    , resourcet
     , tar
+    , tar-conduit
+    , temporary
     , text
     , time
     , unix
@@ -123,6 +131,8 @@ test-suite cataclysm-launcher-brick-gemini-test
     , brick
     , bytestring
     , cataclysm-launcher-brick-gemini
+    , conduit
+    , conduit-extra
     , containers
     , dhall
     , directory
@@ -132,8 +142,9 @@ test-suite cataclysm-launcher-brick-gemini-test
     , katip
     , mtl
     , process
-    , process-extras
+    , resourcet
     , tar
+    , tar-conduit
     , temporary
     , text
     , time
