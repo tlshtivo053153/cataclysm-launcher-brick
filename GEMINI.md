@@ -343,11 +343,23 @@ These rules are designed to minimize build errors and rework when developing in 
 -   **Principle**: When using a function or data type from an external library for the first time in the project, the following steps are mandatory **before** writing any implementation code.
 -   **Rationale**: This protocol directly addresses the repeated build failures caused by misunderstanding an external library's API. It forces a "document-first" approach, preventing incorrect assumptions about function signatures and data type structures, which can be a root cause of inefficiency.
 -   **Action Steps**:
-    1.  **Locate Documentation**: Find the official Haddock documentation for the exact version of the library specified in `stack.yaml`. If not available online, generate it locally.
+    1.  **Locate and Generate Documentation**:
+        a.  First, try to find the official Haddock documentation online (e.g., on Stackage) for the exact version of the library specified in `stack.yaml`.
+        b.  If online documentation is unavailable or insufficient, refer to the local Haddock documentation in the `docs/haskell/haddock/` directory.
+        c.  If the required documentation is not present locally, you must generate it. After adding a new dependency to `package.yaml`, run `stack haddock --only-dependencies` to build the documentation for all dependencies.
     2.  **Verify Key Types**: Read the definitions of all key data types you intend to use (e.g., `FileInfo`, `Header`). Understand their fields and whether their constructors and accessors are exported.
     3.  **Study Function Signatures**: Examine the full type signatures of the functions you plan to call (e.g., `untar`, `restoreFileInto`). Pay close attention to the types of arguments, return values, and any monadic contexts or constraints.
     4.  **Review Usage Examples**: Actively search for and analyze usage examples within the documentation or the library's test suite. This is often the fastest way to understand the intended workflow (e.g., how conduits should be chained).
     5.  **Formulate a Plan**: Based on the above, formulate a clear implementation plan before writing code.
+-   **行動ステップ (日本語訳)**:
+    1.  **ドキュメントの特定と生成**:
+        a.  まず、`stack.yaml`で指定されているライブラリの正確なバージョンに対応する公式のHaddockドキュメントをオンライン（例：Stackage）で見つけます。
+        b.  オンラインのドキュメントが利用できない、または不十分な場合は、`docs/haskell/haddock/`ディレクトリにあるローカルのHaddockドキュメントを参照します。
+        c.  必要なドキュメントがローカルに存在しない場合は、それを生成しなければなりません。`package.yaml`に新しい依存関係を追加した後は、`stack haddock --only-dependencies`を実行して、すべての依存関係のドキュメントをビルドしてください。
+    2.  **キーとなる型の検証**: 使用する予定のすべての主要なデータ型（例：`FileInfo`, `Header`）の定義を読み、そのフィールドと、コンストラクタやアクセサがエクスポートされているかを理解します。
+    3.  **関数シグネチャの学習**: 呼び出す予定の関数（例：`untar`, `restoreFileInto`）の完全な型シグネチャを調査します。引数の型、戻り値、モナドのコンテキストや制約に細心の注意を払います。
+    4.  **使用例のレビュー**: ドキュメントやライブラリのテストスイート内にある使用例を積極的に探し、分析します。これは、意図されたワークフロー（例：コンジットをどのように連結すべきか）を理解する最も速い方法であることが多いです。
+    5.  **計画の策定**: 上記に基づき、コードを書く前に明確な実装計画を策定します。
 
 ### 16. Principle of Runtime Environment Analysis (実行時環境分析の原則)
 
