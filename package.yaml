@@ -68,6 +68,9 @@ library:
   - ContentManager
   - FileSystemUtils
   - GameManager
+  - GameManager.Install
+  - ArchiveUtils
+  - Handle
   - GitHubIntegration
   - GitHubIntegration.Internal
   - ModHandler

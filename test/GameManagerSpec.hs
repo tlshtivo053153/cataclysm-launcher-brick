@@ -19,6 +19,8 @@ import           Control.Monad.IO.Class (liftIO)
 
 import           FileSystemUtils (findCommonPrefix, copyDirectoryContentsRecursive)
 import           GameManager
+import           GameManager.Install
+import           ArchiveUtils
 import           Types
 
 -- Test State for mocking file system and network
