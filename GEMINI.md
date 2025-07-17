@@ -385,4 +385,19 @@ These rules are designed to minimize build errors and rework when developing in 
         -   Use `Data.ByteString.Char8.unpack` for ASCII or when the encoding is unknown but likely compatible.
         -   Prefer `Data.Text.Encoding.decodeUtf8` when UTF-8 is expected.
         -   Add a comment justifying the choice of conversion function if the encoding is not guaranteed.
+
+### 18. Principle of Planned Refactoring for Module Separation (リファクタリングにおけるモジュール分割の計画実行原則)
+
+-   **Principle**: When refactoring a large module by splitting it into smaller ones, you **must** create a clear, acyclic dependency plan **before** writing or moving any code.
+-   **Rationale**: This rule is a direct countermeasure to the repeated build failures caused by circular dependencies during the `GameManager` refactoring. It prohibits a reactive, trial-and-error approach ("move code, see what breaks, fix it") and mandates a proactive design phase. This prevents inefficient rework cycles and ensures a robust module structure from the outset.
+-   **Action Steps**:
+    1.  **Identify Candidates for Separation**: Before starting, list all functions and data types to be moved from the source module (e.g., `GameManager.hs`).
+    2.  **Analyze Dependencies for Each Candidate**: For each candidate, meticulously map out its dependencies:
+        -   What modules/functions does it **need** to import?
+        -   What other parts of the system will **depend on it** after it's moved?
+    3.  **Design the New Module Structure**: Based on the analysis, design the new file structure and dependency graph.
+        -   **Goal**: Ensure all dependencies flow in one direction (a Directed Acyclic Graph). A higher-level module can import a lower-level one, but never the reverse.
+        -   **Key Strategy**: To break cycles, separate definitions from implementations. For instance, a data type definition (like `data Handle`) which has few dependencies should be placed in a low-level module (like `Types.hs`). Its concrete implementation (like `liveHandle`), which may have many dependencies (like `GitHubIntegration.hs`), should be in a separate, higher-level module (like `Handle.hs`).
+    4.  **Execute the Plan**: **Only after** the new structure is confirmed to be acyclic, begin creating the new files and moving the code according to the plan.
+    5.  **Verify**: Run `stack build` to confirm that the new structure compiles without dependency errors.
 --- End of Context from: GEMINI.md ---
