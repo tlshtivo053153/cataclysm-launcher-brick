@@ -6,6 +6,7 @@ import qualified FileSystemUtilsSpec
 import qualified GitHubIntegrationSpec
 import qualified GameManagerSpec
 import qualified SandboxControllerSpec
+import qualified ModHandlerSpec
 
 main :: IO ()
 main = hspec spec
@@ -17,3 +18,4 @@ spec = do
   describe "GitHubIntegration" GitHubIntegrationSpec.spec
   describe "GameManager" GameManagerSpec.spec
   describe "SandboxController" SandboxControllerSpec.spec
+  describe "ModHandler" ModHandlerSpec.spec

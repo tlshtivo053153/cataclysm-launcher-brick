@@ -111,3 +111,4 @@ tests:
     - GameManagerSpec
     - SandboxControllerSpec
     - BackupSystemSpec
+    - ModHandlerSpec

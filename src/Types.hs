@@ -9,6 +9,10 @@ module Types (
     InstalledVersion(..),
     SandboxProfile(..),
     BackupInfo(..),
+    -- Mod-related types
+    ModSource(..),
+    ModInfo(..),
+    ModHandlerError(..),
     -- UI-related types
     UIEvent(..),
     AppState(..),
@@ -89,6 +93,21 @@ data BackupInfo = BackupInfo
     , biTimestamp :: Text
     , biFilePath  :: FilePath
     } deriving (Show, Eq)
+
+-- Mod-related types
+newtype ModSource = ModSource Text deriving (Show, Eq)
+
+data ModInfo = ModInfo
+  { miName :: Text
+  , miSource :: ModSource
+  , miInstallPath :: FilePath
+  } deriving (Show, Eq)
+
+data ModHandlerError
+  = GitCloneFailed Text
+  | SymlinkCreationFailed FilePath Text
+  | ModNotFound Text
+  deriving (Show, Eq)
 
 data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName deriving (Eq, Ord, Show)
 
