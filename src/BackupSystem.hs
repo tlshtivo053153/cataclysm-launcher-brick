@@ -10,7 +10,7 @@ module BackupSystem (
 import           Control.Exception      (SomeException, try)
 import           Control.Monad          (filterM)
 import           Data.List              (isSuffixOf)
-import           Data.Text              (Text, pack, unpack)
+import           Data.Text              (pack, unpack)
 import           Data.Time.Clock        (getCurrentTime)
 import           Data.Time.Format       (defaultTimeLocale, formatTime)
 import           System.Directory       (createDirectoryIfMissing,

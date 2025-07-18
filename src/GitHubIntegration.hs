@@ -19,9 +19,15 @@ import qualified Data.Text as T
 import Network.HTTP.Simple
 import System.FilePath ((</>))
 
+import Network.HTTP.Simple (httpLBS, getResponseBody, parseRequest, setRequestHeaders, httpJSONEither, httpBS)
+import Types (Config (..), GameVersion (..), Handle(..), ManagerError(..), ReleaseType (..))
+import Katip (KatipContext, logTM, ls, sl)
+import Control.Exception (try, SomeException)
+import System.FilePath ((</>))
+
 import FileSystemUtils
 import GitHubIntegration.Internal
-import Types (Config(..), GameVersion(..))
+import Types (Config (..), GameVersion (..), Handle(..), ManagerError(..), ReleaseType (..))
 
 -- A simpler, more testable abstraction for HTTP requests
 class Monad m => MonadHttp m where
@@ -58,22 +64,26 @@ fetchAndCacheReleases config = do
                     fsWriteFileLBS cacheFile (encode releases)
                     return $ Right releases
 
--- Handle for abstracting side-effects (now only for download)
-data Handle m = Handle
-  { hDownloadAsset :: T.Text -> m BS.ByteString
-  }
+
 
 -- Live implementation of the Handle using http-conduit
-liveHandle :: MonadIO m => Handle m
-liveHandle = Handle
-  { hDownloadAsset = liftIO . downloadAsset'
+liveHandle :: MonadIO m => Types.Handle m
+liveHandle = Types.Handle
+  { hDoesFileExist = \_ -> error "hDoesFileExist not implemented in GitHubIntegration.liveHandle"
+  , hReadFile = \_ -> error "hReadFile not implemented in GitHubIntegration.livehandle"
+  , hWriteFile = \_ _ -> error "hWriteFile not implemented in GitHubIntegration.livehandle"
+  , hDownloadAsset = \url -> liftIO $ do
+      request' <- parseRequest (T.unpack url)
+      let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
+      eresponse <- try (httpBS request)
+      case eresponse of
+        Left (e :: SomeException) -> return $ Left $ NetworkError (T.pack $ show e)
+        Right response -> return $ Right $ getResponseBody response
+  , hCreateDirectoryIfMissing = \_ _ -> error "hCreateDirectoryIfMissing not implemented in GitHubIntegration.livehandle"
+  , hDoesDirectoryExist = \_ -> error "hDoesDirectoryExist not implemented in GitHubIntegration.livehandle"
+  , hRemoveDirectoryRecursive = \_ -> error "hRemoveDirectoryRecursive not implemented in GitHubIntegration.livehandle"
+  , hWriteBChan = \_ _ -> error "hWriteBChan not implemented in GitHubIntegration.livehandle"
   }
-  where
-    downloadAsset' url = do
-        request' <- parseRequest (T.unpack url)
-        let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
-        response <- httpBS request
-        return $ getResponseBody response
 
 -- High-level functions using the Handle
 fetchGameVersions :: (MonadIO m, MonadFileSystem m, MonadHttp m) => Config -> m (Either String [GameVersion])
@@ -81,5 +91,5 @@ fetchGameVersions config = do
     releasesE <- fetchAndCacheReleases config
     return $ processReleases <$> releasesE
 
-downloadAsset :: Monad m => Handle m -> T.Text -> m BS.ByteString
+downloadAsset :: MonadIO m => Types.Handle m -> T.Text -> m (Either ManagerError BS.ByteString)
 downloadAsset handle = hDownloadAsset handle

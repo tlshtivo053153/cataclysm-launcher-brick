@@ -29,9 +29,16 @@ drawUI st = [ui]
                 renderList renderSandboxProfile (appActiveList st == SandboxProfileList) (appSandboxProfiles st)
     backups = renderListPane "Backups" (appActiveList st == BackupList) $
               renderList renderBackupInfo (appActiveList st == BackupList) (appBackups st)
+    availableMods = renderListPane "Available Mods" (appActiveList st == AvailableModList) $
+                    renderList renderModInfo (appActiveList st == AvailableModList) (appAvailableMods st)
+    activeMods = renderListPane "Active Mods" (appActiveList st == ActiveModList) $
+                 renderList renderModInfo (appActiveList st == ActiveModList) (appActiveMods st)
     status = str $ T.unpack $ appStatus st
-    panes = hBox [available, installed, sandboxes, backups]
-    ui = center $ vBox [ panes
+    topPanes = hBox [available, installed, sandboxes, backups]
+    bottomPanes = hBox [availableMods, activeMods]
+    ui = center $ vBox [ topPanes
+                       , hBorder
+                       , bottomPanes
                        , hBorder
                        , status
                        ]
@@ -52,6 +59,9 @@ renderSandboxProfile _ a = str $ T.unpack $ spName a
 
 renderBackupInfo :: Bool -> BackupInfo -> Widget Name
 renderBackupInfo _ a = str $ T.unpack $ biName a
+
+renderModInfo :: Bool -> ModInfo -> Widget Name
+renderModInfo _ a = str $ T.unpack $ miName a
 
 attrPaneDef :: AttrName
 attrPaneDef = attrName "panedef"

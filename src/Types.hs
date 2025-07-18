@@ -26,7 +26,6 @@ module Types (
 import Dhall
 import GHC.Generics (Generic)
 import qualified Data.ByteString as B
-import Data.Text (Text)
 import qualified Data.Text as T
 import Brick.Widgets.List (List)
 import Brick.BChan (BChan)
@@ -86,6 +85,11 @@ data UIEvent
   | ProfileCreated (Either ManagerError ())
   | BackupCreated (Either ManagerError ())
   | BackupsListed (Either ManagerError [BackupInfo])
+  | ModInstallFinished (Either ModHandlerError ModInfo)
+  | ModEnableFinished (Either ModHandlerError ())
+  | ModDisableFinished (Either ModHandlerError ())
+  | AvailableModsListed [ModInfo]
+  | ActiveModsListed [ModInfo]
   deriving (Show)
 
 data BackupInfo = BackupInfo
@@ -109,15 +113,17 @@ data ModHandlerError
   | ModNotFound Text
   deriving (Show, Eq)
 
-data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName deriving (Eq, Ord, Show)
+data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName | AvailableModListName | ActiveModListName deriving (Eq, Ord, Show)
 
-data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList deriving (Eq)
+data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList | AvailableModList | ActiveModList deriving (Eq)
 
 data AppState = AppState
     { appAvailableVersions :: List Name GameVersion
     , appInstalledVersions :: List Name InstalledVersion
     , appSandboxProfiles   :: List Name SandboxProfile
     , appBackups           :: List Name BackupInfo
+    , appAvailableMods     :: List Name ModInfo
+    , appActiveMods        :: List Name ModInfo
     , appConfig            :: Config
     , appStatus            :: Text
     , appActiveList        :: ActiveList

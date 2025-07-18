@@ -14,10 +14,12 @@ import qualified Data.Vector as Vec
 import Data.Vector (fromList)
 import Data.Maybe (fromMaybe)
 import qualified Graphics.Vty as V
+import System.FilePath ((</>))
 
 import BackupSystem (listBackups, createBackup)
 import GameManager (downloadAndInstallIO, getInstalledVersions, launchGame)
 import SandboxController (createProfile, listProfiles)
+import ModHandler (installModFromGitHub, enableMod, disableMod, listAvailableMods)
 import Types
 
 -- Event Handling
@@ -62,6 +64,30 @@ handleAppEvent (BackupsListed result) = do
         Right backups -> do
             let newList = list BackupListName (fromList backups) 1
             modify $ \st -> st { appBackups = newList }
+handleAppEvent (ModInstallFinished result) = do
+    case result of
+        Left err -> modify $ \st -> st { appStatus = "Mod install failed: " <> modHandlerErrorToText err }
+        Right modInfo -> do
+            modify $ \st -> st { appStatus = "Mod installed: " <> miName modInfo }
+            refreshAvailableMods
+handleAppEvent (ModEnableFinished result) = do
+    case result of
+        Left err -> modify $ \st -> st { appStatus = "Mod enable failed: " <> modHandlerErrorToText err }
+        Right () -> do
+            modify $ \st -> st { appStatus = "Mod enabled." }
+            refreshActiveMods
+handleAppEvent (ModDisableFinished result) = do
+    case result of
+        Left err -> modify $ \st -> st { appStatus = "Mod disable failed: " <> modHandlerErrorToText err }
+        Right () -> do
+            modify $ \st -> st { appStatus = "Mod disabled." }
+            refreshActiveMods
+handleAppEvent (AvailableModsListed mods) = do
+    let newList = list AvailableModListName (fromList mods) 1
+    modify $ \st -> st { appAvailableMods = newList }
+handleAppEvent (ActiveModsListed mods) = do
+    let newList = list ActiveModListName (fromList mods) 1
+    modify $ \st -> st { appActiveMods = newList }
 
 handleVtyEvent :: V.Event -> EventM Name AppState ()
 handleVtyEvent (V.EvKey (V.KChar '\t') []) = modify toggleActiveList
@@ -73,6 +99,8 @@ handleVtyEvent ev = do
         InstalledList      -> handleInstalledEvents ev
         SandboxProfileList -> handleSandboxProfileEvents ev
         BackupList         -> handleBackupEvents ev
+        AvailableModList   -> handleAvailableModEvents ev
+        ActiveModList      -> handleActiveModEvents ev
 
 handleAvailableEvents :: V.Event -> EventM Name AppState ()
 handleAvailableEvents (V.EvKey V.KEnter []) = do
@@ -129,11 +157,50 @@ handleSandboxProfileEvents ev = do
     st <- get
     when (listSelectedElement (appSandboxProfiles oldSt) /= listSelectedElement (appSandboxProfiles st)) $
         case listSelectedElement (appSandboxProfiles st) of
-            Just (_, profile) -> refreshBackups profile
+            Just (_, profile) -> do
+                refreshBackups profile
+                refreshActiveMods
             Nothing           -> return ()
 
 handleBackupEvents :: V.Event -> EventM Name AppState ()
 handleBackupEvents ev = handleListEvents ev BackupList
+
+handleAvailableModEvents :: V.Event -> EventM Name AppState ()
+handleAvailableModEvents (V.EvKey (V.KChar 'i') []) = do
+    st <- get
+    -- This is a placeholder for getting a URL, e.g., from a text input box
+    let modSource = ModSource "https://github.com/remyroy/CDDA-No-Hope-Mod"
+        chan = appEventChannel st
+        sysRepo = T.unpack $ sysRepoDirectory $ appConfig st
+    liftIO $ void $ forkIO $ do
+        writeBChan chan $ LogMessage $ "Installing mod from " <> T.pack (show modSource) <> "..."
+        result <- installModFromGitHub sysRepo modSource
+        writeBChan chan $ ModInstallFinished result
+    return ()
+handleAvailableModEvents (V.EvKey (V.KChar 'e') []) = do
+    st <- get
+    case (listSelectedElement (appAvailableMods st), listSelectedElement (appSandboxProfiles st)) of
+        (Just (_, modInfo), Just (_, profile)) -> do
+            let chan = appEventChannel st
+            liftIO $ void $ forkIO $ do
+                writeBChan chan $ LogMessage $ "Enabling mod " <> miName modInfo <> " for " <> spName profile <> "..."
+                result <- enableMod (spDataDirectory profile) modInfo
+                writeBChan chan $ ModEnableFinished result
+        _ -> modify $ \s -> s { appStatus = "Please select a mod and a profile." }
+handleAvailableModEvents ev = handleListEvents ev AvailableModList
+
+handleActiveModEvents :: V.Event -> EventM Name AppState ()
+handleActiveModEvents (V.EvKey (V.KChar 'd') []) = do
+    st <- get
+    case (listSelectedElement (appActiveMods st), listSelectedElement (appSandboxProfiles st)) of
+        (Just (_, modInfo), Just (_, profile)) -> do
+            let chan = appEventChannel st
+            liftIO $ void $ forkIO $ do
+                writeBChan chan $ LogMessage $ "Disabling mod " <> miName modInfo <> " for " <> spName profile <> "..."
+                result <- disableMod (spDataDirectory profile) modInfo
+                writeBChan chan $ ModDisableFinished result
+        _ -> modify $ \s -> s { appStatus = "Please select a mod and a profile." }
+handleActiveModEvents ev = handleListEvents ev ActiveModList
 
 handleListEvents :: V.Event -> ActiveList -> EventM Name AppState ()
 handleListEvents (V.EvKey V.KUp []) activeList = modify $ \st -> handleListMove st listMoveUp activeList
@@ -147,6 +214,8 @@ handleListMove st moveFn activeList =
         InstalledList      -> st { appInstalledVersions = moveFn (appInstalledVersions st) }
         SandboxProfileList -> st { appSandboxProfiles = moveFn (appSandboxProfiles st) }
         BackupList         -> st { appBackups = moveFn (appBackups st) }
+        AvailableModList   -> st { appAvailableMods = moveFn (appAvailableMods st) }
+        ActiveModList      -> st { appActiveMods = moveFn (appActiveMods st) }
 
 refreshBackups :: SandboxProfile -> EventM Name AppState ()
 refreshBackups profile = do
@@ -156,6 +225,31 @@ refreshBackups profile = do
         result <- listBackups (appConfig st) profile
         writeBChan chan $ BackupsListed result
 
+refreshAvailableMods :: EventM Name AppState ()
+refreshAvailableMods = do
+    st <- get
+    let chan = appEventChannel st
+        sysRepo = T.unpack $ sysRepoDirectory $ appConfig st
+        userRepo = T.unpack $ userRepoDirectory $ appConfig st
+    liftIO $ void $ forkIO $ do
+        mods <- listAvailableMods sysRepo userRepo
+        writeBChan chan $ AvailableModsListed mods
+
+refreshActiveMods :: EventM Name AppState ()
+refreshActiveMods = do
+    st <- get
+    case listSelectedElement (appSandboxProfiles st) of
+        Nothing -> return () -- Or clear the list
+        Just (_, profile) -> do
+            let chan = appEventChannel st
+                modDir = spDataDirectory profile </> "mods"
+            liftIO $ void $ forkIO $ do
+                -- This is a simplified version. A real implementation would
+                -- need to resolve the symlinks to get full ModInfo.
+                -- For now, we'll just list the names.
+                -- This part needs to be implemented properly later.
+                writeBChan chan $ ActiveModsListed []
+
 toggleActiveList :: AppState -> AppState
 toggleActiveList st = st { appActiveList = nextActiveList }
   where
@@ -163,7 +257,9 @@ toggleActiveList st = st { appActiveList = nextActiveList }
         AvailableList      -> InstalledList
         InstalledList      -> SandboxProfileList
         SandboxProfileList -> BackupList
-        BackupList         -> AvailableList
+        BackupList         -> AvailableModList
+        AvailableModList   -> ActiveModList
+        ActiveModList      -> AvailableList
 
 managerErrorToText :: ManagerError -> T.Text
 managerErrorToText err = case err of
@@ -172,3 +268,9 @@ managerErrorToText err = case err of
     ArchiveError msg -> "Archive Error: " <> msg
     LaunchError msg -> "Launch Error: " <> msg
     UnknownError msg -> "Unknown Error: " <> msg
+
+modHandlerErrorToText :: ModHandlerError -> T.Text
+modHandlerErrorToText err = case err of
+    GitCloneFailed msg -> "Git clone failed: " <> msg
+    SymlinkCreationFailed path reason -> "Symlink creation failed for " <> T.pack path <> ": " <> reason
+    ModNotFound name -> "Mod not found: " <> name

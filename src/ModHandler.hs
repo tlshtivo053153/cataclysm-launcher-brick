@@ -11,10 +11,13 @@ module ModHandler (
 ) where
 
 import Types (ModHandlerError(..), ModInfo(..), ModSource(..))
-import System.Process (callProcess)
+import System.Process (readProcessWithExitCode)
 import System.Directory (createDirectoryIfMissing, listDirectory, createDirectoryLink, removeFile)
 import System.FilePath ((</>), takeFileName)
-import Data.Text (Text, pack, unpack)
+import System.Exit (ExitCode(..))
+import Data.Text (pack, unpack)
+import Data.List (nubBy)
+import Data.Function (on)
 
 -- | Clones a mod from a GitHub repository into the sys-repo/mods directory.
 installModFromGitHub :: FilePath -> ModSource -> IO (Either ModHandlerError ModInfo)
@@ -23,15 +26,16 @@ installModFromGitHub sysRepoPath (ModSource url) = do
     let installDir = sysRepoPath </> "mods"
     let modInstallPath = installDir </> unpack modName
     createDirectoryIfMissing True installDir
-    -- This is a simplified git clone. Error handling would be needed.
-    callProcess "git" ["clone", unpack url, modInstallPath]
-    -- In a real implementation, we'd check for errors from callProcess
-    let modInfo = ModInfo
-            { miName = modName
-            , miSource = ModSource url
-            , miInstallPath = modInstallPath
-            }
-    return $ Right modInfo
+    (exitCode, _, stderr) <- readProcessWithExitCode "git" ["clone", "--depth", "1", unpack url, modInstallPath] ""
+    case exitCode of
+        ExitSuccess -> do
+            let modInfo = ModInfo
+                    { miName = modName
+                    , miSource = ModSource url
+                    , miInstallPath = modInstallPath
+                    }
+            return $ Right modInfo
+        _ -> return $ Left $ GitCloneFailed (pack stderr)
 
 -- | Enables a mod for a given sandbox profile by creating a symbolic link.
 enableMod :: FilePath -> ModInfo -> IO (Either ModHandlerError ())
@@ -51,12 +55,12 @@ disableMod sandboxProfilePath modInfo = do
     removeFile linkPath
     return $ Right ()
 
--- | Lists all available mods from both sys-repo and user-repo.
+-- | Lists all available mods from both sys-repo and user-repo, preferring sys-repo versions on conflict.
 listAvailableMods :: FilePath -> FilePath -> IO [ModInfo]
 listAvailableMods sysRepoPath userRepoPath = do
     sysMods <- findMods (sysRepoPath </> "mods")
     userMods <- findMods (userRepoPath </> "mods")
-    return $ sysMods ++ userMods -- A real implementation should handle duplicates
+    return $ nubBy ((==) `on` miName) (sysMods ++ userMods)
 
 findMods :: FilePath -> IO [ModInfo]
 findMods dir = do

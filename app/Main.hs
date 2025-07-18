@@ -15,6 +15,7 @@ import Brick.Widgets.List (list)
 import Config (loadConfig)
 import Events (handleEvent)
 import GameManager (getGameVersions, getInstalledVersions)
+import ModHandler (listAvailableMods)
 import SandboxController (listProfiles)
 import Types
 import UI (drawUI, theMap)
@@ -48,6 +49,7 @@ main = do
     versionsE <- getGameVersions config
     installed <- getInstalledVersions config
     profilesE <- listProfiles config
+    availableMods <- listAvailableMods (T.unpack $ sysRepoDirectory config) (T.unpack $ userRepoDirectory config)
     case (versionsE, profilesE) of
         (Left err, _) -> putStrLn $ "Error fetching versions: " ++ T.unpack (managerErrorToText err)
         (_, Left err) -> putStrLn $ "Error listing profiles: " ++ T.unpack (managerErrorToText err)
@@ -59,6 +61,8 @@ main = do
                     , appInstalledVersions = list InstalledListName (fromList installed) 1
                     , appSandboxProfiles = list SandboxProfileListName (fromList profs) 1
                     , appBackups = list BackupListName (fromList []) 1
+                    , appAvailableMods = list AvailableModListName (fromList availableMods) 1
+                    , appActiveMods = list ActiveModListName (fromList []) 1
                     , appConfig = config
                     , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."
                     , appActiveList = AvailableList

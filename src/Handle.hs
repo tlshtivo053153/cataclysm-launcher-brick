@@ -25,7 +25,8 @@ liveHandle = Handle
         result <- try (GH.downloadAsset ghHandle url)
         return $ case result of
             Left (e :: SomeException) -> Left $ NetworkError (T.pack $ show e)
-            Right assetData -> Right assetData
+            Right (Left e) -> Left e
+            Right (Right assetData) -> Right assetData
     , hCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
     , hDoesDirectoryExist = liftIO . doesDirectoryExist
     , hRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
