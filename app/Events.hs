@@ -74,14 +74,25 @@ handleAppEvent (ModEnableFinished result) = do
     case result of
         Left err -> modify $ \st -> st { appStatus = "Mod enable failed: " <> modHandlerErrorToText err }
         Right () -> do
-            modify $ \st -> st { appStatus = "Mod enabled." }
-            refreshActiveMods
+            st <- get
+            case listSelectedElement (appAvailableMods st) of
+                Nothing -> return ()
+                Just (_, modInfo) -> do
+                    let currentActive = listElements $ appActiveMods st
+                        newActive = list ActiveModListName (fromList $ Vec.toList currentActive ++ [modInfo]) 1
+                    modify $ \s -> s { appStatus = "Mod enabled.", appActiveMods = newActive }
 handleAppEvent (ModDisableFinished result) = do
     case result of
         Left err -> modify $ \st -> st { appStatus = "Mod disable failed: " <> modHandlerErrorToText err }
         Right () -> do
-            modify $ \st -> st { appStatus = "Mod disabled." }
-            refreshActiveMods
+            st <- get
+            case listSelectedElement (appActiveMods st) of
+                Nothing -> return ()
+                Just (_, modInfo) -> do
+                    let currentActive = Vec.toList $ listElements $ appActiveMods st
+                        updatedList = filter (/= modInfo) currentActive
+                        newList = list ActiveModListName (fromList updatedList) 1
+                    modify $ \s -> s { appStatus = "Mod disabled.", appActiveMods = newList }
 handleAppEvent (AvailableModsListed mods) = do
     let newList = list AvailableModListName (fromList mods) 1
     modify $ \st -> st { appAvailableMods = newList }
@@ -169,7 +180,7 @@ handleAvailableModEvents :: V.Event -> EventM Name AppState ()
 handleAvailableModEvents (V.EvKey (V.KChar 'i') []) = do
     st <- get
     -- This is a placeholder for getting a URL, e.g., from a text input box
-    let modSource = ModSource "https://github.com/remyroy/CDDA-No-Hope-Mod"
+    let modSource = ModSource "https://github.com/Kenan2000/CDDA-Structured-Kenan-Modpack"
         chan = appEventChannel st
         sysRepo = T.unpack $ sysRepoDirectory $ appConfig st
     liftIO $ void $ forkIO $ do

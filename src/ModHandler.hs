@@ -12,7 +12,7 @@ module ModHandler (
 
 import Types (ModHandlerError(..), ModInfo(..), ModSource(..))
 import System.Process (readProcessWithExitCode)
-import System.Directory (createDirectoryIfMissing, listDirectory, createDirectoryLink, removeFile)
+import System.Directory (createDirectoryIfMissing, listDirectory, createDirectoryLink, removeFile, makeAbsolute)
 import System.FilePath ((</>), takeFileName)
 import System.Exit (ExitCode(..))
 import Data.Text (pack, unpack)
@@ -43,16 +43,21 @@ enableMod sandboxProfilePath modInfo = do
     let modDir = sandboxProfilePath </> "mods"
     createDirectoryIfMissing True modDir
     let linkPath = modDir </> unpack (miName modInfo)
+    
+    absoluteInstallPath <- makeAbsolute (miInstallPath modInfo)
+    absoluteLinkPath <- makeAbsolute linkPath
+
     -- This can fail if the link exists or permissions are wrong.
-    createDirectoryLink (miInstallPath modInfo) linkPath
+    createDirectoryLink absoluteInstallPath absoluteLinkPath
     return $ Right ()
 
 -- | Disables a mod for a given sandbox profile by removing the symbolic link.
 disableMod :: FilePath -> ModInfo -> IO (Either ModHandlerError ())
 disableMod sandboxProfilePath modInfo = do
     let linkPath = sandboxProfilePath </> "mods" </> unpack (miName modInfo)
+    absoluteLinkPath <- makeAbsolute linkPath
     -- This can fail if the link doesn't exist.
-    removeFile linkPath
+    removeFile absoluteLinkPath
     return $ Right ()
 
 -- | Lists all available mods from both sys-repo and user-repo, preferring sys-repo versions on conflict.
