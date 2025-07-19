@@ -14,12 +14,12 @@ import qualified Data.Vector as Vec
 import Data.Vector (fromList)
 import Data.Maybe (fromMaybe)
 import qualified Graphics.Vty as V
-import System.FilePath ((</>))
+
 
 import BackupSystem (listBackups, createBackup)
 import GameManager (downloadAndInstallIO, getInstalledVersions, launchGame)
 import SandboxController (createProfile, listProfiles)
-import ModHandler (installModFromGitHub, enableMod, disableMod, listAvailableMods)
+import ModHandler (installModFromGitHub, enableMod, disableMod, listAvailableMods, listActiveMods)
 import Types
 
 -- Event Handling
@@ -78,8 +78,13 @@ handleAppEvent (ModEnableFinished result) = do
             case listSelectedElement (appAvailableMods st) of
                 Nothing -> return ()
                 Just (_, modInfo) -> do
-                    let currentActive = listElements $ appActiveMods st
-                        newActive = list ActiveModListName (fromList $ Vec.toList currentActive ++ [modInfo]) 1
+                    let currentActive = Vec.toList $ listElements $ appActiveMods st
+                    -- Avoid adding duplicate mods by checking for the name
+                    let isAlreadyActive = any (\m -> miName m == miName modInfo) currentActive
+                    let updatedList = if isAlreadyActive
+                                      then currentActive
+                                      else currentActive ++ [modInfo]
+                    let newActive = list ActiveModListName (fromList updatedList) 1
                     modify $ \s -> s { appStatus = "Mod enabled.", appActiveMods = newActive }
 handleAppEvent (ModDisableFinished result) = do
     case result of
@@ -250,16 +255,14 @@ refreshActiveMods :: EventM Name AppState ()
 refreshActiveMods = do
     st <- get
     case listSelectedElement (appSandboxProfiles st) of
-        Nothing -> return () -- Or clear the list
+        Nothing -> do
+            let newList = list ActiveModListName (fromList []) 1
+            modify $ \s -> s { appActiveMods = newList }
         Just (_, profile) -> do
             let chan = appEventChannel st
-                modDir = spDataDirectory profile </> "mods"
             liftIO $ void $ forkIO $ do
-                -- This is a simplified version. A real implementation would
-                -- need to resolve the symlinks to get full ModInfo.
-                -- For now, we'll just list the names.
-                -- This part needs to be implemented properly later.
-                writeBChan chan $ ActiveModsListed []
+                mods <- listActiveMods (spDataDirectory profile)
+                writeBChan chan $ ActiveModsListed mods
 
 toggleActiveList :: AppState -> AppState
 toggleActiveList st = st { appActiveList = nextActiveList }

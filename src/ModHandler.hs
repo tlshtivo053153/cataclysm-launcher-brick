@@ -5,6 +5,7 @@ module ModHandler (
     enableMod,
     disableMod,
     listAvailableMods,
+    listActiveMods,
     ModHandlerError(..),
     ModInfo(..),
     ModSource(..)
@@ -12,12 +13,14 @@ module ModHandler (
 
 import Types (ModHandlerError(..), ModInfo(..), ModSource(..))
 import System.Process (readProcessWithExitCode)
-import System.Directory (createDirectoryIfMissing, listDirectory, createDirectoryLink, removeFile, makeAbsolute)
+import System.Directory (createDirectoryIfMissing, listDirectory, createDirectoryLink, removeFile, makeAbsolute, doesPathExist, getSymbolicLinkTarget, pathIsSymbolicLink)
 import System.FilePath ((</>), takeFileName)
 import System.Exit (ExitCode(..))
 import Data.Text (pack, unpack)
 import Data.List (nubBy)
 import Data.Function (on)
+import Control.Exception (try, SomeException)
+import Control.Monad (forM, filterM)
 
 -- | Clones a mod from a GitHub repository into the sys-repo/mods directory.
 installModFromGitHub :: FilePath -> ModSource -> IO (Either ModHandlerError ModInfo)
@@ -45,20 +48,24 @@ enableMod sandboxProfilePath modInfo = do
     let linkPath = modDir </> unpack (miName modInfo)
     
     absoluteInstallPath <- makeAbsolute (miInstallPath modInfo)
-    absoluteLinkPath <- makeAbsolute linkPath
-
-    -- This can fail if the link exists or permissions are wrong.
-    createDirectoryLink absoluteInstallPath absoluteLinkPath
-    return $ Right ()
+    
+    exists <- doesPathExist linkPath
+    if exists
+    then return $ Right ()
+    else do
+        result <- try (createDirectoryLink absoluteInstallPath linkPath)
+        case result of
+            Right () -> return $ Right ()
+            Left e -> return $ Left $ SymlinkCreationFailed linkPath (pack $ show (e :: SomeException))
 
 -- | Disables a mod for a given sandbox profile by removing the symbolic link.
 disableMod :: FilePath -> ModInfo -> IO (Either ModHandlerError ())
 disableMod sandboxProfilePath modInfo = do
     let linkPath = sandboxProfilePath </> "mods" </> unpack (miName modInfo)
-    absoluteLinkPath <- makeAbsolute linkPath
-    -- This can fail if the link doesn't exist.
-    removeFile absoluteLinkPath
-    return $ Right ()
+    result <- try (removeFile linkPath)
+    case result of
+        Right () -> return $ Right ()
+        Left e -> return $ Left $ SymlinkCreationFailed linkPath (pack $ show (e :: SomeException))
 
 -- | Lists all available mods from both sys-repo and user-repo, preferring sys-repo versions on conflict.
 listAvailableMods :: FilePath -> FilePath -> IO [ModInfo]
@@ -66,6 +73,21 @@ listAvailableMods sysRepoPath userRepoPath = do
     sysMods <- findMods (sysRepoPath </> "mods")
     userMods <- findMods (userRepoPath </> "mods")
     return $ nubBy ((==) `on` miName) (sysMods ++ userMods)
+
+-- | Lists all active (enabled) mods for a given sandbox profile.
+listActiveMods :: FilePath -> IO [ModInfo]
+listActiveMods sandboxProfilePath = do
+    let modDir = sandboxProfilePath </> "mods"
+    createDirectoryIfMissing True modDir
+    allEntries <- listDirectory modDir
+    let allPaths = map (modDir </>) allEntries
+    
+    symbolicLinks <- filterM pathIsSymbolicLink allPaths
+    
+    forM symbolicLinks $ \linkPath -> do
+        targetPath <- getSymbolicLinkTarget linkPath
+        let modName = pack $ takeFileName linkPath
+        return $ ModInfo modName (ModSource "unknown") targetPath
 
 findMods :: FilePath -> IO [ModInfo]
 findMods dir = do

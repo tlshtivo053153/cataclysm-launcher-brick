@@ -7,6 +7,7 @@ import qualified Data.Text as T
 import Data.Vector (fromList)
 import qualified Graphics.Vty as V
 import qualified Graphics.Vty.CrossPlatform as VCP
+import Data.Maybe (listToMaybe)
 
 import Brick
 import Brick.BChan (newBChan)
@@ -15,7 +16,7 @@ import Brick.Widgets.List (list)
 import Config (loadConfig)
 import Events (handleEvent)
 import GameManager (getGameVersions, getInstalledVersions)
-import ModHandler (listAvailableMods)
+import ModHandler (listAvailableMods, listActiveMods)
 import SandboxController (listProfiles)
 import Types
 import UI (drawUI, theMap)
@@ -50,10 +51,16 @@ main = do
     installed <- getInstalledVersions config
     profilesE <- listProfiles config
     availableMods <- listAvailableMods (T.unpack $ sysRepoDirectory config) (T.unpack $ userRepoDirectory config)
+    
     case (versionsE, profilesE) of
         (Left err, _) -> putStrLn $ "Error fetching versions: " ++ T.unpack (managerErrorToText err)
         (_, Left err) -> putStrLn $ "Error listing profiles: " ++ T.unpack (managerErrorToText err)
         (Right vers, Right profs) -> do
+            -- Load active mods for the first profile if it exists.
+            activeMods <- case listToMaybe profs of
+                Just firstProfile -> listActiveMods (spDataDirectory firstProfile)
+                Nothing -> return []
+
             let buildVty = VCP.mkVty V.defaultConfig
             initialVty <- buildVty
             let initialState = AppState
@@ -62,7 +69,7 @@ main = do
                     , appSandboxProfiles = list SandboxProfileListName (fromList profs) 1
                     , appBackups = list BackupListName (fromList []) 1
                     , appAvailableMods = list AvailableModListName (fromList availableMods) 1
-                    , appActiveMods = list ActiveModListName (fromList []) 1
+                    , appActiveMods = list ActiveModListName (fromList activeMods) 1
                     , appConfig = config
                     , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."
                     , appActiveList = AvailableList
