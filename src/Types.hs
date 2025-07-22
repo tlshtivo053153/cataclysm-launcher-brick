@@ -13,6 +13,9 @@ module Types (
     ModSource(..),
     ModInfo(..),
     ModHandlerError(..),
+    ModDistributionType(..),
+    ModSourceInfo(..),
+    AvailableMod(..),
     -- UI-related types
     UIEvent(..),
     AppState(..),
@@ -24,7 +27,6 @@ module Types (
 ) where
 
 import Dhall
-import GHC.Generics (Generic)
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 import Brick.Widgets.List (List)
@@ -88,7 +90,7 @@ data UIEvent
   | ModInstallFinished (Either ModHandlerError ModInfo)
   | ModEnableFinished (Either ModHandlerError ())
   | ModDisableFinished (Either ModHandlerError ())
-  | AvailableModsListed [ModInfo]
+  | AvailableModsListed ([AvailableMod], [ModInfo])
   | ActiveModsListed [ModInfo]
   deriving (Show)
 
@@ -113,6 +115,25 @@ data ModHandlerError
   | ModNotFound Text
   deriving (Show, Eq)
 
+data ModDistributionType = GitHub | TarGz
+  deriving (Generic, Show, Eq)
+
+instance FromDhall ModDistributionType
+
+data ModSourceInfo = ModSourceInfo
+  { msiName :: Text
+  , msiRepositoryName :: Text
+  , msiUrl  :: Text
+  , msiType :: ModDistributionType
+  } deriving (Generic, Show, Eq)
+
+instance FromDhall ModSourceInfo
+
+data AvailableMod = AvailableMod
+  { amSource      :: ModSourceInfo
+  , amIsInstalled :: Bool
+  } deriving (Show, Eq)
+
 data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName | AvailableModListName | ActiveModListName deriving (Eq, Ord, Show)
 
 data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList | AvailableModList | ActiveModList deriving (Eq)
@@ -122,8 +143,9 @@ data AppState = AppState
     , appInstalledVersions :: List Name InstalledVersion
     , appSandboxProfiles   :: List Name SandboxProfile
     , appBackups           :: List Name BackupInfo
-    , appAvailableMods     :: List Name ModInfo
+    , appAvailableMods     :: List Name AvailableMod
     , appActiveMods        :: List Name ModInfo
+    , appInstalledModsCache :: [ModInfo] -- Non-UI cache of installed mods
     , appConfig            :: Config
     , appStatus            :: Text
     , appActiveList        :: ActiveList

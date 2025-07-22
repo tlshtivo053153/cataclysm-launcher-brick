@@ -14,20 +14,14 @@ module GitHubIntegration (
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as B
 import qualified Data.Text as T
-import Network.HTTP.Simple
+import Network.HTTP.Simple (httpJSONEither, parseRequest, setRequestHeaders, getResponseBody, httpBS)
 import System.FilePath ((</>))
-
-import Network.HTTP.Simple (httpLBS, getResponseBody, parseRequest, setRequestHeaders, httpJSONEither, httpBS)
-import Types (Config (..), GameVersion (..), Handle(..), ManagerError(..), ReleaseType (..))
-import Katip (KatipContext, logTM, ls, sl)
 import Control.Exception (try, SomeException)
-import System.FilePath ((</>))
 
 import FileSystemUtils
 import GitHubIntegration.Internal
-import Types (Config (..), GameVersion (..), Handle(..), ManagerError(..), ReleaseType (..))
+import Types (Config (..), GameVersion (..), Handle(..), ManagerError(..))
 
 -- A simpler, more testable abstraction for HTTP requests
 class Monad m => MonadHttp m where
@@ -86,10 +80,10 @@ liveHandle = Types.Handle
   }
 
 -- High-level functions using the Handle
-fetchGameVersions :: (MonadIO m, MonadFileSystem m, MonadHttp m) => Config -> m (Either String [GameVersion])
+fetchGameVersions :: (MonadFileSystem m, MonadHttp m) => Config -> m (Either String [GameVersion])
 fetchGameVersions config = do
     releasesE <- fetchAndCacheReleases config
     return $ processReleases <$> releasesE
 
-downloadAsset :: MonadIO m => Types.Handle m -> T.Text -> m (Either ManagerError BS.ByteString)
+downloadAsset :: Types.Handle m -> T.Text -> m (Either ManagerError BS.ByteString)
 downloadAsset handle = hDownloadAsset handle

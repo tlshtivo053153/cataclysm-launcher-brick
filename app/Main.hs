@@ -8,12 +8,14 @@ import Data.Vector (fromList)
 import qualified Graphics.Vty as V
 import qualified Graphics.Vty.CrossPlatform as VCP
 import Data.Maybe (listToMaybe)
+import Data.List (nubBy)
+import Data.Function (on)
 
-import Brick
+import Brick hiding (on)
 import Brick.BChan (newBChan)
 import Brick.Widgets.List (list)
 
-import Config (loadConfig)
+import Config (loadConfig, loadModSources)
 import Events (handleEvent)
 import GameManager (getGameVersions, getInstalledVersions)
 import ModHandler (listAvailableMods, listActiveMods)
@@ -32,7 +34,6 @@ app = App
     }
 
 -- | A helper function to convert ManagerError to a user-friendly Text.
--- This might be better placed in a module dedicated to error handling or UI formatting.
 managerErrorToText :: ManagerError -> T.Text
 managerErrorToText err = case err of
     NetworkError msg -> "Network Error: " <> msg
@@ -50,7 +51,8 @@ main = do
     versionsE <- getGameVersions config
     installed <- getInstalledVersions config
     profilesE <- listProfiles config
-    availableMods <- listAvailableMods (T.unpack $ sysRepoDirectory config) (T.unpack $ userRepoDirectory config)
+    modSources <- loadModSources
+    installedMods <- listAvailableMods (T.unpack $ sysRepoDirectory config) (T.unpack $ userRepoDirectory config)
     
     case (versionsE, profilesE) of
         (Left err, _) -> putStrLn $ "Error fetching versions: " ++ T.unpack (managerErrorToText err)
@@ -61,6 +63,18 @@ main = do
                 Just firstProfile -> listActiveMods (spDataDirectory firstProfile)
                 Nothing -> return []
 
+            -- Combine mod sources and installed mods into a single list for the UI
+            let isInstalled msi = any (\im -> miName im == msiRepositoryName msi) installedMods
+                
+                -- Convert ModSourceInfo from config to AvailableMod
+                sourceMods = map (\msi -> AvailableMod msi (isInstalled msi)) modSources
+                
+                -- Convert installed ModInfo to AvailableMod, but only for those not in the config
+                installedOnly = filter (\im -> not $ any (\msi -> msiRepositoryName msi == miName im) modSources) installedMods
+                installedOnlyMods = map modInfoToAvailableMod installedOnly
+
+            let combinedMods = nubBy ((==) `on` (msiRepositoryName . amSource)) $ sourceMods ++ installedOnlyMods
+            
             let buildVty = VCP.mkVty V.defaultConfig
             initialVty <- buildVty
             let initialState = AppState
@@ -68,8 +82,9 @@ main = do
                     , appInstalledVersions = list InstalledListName (fromList installed) 1
                     , appSandboxProfiles = list SandboxProfileListName (fromList profs) 1
                     , appBackups = list BackupListName (fromList []) 1
-                    , appAvailableMods = list AvailableModListName (fromList availableMods) 1
+                    , appAvailableMods = list AvailableModListName (fromList combinedMods) 1
                     , appActiveMods = list ActiveModListName (fromList activeMods) 1
+                    , appInstalledModsCache = installedMods
                     , appConfig = config
                     , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."
                     , appActiveList = AvailableList
@@ -77,5 +92,22 @@ main = do
                     }
             void $ customMain initialVty buildVty (Just chan) app initialState
             putStrLn "App finished."
+
+modInfoToAvailableMod :: ModInfo -> AvailableMod
+modInfoToAvailableMod mi = AvailableMod
+    { amSource = ModSourceInfo
+        { msiName = miName mi
+        , msiRepositoryName = miName mi -- For installed mods, repo name is the same as the dir name
+        , msiUrl = getSourceUrl $ miSource mi
+        , msiType = getSourceType $ miSource mi
+        }
+    , amIsInstalled = True
+    }
+
+getSourceUrl :: ModSource -> T.Text
+getSourceUrl (ModSource url) = url
+
+getSourceType :: ModSource -> ModDistributionType
+getSourceType (ModSource url) = if "github.com" `T.isInfixOf` url then GitHub else TarGz -- Simple heuristic
 
 

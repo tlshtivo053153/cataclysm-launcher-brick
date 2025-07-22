@@ -30,7 +30,7 @@ drawUI st = [ui]
     backups = renderListPane "Backups" (appActiveList st == BackupList) $
               renderList renderBackupInfo (appActiveList st == BackupList) (appBackups st)
     availableMods = renderListPane "Available Mods" (appActiveList st == AvailableModList) $
-                    renderList renderModInfo (appActiveList st == AvailableModList) (appAvailableMods st)
+                    renderList renderAvailableMod (appActiveList st == AvailableModList) (appAvailableMods st)
     activeMods = renderListPane "Active Mods" (appActiveList st == ActiveModList) $
                  renderList renderModInfo (appActiveList st == ActiveModList) (appActiveMods st)
     status = str $ T.unpack $ appStatus st
@@ -62,6 +62,11 @@ renderBackupInfo _ a = str $ T.unpack $ biName a
 
 renderModInfo :: Bool -> ModInfo -> Widget Name
 renderModInfo _ a = str $ T.unpack $ miName a
+
+renderAvailableMod :: Bool -> AvailableMod -> Widget Name
+renderAvailableMod _ a =
+    let installedMarker = if amIsInstalled a then " [installed]" else ""
+    in str $ T.unpack (msiName (amSource a)) ++ installedMarker
 
 attrPaneDef :: AttrName
 attrPaneDef = attrName "panedef"

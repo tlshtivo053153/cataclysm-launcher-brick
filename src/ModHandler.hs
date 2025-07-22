@@ -17,15 +17,16 @@ import System.Directory (createDirectoryIfMissing, listDirectory, createDirector
 import System.FilePath ((</>), takeFileName)
 import System.Exit (ExitCode(..))
 import Data.Text (pack, unpack)
+import qualified Data.Text as T
 import Data.List (nubBy)
 import Data.Function (on)
 import Control.Exception (try, SomeException)
 import Control.Monad (forM, filterM)
 
 -- | Clones a mod from a GitHub repository into the sys-repo/mods directory.
-installModFromGitHub :: FilePath -> ModSource -> IO (Either ModHandlerError ModInfo)
-installModFromGitHub sysRepoPath (ModSource url) = do
-    let modName = pack $ takeFileName $ unpack url
+installModFromGitHub :: FilePath -> T.Text -> ModSource -> IO (Either ModHandlerError ModInfo)
+installModFromGitHub sysRepoPath repoName (ModSource url) = do
+    let modName = repoName
     let installDir = sysRepoPath </> "mods"
     let modInstallPath = installDir </> unpack modName
     createDirectoryIfMissing True installDir
