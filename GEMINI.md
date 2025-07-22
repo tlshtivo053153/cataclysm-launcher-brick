@@ -122,7 +122,7 @@ Follow Conventional Commits format:
 
 - **Example:**
 
-  - **Anti-Pattern (避けるべきパターン):**
+  - **Anti-Pattern (避��るべきパターン):**
     ```haskell
     -- This function is hard to test without running real IO.
     fetchGameVersions :: Config -> IO (Either String [GameVersion])
@@ -355,7 +355,7 @@ These rules are designed to minimize build errors and rework when developing in 
     1.  **ドキュメントの特定と生成**:
         a.  まず、`stack.yaml`で指定されているライブラリの正確なバージョンに対応する公式のHaddockドキュメントをオンライン（例：Stackage）で見つけます。
         b.  オンラインのドキュメントが利用できない、または不十分な場合は、`docs/haskell/haddock/`ディレクトリにあるローカルのHaddockドキュメントを参照します。
-        c.  必要なドキュメントがローカルに存在しない場合は、それを生成しなければなりません。`package.yaml`に新しい依存関係を追加した後は、`stack haddock --only-dependencies`を実行して、すべての依存関係のドキュメントをビルドしてください。
+        c.  必要なドキュメントがローカルに存在しない場合は、それを生成しなければなりません。`package.yaml`に新しい依存関係を追加した後は、`stack haddock --only-dependencies`を実行して、すべての依存関係のドキュメントをビルドしてくださ���。
     2.  **キーとなる型の検証**: 使用する予定のすべての主要なデータ型（例：`FileInfo`, `Header`）の定義を読み、そのフィールドと、コンストラクタやアクセサがエクスポートされているかを理解します。
     3.  **関数シグネチャの学習**: 呼び出す予定の関数（例：`untar`, `restoreFileInto`）の完全な型シグネチャを調査します。引数の型、戻り値、モナドのコンテキストや制約に細心の注意を払います。
     4.  **使用例のレビュー**: ドキュメントやライブラリのテストスイート内にある使用例を積極的に探し、分析します。これは、意図されたワークフロー（例：コンジットをどのように連結すべきか）を理解する最も速い方法であることが多いです。
@@ -400,4 +400,35 @@ These rules are designed to minimize build errors and rework when developing in 
         -   **Key Strategy**: To break cycles, separate definitions from implementations. For instance, a data type definition (like `data Handle`) which has few dependencies should be placed in a low-level module (like `Types.hs`). Its concrete implementation (like `liveHandle`), which may have many dependencies (like `GitHubIntegration.hs`), should be in a separate, higher-level module (like `Handle.hs`).
     4.  **Execute the Plan**: **Only after** the new structure is confirmed to be acyclic, begin creating the new files and moving the code according to the plan.
     5.  **Verify**: Run `stack build` to confirm that the new structure compiles without dependency errors.
---- End of Context from: GEMINI.md ---
+
+### 19. Principle of Data Flow Sanity
+
+-   **Principle**: When fixing a bug or adding a feature, do not just analyze the code snippet being changed. You **must** analyze the entire lifecycle of the data involved (generation, state representation, UI display, and updates) to ensure consistency.
+-   **Rationale**: In the last task, ensuring the idempotency of the `enableMod` function (backend) without considering the UI state update logic led to a new bug where duplicate items were added to a list. This was caused by looking only at a part of the data flow (the backend) instead of the whole system (the impact on the UI). This principle aims to prevent similar "can't see the forest for the trees" fixes.
+-   **Action Steps**:
+    1.  **Identify Source of Truth**: Clarify where the data is defined and persisted (e.g., file system, configuration file).
+    2.  **Trace State**: Track how that data is loaded and what type it is represented as within `AppState`.
+    3.  **Analyze UI Impact**: Simulate how a change will alter `AppState` and how that change will affect what is displayed in the UI.
+    4.  **Verify Update Flow**: Confirm the entire loop: how a user action (key press) triggers an asynchronous process, which in turn updates the "Source of Truth" and `AppState`, and finally provides feedback to the UI.
+    5.  Proceed with implementation only after confirming that consistency is maintained throughout this entire flow.
+
+### 20. Principle of Safe File Writes
+
+-   **Principle**: File modifications **must**, by default, be performed by overwriting the entire file with `write_file`. The use of the `replace` tool is strictly limited to trivial, single-line substitutions.
+-   **Rationale**: During the last task, the `replace` tool failed repeatedly due to subtle differences in invisible characters (e.g., CRLF vs. LF, trailing whitespace), causing significant rework. The `replace` tool has an inherent vulnerability related to partial matching and is deemed unreliable. Adopting the safer and more robust `write_file` as the primary method will eradicate this class of repetitive failures.
+-   **Action Steps**:
+    1.  The default strategy for modifying a file is always `write_file`.
+    2.  Strictly follow the sequence: "Read the full content with `read_file` → Modify the content in memory → Write the complete, modified content back with `write_file`."
+    3.  Limit the use of the `replace` tool to only simple substitutions that are **guaranteed to be on a single line and unique within the file** (e.g., updating a version number).
+    4.  If the `replace` tool fails even once, **immediately abandon its use and switch to the `write_file` strategy.** Do not re-attempt the `replace` for any reason.
+
+### 21. Principle of Pre-Compilation Review
+
+-   **Principle**: Immediately before running `stack build`, you must pause and review the changes (`git diff HEAD`) to check for basic syntax errors and missing imports.
+-   **Rationale**: The last task was plagued by simple mistakes that, while easily caught by the compiler, should have been prevented by careful coding. These included missing imports, ambiguous names (`on`), and typos (`managerErrorTo-text`). This principle is introduced to break the inefficient development cycle of using the compiler as a first-pass debugger.
+-   **Action Steps**:
+    1.  After modifying code, **stop** before running `stack build`.
+    2.  Execute `git diff HEAD` and visually review the changed sections.
+    3.  **Check Imports**: For any newly used functions, types, or operators, confirm that the corresponding `import` statement has been correctly added.
+    4.  **Check Names**: For names that could be exported from multiple modules (like `on`), confirm that they are correctly qualified or hidden via `hiding`.
+    5.  **Check for Typos**: Briefly scan function and variable names for obvious typographical errors.
