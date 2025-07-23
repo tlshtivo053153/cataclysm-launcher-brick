@@ -8,8 +8,6 @@ import Data.Vector (fromList)
 import qualified Graphics.Vty as V
 import qualified Graphics.Vty.CrossPlatform as VCP
 import Data.Maybe (listToMaybe)
-import Data.List (nubBy)
-import Data.Function (on)
 
 import Brick hiding (on)
 import Brick.BChan (newBChan)
@@ -22,6 +20,7 @@ import ModHandler (listAvailableMods, listActiveMods)
 import SandboxController (listProfiles)
 import Types
 import UI (drawUI, theMap)
+import ModUtils (combineMods)
 
 -- App Definition
 app :: App AppState UIEvent Name
@@ -64,16 +63,7 @@ main = do
                 Nothing -> return []
 
             -- Combine mod sources and installed mods into a single list for the UI
-            let isInstalled msi = any (\im -> miName im == msiRepositoryName msi) installedMods
-                
-                -- Convert ModSourceInfo from config to AvailableMod
-                sourceMods = map (\msi -> AvailableMod msi (isInstalled msi)) modSources
-                
-                -- Convert installed ModInfo to AvailableMod, but only for those not in the config
-                installedOnly = filter (\im -> not $ any (\msi -> msiRepositoryName msi == miName im) modSources) installedMods
-                installedOnlyMods = map modInfoToAvailableMod installedOnly
-
-            let combinedMods = nubBy ((==) `on` (msiRepositoryName . amSource)) $ sourceMods ++ installedOnlyMods
+            let combinedMods = combineMods modSources installedMods
             
             let buildVty = VCP.mkVty V.defaultConfig
             initialVty <- buildVty
@@ -92,22 +82,3 @@ main = do
                     }
             void $ customMain initialVty buildVty (Just chan) app initialState
             putStrLn "App finished."
-
-modInfoToAvailableMod :: ModInfo -> AvailableMod
-modInfoToAvailableMod mi = AvailableMod
-    { amSource = ModSourceInfo
-        { msiName = miName mi
-        , msiRepositoryName = miName mi -- For installed mods, repo name is the same as the dir name
-        , msiUrl = getSourceUrl $ miSource mi
-        , msiType = getSourceType $ miSource mi
-        }
-    , amIsInstalled = True
-    }
-
-getSourceUrl :: ModSource -> T.Text
-getSourceUrl (ModSource url) = url
-
-getSourceType :: ModSource -> ModDistributionType
-getSourceType (ModSource url) = if "github.com" `T.isInfixOf` url then GitHub else TarGz -- Simple heuristic
-
-

@@ -16,6 +16,7 @@ import Data.Maybe (fromMaybe)
 import qualified Graphics.Vty as V
 import Data.List (find, nubBy)
 import Data.Function (on)
+import System.Process (readProcessWithExitCode) -- Import the function
 
 import BackupSystem (listBackups, createBackup)
 import Config (loadModSources)
@@ -183,7 +184,7 @@ handleAvailableModEvents (V.EvKey (V.KChar 'i') []) = do
                             repoName = msiRepositoryName modSourceInfo
                         liftIO $ void $ forkIO $ do
                             writeBChan chan $ LogMessage $ "Installing mod from " <> msiUrl modSourceInfo <> "..."
-                            result <- installModFromGitHub sysRepo repoName modSource
+                            result <- installModFromGitHub readProcessWithExitCode sysRepo repoName modSource
                             writeBChan chan $ ModInstallFinished result
                     TarGz -> modify $ \s -> s { appStatus = "Installation from .tar.gz is not yet supported." }
 handleAvailableModEvents (V.EvKey (V.KChar 'e') []) = do
@@ -225,7 +226,7 @@ handleListEvents (V.EvKey V.KDown []) activeList = modify $ \st -> handleListMov
 handleListEvents _ _ = return ()
 
 handleListMove :: AppState -> (forall a. List Name a -> List Name a) -> ActiveList -> AppState
-handleListMove st moveFn activeList =
+handleListMove st moveFn activeList = 
     case activeList of
         AvailableList      -> st { appAvailableVersions = moveFn (appAvailableVersions st) }
         InstalledList      -> st { appInstalledVersions = moveFn (appInstalledVersions st) }

@@ -6,7 +6,10 @@ import Test.Hspec
 import System.IO.Temp (withSystemTempDirectory)
 import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist)
-import Data.Text (pack)
+import Data.Text (pack, unpack)
+import qualified Data.Text as T
+import System.Exit (ExitCode(..))
+import Data.IORef (newIORef, readIORef, writeIORef)
 
 import ModHandler
 import Types
@@ -50,3 +53,29 @@ spec = describe "ModHandler" $ do
             mods <- listAvailableMods sysRepoPath userRepoPath
             let modNames = map miName mods
             modNames `shouldMatchList` [pack "SysMod1", pack "SysMod2", pack "UserMod1"]
+
+    it "installs a mod from GitHub using the correct repository name" $
+        withSystemTempDirectory "mod_handler_install_test" $ \tempDir -> do
+            let sysRepoPath = tempDir </> "sys-repo"
+            let repoName = "TestModRepo"
+            let modUrl = "https://github.com/test/TestModRepo.git"
+            let expectedInstallPath = sysRepoPath </> "mods" </> unpack repoName
+
+            -- Mock ProcessRunner
+            argsRef <- newIORef []
+            let mockRunner cmd args _ = do
+                  writeIORef argsRef (cmd:args)
+                  return (ExitSuccess, "", "")
+            
+            result <- installModFromGitHub mockRunner sysRepoPath repoName (ModSource modUrl)
+
+            -- Verify the result
+            case result of
+                Left err -> expectationFailure $ "Expected Right, got Left: " ++ show err
+                Right modInfo -> do
+                    miName modInfo `shouldBe` repoName
+                    miInstallPath modInfo `shouldBe` expectedInstallPath
+            
+            -- Verify the arguments passed to git
+            clonedArgs <- readIORef argsRef
+            clonedArgs `shouldBe` ["git", "clone", "--depth", "1", unpack modUrl, expectedInstallPath]

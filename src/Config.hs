@@ -4,21 +4,29 @@
 
 module Config (
     loadConfig,
-    loadModSources
+    loadModSources,
+    loadModSourcesFrom -- Export for testing
 ) where
 
 import Dhall
 import Types (Config, ModSourceInfo)
-import Control.Exception (try, IOException)
+import Control.Exception (try, SomeException)
+import Data.Text (Text)
 
+-- | Loads the main application configuration.
 loadConfig :: IO Config
 loadConfig = input auto "./config/launcher.dhall"
 
--- | Loads the list of available mod sources from an external dhall file.
--- If the file doesn't exist or there's an error, it returns an empty list.
+-- | Loads the list of available mod sources from the default path.
+-- See `loadModSourcesFrom` for implementation details.
 loadModSources :: IO [ModSourceInfo]
-loadModSources = do
-    result <- try (input auto "./config/mods.dhall")
+loadModSources = loadModSourcesFrom "./config/mods.dhall"
+
+-- | Loads the list of available mod sources from a given Dhall file expression.
+-- If the file doesn't exist or there's any parsing error, it returns an empty list.
+loadModSourcesFrom :: Text -> IO [ModSourceInfo]
+loadModSourcesFrom expr = do
+    result <- try (input auto expr)
     case result of
         Right modSources -> return modSources
-        Left (_ :: IOException) -> return [] -- File not found or other IO error.
+        Left (_ :: SomeException) -> return [] -- Catch file not found, parse errors, etc.

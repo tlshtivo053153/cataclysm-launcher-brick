@@ -23,14 +23,18 @@ import Data.Function (on)
 import Control.Exception (try, SomeException)
 import Control.Monad (forM, filterM)
 
+-- | A type alias for a function that can execute a process.
+type ProcessRunner = String -> [String] -> String -> IO (ExitCode, String, String)
+
 -- | Clones a mod from a GitHub repository into the sys-repo/mods directory.
-installModFromGitHub :: FilePath -> T.Text -> ModSource -> IO (Either ModHandlerError ModInfo)
-installModFromGitHub sysRepoPath repoName (ModSource url) = do
+-- It takes a `ProcessRunner` to allow for mocking in tests.
+installModFromGitHub :: ProcessRunner -> FilePath -> T.Text -> ModSource -> IO (Either ModHandlerError ModInfo)
+installModFromGitHub runProcess sysRepoPath repoName (ModSource url) = do
     let modName = repoName
     let installDir = sysRepoPath </> "mods"
     let modInstallPath = installDir </> unpack modName
     createDirectoryIfMissing True installDir
-    (exitCode, _, stderr) <- readProcessWithExitCode "git" ["clone", "--depth", "1", unpack url, modInstallPath] ""
+    (exitCode, _, stderr) <- runProcess "git" ["clone", "--depth", "1", unpack url, modInstallPath] ""
     case exitCode of
         ExitSuccess -> do
             let modInfo = ModInfo
