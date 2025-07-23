@@ -122,7 +122,7 @@ Follow Conventional Commits format:
 
 - **Example:**
 
-  - **Anti-Pattern (避��るべきパターン):**
+  - **Anti-Pattern (避けるべきパターン):**
     ```haskell
     -- This function is hard to test without running real IO.
     fetchGameVersions :: Config -> IO (Either String [GameVersion])
@@ -355,7 +355,7 @@ These rules are designed to minimize build errors and rework when developing in 
     1.  **ドキュメントの特定と生成**:
         a.  まず、`stack.yaml`で指定されているライブラリの正確なバージョンに対応する公式のHaddockドキュメントをオンライン（例：Stackage）で見つけます。
         b.  オンラインのドキュメントが利用できない、または不十分な場合は、`docs/haskell/haddock/`ディレクトリにあるローカルのHaddockドキュメントを参照します。
-        c.  必要なドキュメントがローカルに存在しない場合は、それを生成しなければなりません。`package.yaml`に新しい依存関係を追加した後は、`stack haddock --only-dependencies`を実行して、すべての依存関係のドキュメントをビルドしてくださ���。
+        c.  必要なドキュメントがローカルに存在しない場合は、それを生成しなければなりません。`package.yaml`に新しい依存関係を追加した後は、`stack haddock --only-dependencies`を実行して、すべての依存関係のドキュメントをビルドしてください。
     2.  **キーとなる型の検証**: 使用する予定のすべての主要なデータ型（例：`FileInfo`, `Header`）の定義を読み、そのフィールドと、コンストラクタやアクセサがエクスポートされているかを理解します。
     3.  **関数シグネチャの学習**: 呼び出す予定の関数（例：`untar`, `restoreFileInto`）の完全な型シグネチャを調査します。引数の型、戻り値、モナドのコンテキストや制約に細心の注意を払います。
     4.  **使用例のレビュー**: ドキュメントやライブラリのテストスイート内にある使用例を積極的に探し、分析します。これは、意図されたワークフロー（例：コンジットをどのように連結すべきか）を理解する最も速い方法であることが多いです。
@@ -432,3 +432,19 @@ These rules are designed to minimize build errors and rework when developing in 
     3.  **Check Imports**: For any newly used functions, types, or operators, confirm that the corresponding `import` statement has been correctly added.
     4.  **Check Names**: For names that could be exported from multiple modules (like `on`), confirm that they are correctly qualified or hidden via `hiding`.
     5.  **Check for Typos**: Briefly scan function and variable names for obvious typographical errors.
+
+### 22. Principle of Incremental Integration (段階的インテグレーションの原則)
+
+-   **Principle**: When integrating a new or complex external library feature (especially one with its own interpreter or evaluation model, like Dhall), **you must first** verify its behavior in isolation within the test environment before integrating it into the application's business logic.
+-   **Rationale**: This rule is a direct countermeasure to the repeated failures encountered while testing Dhall parsing. Attempting to write a complete, complex test case from the outset without understanding the library's evaluation semantics (e.g., how it resolves types, variables, and paths within the test runner's context) leads to inefficient, hard-to-debug trial-and-error cycles. This principle mandates a "spike" or "toy example" approach to de-risk the integration.
+-   **Action Steps**:
+    1.  **Isolate the Core Function**: Identify the single library function call that is most critical and least understood (e.g., `Dhall.input auto`).
+    2.  **Create a Minimal Test Case**: In the relevant `Spec.hs` file, create a new, temporary `describe` block labeled "Spike: [Library Name]".
+    3.  **Start with the Simplest Possible Input**: Write an `it` block that calls the function with the most trivial, self-contained input possible (e.g., for Dhall, a simple literal like `"\"Hello, world!\""` or `"1 + 1"`). Verify that it produces the expected outcome.
+    4.  **Incrementally Add Complexity**: Add subsequent `it` blocks, introducing one new concept at a time:
+        -   A simple record (`{ a = 1 }`).
+        -   A union/enum type (`<A | B>.A`).
+        -   A list of records.
+        -   A type annotation.
+    5.  **Implement the Real Test**: **Only after** these minimal, isolated tests are all passing, proceed to write the actual, comprehensive test case required by the task.
+    6.  **Remove the Spike**: Once the final test is passing, remove the temporary "Spike" `describe` block.
