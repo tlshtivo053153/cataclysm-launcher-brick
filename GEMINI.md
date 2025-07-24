@@ -122,7 +122,7 @@ Follow Conventional Commits format:
 
 - **Example:**
 
-  - **Anti-Pattern (避けるべきパターン):**
+  - **Anti-Pattern (避��るべきパターン):**
     ```haskell
     -- This function is hard to test without running real IO.
     fetchGameVersions :: Config -> IO (Either String [GameVersion])
@@ -346,7 +346,7 @@ These rules are designed to minimize build errors and rework when developing in 
     1.  **Locate and Generate Documentation**:
         a.  First, try to find the official Haddock documentation online (e.g., on Stackage) for the exact version of the library specified in `stack.yaml`.
         b.  If online documentation is unavailable or insufficient, refer to the local Haddock documentation in the `docs/haskell/haddock/` directory.
-        c.  If the required documentation is not present locally, you must generate it. After adding a new dependency to `package.yaml`, run `stack haddock --only-dependencies` to build the documentation for all dependencies.
+        c.  If the required documentation is not present locally, you must generate it. After adding a new dependency to `package.yaml`, run `stack haddock --only-dependencies`を実��して、すべての依存関係のドキュメントをビルドしてください。
     2.  **Verify Key Types**: Read the definitions of all key data types you intend to use (e.g., `FileInfo`, `Header`). Understand their fields and whether their constructors and accessors are exported.
     3.  **Study Function Signatures**: Examine the full type signatures of the functions you plan to call (e.g., `untar`, `restoreFileInto`). Pay close attention to the types of arguments, return values, and any monadic contexts or constraints.
     4.  **Review Usage Examples**: Actively search for and analyze usage examples within the documentation or the library's test suite. This is often the fastest way to understand the intended workflow (e.g., how conduits should be chained).
@@ -433,7 +433,7 @@ These rules are designed to minimize build errors and rework when developing in 
     4.  **Check Names**: For names that could be exported from multiple modules (like `on`), confirm that they are correctly qualified or hidden via `hiding`.
     5.  **Check for Typos**: Briefly scan function and variable names for obvious typographical errors.
 
-### 22. Principle of Incremental Integration (段階的インテグレーションの原則)
+### 22. Principle of Incremental Integration (段階的インテグレ��ションの原則)
 
 -   **Principle**: When integrating a new or complex external library feature (especially one with its own interpreter or evaluation model, like Dhall), **you must first** verify its behavior in isolation within the test environment before integrating it into the application's business logic.
 -   **Rationale**: This rule is a direct countermeasure to the repeated failures encountered while testing Dhall parsing. Attempting to write a complete, complex test case from the outset without understanding the library's evaluation semantics (e.g., how it resolves types, variables, and paths within the test runner's context) leads to inefficient, hard-to-debug trial-and-error cycles. This principle mandates a "spike" or "toy example" approach to de-risk the integration.
@@ -448,3 +448,15 @@ These rules are designed to minimize build errors and rework when developing in 
         -   A type annotation.
     5.  **Implement the Real Test**: **Only after** these minimal, isolated tests are all passing, proceed to write the actual, comprehensive test case required by the task.
     6.  **Remove the Spike**: Once the final test is passing, remove the temporary "Spike" `describe` block.
+
+### 23. Principle of Refactoring Impact Analysis (リファクタリング影響分析の原則)
+
+-   **Principle**: When changing the definition of any entity that may be used throughout the project (such as a function, data type, or typeclass), you **must** first identify and analyze all locations where that definition is used before starting to modify the code.
+
+-   **Rationale**: This rule is a direct countermeasure to the cascading build failures that occurred in this task when `extractTar` was renamed to `extractTarball` and its signature was changed. A single change in `ArchiveUtils.hs` caused a chain reaction of errors in `GameManager/Install.hs` and `GameManagerSpec.hs`. This was because the scope of the change's impact was not investigated beforehand. This principle prohibits a reactive, "whack-a-mole" style of fixing where one correction creates another bug, and instead mandates a holistic, planned approach to refactoring.
+
+-   **Action Steps**:
+    1.  **Declare the Change Target**: Before making a change, clearly state what you are about to modify. For example: "I will now rename `extractTar` to `extractTarball` and change its signature from `FilePath -> ByteString -> ...` to `FilePath -> FilePath -> ...`."
+    2.  **Search for Impact Scope**: Use the `search_file_content` tool to search the entire project for the name of the entity being changed (e.g., `extractTar`).
+    3.  **Analyze and Plan**: For every file found in the search, use `read_file` to fully understand the context of its usage. Then, create a comprehensive plan to fix **all** affected locations at once. The plan must include modifications to application code, test code, and any mock implementations.
+    4.  **Execute and Verify**: Execute the plan using `replace` or `write_file`. Finally, run `stack build` to verify that the entire refactoring was successful and did not introduce new compilation errors.
