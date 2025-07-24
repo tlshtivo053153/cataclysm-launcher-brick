@@ -82,6 +82,13 @@ executable cataclysm-launcher-brick-gemini-exe
   other-modules:
       UI
       Events
+      Events.App
+      Events.Available
+      Events.Backup
+      Events.Installed
+      Events.List
+      Events.Mods
+      Events.Sandbox
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N

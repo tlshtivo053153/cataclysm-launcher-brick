@@ -91,6 +91,13 @@ executables:
     other-modules:
     - UI
     - Events
+    - Events.App
+    - Events.Available
+    - Events.Backup
+    - Events.Installed
+    - Events.List
+    - Events.Mods
+    - Events.Sandbox
 
 tests:
   cataclysm-launcher-brick-gemini-test:
