@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module ArchiveUtils (
-    extractTar,
+    extractTarball,
     extractZip
 ) where
 
@@ -21,37 +21,25 @@ import System.FilePath ((</>), takeDirectory)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Posix.Files (setFileMode, ownerExecuteMode, groupExecuteMode, otherExecuteMode, unionFileModes, getFileStatus, fileMode)
 import Data.Conduit (runConduit, (.|), ConduitM)
-import Data.Conduit.Binary (sourceLbs, sinkFile)
+import Data.Conduit.Binary (sourceFile, sinkFile)
 import qualified Data.Conduit.Tar as Tar
 import Data.Conduit.Zlib (ungzip)
 
 import FileSystemUtils
 import Types
 
-extractTar :: FilePath -> B.ByteString -> IO (Either ManagerError String)
-extractTar installDir tarGzData = do
-    result <- try $ withSystemTempDirectory "cataclysm-extract" $ \tempDir -> do
+extractTarball :: FilePath -> FilePath -> IO (Either ManagerError ())
+extractTarball archivePath installDir = do
+    result <- try $ do
+        createDirectoryIfMissing True installDir
         runResourceT $ runConduit $
-            sourceLbs (LBS.fromStrict tarGzData)
+            sourceFile archivePath
             .| ungzip
-            .| Tar.untar (customRestoreAction tempDir)
+            .| Tar.untar (customRestoreAction installDir)
 
-        -- --strip-components=1 の代替処理
-        contents <- listDirectory tempDir
-        case contents of
-            [subDir] -> do
-                let sourceDir = tempDir </> subDir
-                isDir <- doesDirectoryExist sourceDir
-                if isDir
-                    then copyDirectoryContentsRecursive sourceDir installDir
-                    else copyDirectoryContentsRecursive tempDir installDir
-            _ -> do
-                copyDirectoryContentsRecursive tempDir installDir
-
-        setPermissions installDir
     case result of
-        Right _ -> pure $ Right "Extracted files using tar-conduit."
-        Left (e :: SomeException) -> pure $ Left $ ArchiveError $ "tar-conduit extraction failed: " <> T.pack (show e)
+        Right _ -> return $ Right ()
+        Left (e :: SomeException) -> return $ Left $ ArchiveError $ "tar-conduit extraction failed: " <> T.pack (show e)
   where
     customRestoreAction :: MonadResource m => FilePath -> Tar.FileInfo -> ConduitM B.ByteString o m ()
     customRestoreAction destDir fi = do

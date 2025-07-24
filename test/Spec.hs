@@ -9,6 +9,7 @@ import qualified SandboxControllerSpec
 import qualified ModHandlerSpec
 import qualified ModUtilsSpec
 import qualified ConfigSpec
+import qualified ArchiveUtilsSpec
 
 main :: IO ()
 main = hspec spec
@@ -23,3 +24,4 @@ spec = do
   describe "ModHandler" ModHandlerSpec.spec
   describe "ModUtils" ModUtilsSpec.spec
   describe "Config" ConfigSpec.spec
+  describe "ArchiveUtils" ArchiveUtilsSpec.spec

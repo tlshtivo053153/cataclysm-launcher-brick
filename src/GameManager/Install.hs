@@ -34,7 +34,7 @@ downloadAndInstall handle config eventChan gv = do
             assetDataEither <- getAssetData handle eventChan cacheDir (gvUrl gv)
             case assetDataEither of
                 Left err -> return $ Left err
-                Right assetData -> extractArchive installDir assetData (gvUrl gv)
+                Right cacheFilePath -> extractArchive installDir cacheFilePath (gvUrl gv)
 
 setupDirectories :: Monad m => Handle m -> FilePath -> FilePath -> m (Either ManagerError ())
 setupDirectories handle installDir cacheDir = do
@@ -44,7 +44,7 @@ setupDirectories handle installDir cacheDir = do
     hCreateDirectoryIfMissing handle True installDir
     return $ Right ()
 
-getAssetData :: Monad m => Handle m -> BChan UIEvent -> FilePath -> T.Text -> m (Either ManagerError B.ByteString)
+getAssetData :: Monad m => Handle m -> BChan UIEvent -> FilePath -> T.Text -> m (Either ManagerError FilePath)
 getAssetData handle eventChan cacheDir url = do
     let fileName = takeFileName (T.unpack url)
         cacheFilePath = cacheDir </> fileName
@@ -52,7 +52,7 @@ getAssetData handle eventChan cacheDir url = do
     if cacheExists
         then do
             hWriteBChan handle eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
-            Right <$> hReadFile handle cacheFilePath
+            return $ Right cacheFilePath
         else do
             hWriteBChan handle eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
             downloadResult <- hDownloadAsset handle url
@@ -60,10 +60,16 @@ getAssetData handle eventChan cacheDir url = do
                 Left err -> return $ Left err
                 Right assetData -> do
                     hWriteFile handle cacheFilePath assetData
-                    return $ Right assetData
+                    return $ Right cacheFilePath
 
-extractArchive :: MonadIO m => FilePath -> B.ByteString -> T.Text -> m (Either ManagerError String)
-extractArchive installDir assetData urlText
-    | ".zip" `T.isSuffixOf` urlText = liftIO $ extractZip installDir assetData
-    | ".tar.gz" `T.isSuffixOf` urlText = liftIO $ extractTar installDir assetData
+extractArchive :: MonadIO m => FilePath -> FilePath -> T.Text -> m (Either ManagerError String)
+extractArchive installDir archivePath urlText
+    | ".zip" `T.isSuffixOf` urlText = do
+        assetData <- liftIO $ B.readFile archivePath
+        liftIO $ extractZip installDir assetData
+    | ".tar.gz" `T.isSuffixOf` urlText = do
+        result <- liftIO $ extractTarball archivePath installDir
+        case result of
+            Right () -> return $ Right "Successfully extracted tarball."
+            Left err -> return $ Left err
     | otherwise = pure $ Left $ ArchiveError $ "Unsupported archive format for URL: " <> urlText

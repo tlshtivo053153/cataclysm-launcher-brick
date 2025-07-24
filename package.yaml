@@ -122,3 +122,4 @@ tests:
     - ModHandlerSpec
     - ModUtilsSpec
     - ConfigSpec
+    - ArchiveUtilsSpec
