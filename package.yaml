@@ -113,6 +113,7 @@ tests:
     - containers
     - mtl
     - temporary
+    - deepseq
     other-modules:
     - FileSystemUtilsSpec
     - GitHubIntegrationSpec
@@ -123,3 +124,4 @@ tests:
     - ModUtilsSpec
     - ConfigSpec
     - ArchiveUtilsSpec
+    - HandleSpec

@@ -10,6 +10,7 @@ import qualified ModHandlerSpec
 import qualified ModUtilsSpec
 import qualified ConfigSpec
 import qualified ArchiveUtilsSpec
+import qualified HandleSpec
 
 main :: IO ()
 main = hspec spec
@@ -25,3 +26,4 @@ spec = do
   describe "ModUtils" ModUtilsSpec.spec
   describe "Config" ConfigSpec.spec
   describe "ArchiveUtils" ArchiveUtilsSpec.spec
+  describe "Handle" HandleSpec.spec
