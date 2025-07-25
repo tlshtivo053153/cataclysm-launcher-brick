@@ -433,7 +433,8 @@ These rules are designed to minimize build errors and rework when developing in 
     4.  **Check Names**: For names that could be exported from multiple modules (like `on`), confirm that they are correctly qualified or hidden via `hiding`.
     5.  **Check for Typos**: Briefly scan function and variable names for obvious typographical errors.
 
-### 22. Principle of Incremental Integration (段階的インテグレ��ションの原則)
+### 22. Principle of Incremental Integration (段階的インテグレ
+ションの原則)
 
 -   **Principle**: When integrating a new or complex external library feature (especially one with its own interpreter or evaluation model, like Dhall), **you must first** verify its behavior in isolation within the test environment before integrating it into the application's business logic.
 -   **Rationale**: This rule is a direct countermeasure to the repeated failures encountered while testing Dhall parsing. Attempting to write a complete, complex test case from the outset without understanding the library's evaluation semantics (e.g., how it resolves types, variables, and paths within the test runner's context) leads to inefficient, hard-to-debug trial-and-error cycles. This principle mandates a "spike" or "toy example" approach to de-risk the integration.
@@ -460,3 +461,23 @@ These rules are designed to minimize build errors and rework when developing in 
     2.  **Search for Impact Scope**: Use the `search_file_content` tool to search the entire project for the name of the entity being changed (e.g., `extractTar`).
     3.  **Analyze and Plan**: For every file found in the search, use `read_file` to fully understand the context of its usage. Then, create a comprehensive plan to fix **all** affected locations at once. The plan must include modifications to application code, test code, and any mock implementations.
     4.  **Execute and Verify**: Execute the plan using `replace` or `write_file`. Finally, run `stack build` to verify that the entire refactoring was successful and did not introduce new compilation errors.
+
+### 24. Principle of Pre-Implementation Analysis (実装前分析の原則)
+
+-   **Principle**: Before writing or modifying any function, you **must** first perform a systematic analysis of its dependencies and create a concrete implementation plan.
+
+-   **Rationale**: This rule is a direct countermeasure to the repeated, avoidable build failures seen in tasks like the `HandleSpec` implementation. Errors such as using non-existent data constructors (`AppInitiated`) or misunderstanding function types (`evaluate`) stem from a failure to verify assumptions before writing code. This principle forces a shift from a reactive "write-and-fix" cycle to a proactive "analyze-then-implement" workflow, ensuring correctness from the start and drastically reducing wasted build cycles.
+
+-   **Action Steps**:
+    1.  **Declare Intent**: Before writing any code, explicitly state the function or test case you are about to implement.
+        -   *Example*: "I will now implement the `it` block to test that `liveHandle` can be constructed without errors."
+    2.  **Identify Dependencies**: List all functions, data types (including their constructors), and typeclasses from both internal modules and external libraries that the new code will interact with.
+        -   *Example Dependencies*: `liveHandle`, `Handle`, `UIEvent`, `LogMessage`, `evaluate`, `force`, `NFData`, `shouldReturn`.
+    3.  **Verify Definitions**: For **every item** on the dependency list, use `read_file` to read its source code definition. Pay strict attention to:
+        a.  The exact type signature of functions.
+        b.  For Algebraic Data Types (ADTs), all available data constructors.
+        c.  For records, all field names.
+        d.  For typeclasses, all required methods.
+    4.  **Formulate Plan**: Based *only* on the information verified in the previous step, formulate a brief, step-by-step implementation plan. This plan should explicitly mention how type constraints will be satisfied.
+        -   *Example Plan*: "1. Define a variable `handle` of type `Handle IO` using `liveHandle`. 2. To check for `undefined` fields, I will use `force handle`. 3. `evaluate (force handle)` returns an `IO (Handle IO)`. To match the test's expected `IO ()` type, I will use `void` to discard the result."
+    5.  **Implement**: **Only after** the plan is complete, execute it by writing the code.
