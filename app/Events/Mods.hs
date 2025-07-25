@@ -23,7 +23,6 @@ import System.Process (readProcessWithExitCode)
 
 import Config (loadModSources)
 import Events.List (handleListEvents)
-import Events.Sandbox (refreshActiveMods)
 import ModHandler (installModFromGitHub, enableMod, disableMod, listAvailableMods)
 import Types
 

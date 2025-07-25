@@ -12,7 +12,6 @@ module ModHandler (
 ) where
 
 import Types (ModHandlerError(..), ModInfo(..), ModSource(..))
-import System.Process (readProcessWithExitCode)
 import System.Directory (createDirectoryIfMissing, listDirectory, createDirectoryLink, removeFile, makeAbsolute, doesPathExist, getSymbolicLinkTarget, pathIsSymbolicLink)
 import System.FilePath ((</>), takeFileName)
 import System.Exit (ExitCode(..))

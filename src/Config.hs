@@ -11,7 +11,6 @@ module Config (
 import Dhall
 import Types (Config, ModSourceInfo)
 import Control.Exception (try, SomeException)
-import Data.Text (Text)
 
 -- | Loads the main application configuration.
 loadConfig :: IO Config

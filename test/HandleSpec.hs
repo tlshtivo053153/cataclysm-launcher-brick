@@ -9,7 +9,6 @@ import Test.Hspec
 import Control.Exception (evaluate)
 import Control.DeepSeq (force, NFData(..))
 import Control.Monad (void)
-import Control.Monad.IO.Class (MonadIO(..))
 import Brick.BChan (newBChan)
 
 import Handle (liveHandle)

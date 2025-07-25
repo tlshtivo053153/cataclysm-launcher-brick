@@ -7,12 +7,10 @@ import System.IO.Temp (withSystemTempDirectory)
 import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist)
 import Data.Text (pack, unpack)
-import qualified Data.Text as T
 import System.Exit (ExitCode(..))
 import Data.IORef (newIORef, readIORef, writeIORef)
 
 import ModHandler
-import Types
 
 spec :: Spec
 spec = describe "ModHandler" $ do

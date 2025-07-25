@@ -11,7 +11,6 @@ import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import qualified Data.Vector as Vec
 import Data.Vector (fromList)
-import Data.Maybe (fromMaybe)
 import qualified Graphics.Vty as V
 
 import BackupSystem (createBackup, listBackups)

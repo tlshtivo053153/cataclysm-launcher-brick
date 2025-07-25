@@ -10,9 +10,7 @@ import Test.Hspec
 import Control.Monad.State.Strict
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as B
-import Data.Aeson (encode, eitherDecode)
-import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Aeson (encode)
 
 import GitHubIntegration
 import FileSystemUtils
@@ -28,7 +26,7 @@ data TestState = TestState
   } deriving (Show, Eq)
 
 -- Test Monad
-newtype TestM a = TestM { runTestM :: StateT TestState (Either String) a }
+newtype TestM a = TestM (StateT TestState (Either String) a)
   deriving (Functor, Applicative, Monad, MonadState TestState)
 
 instance MonadFileSystem TestM where
@@ -44,6 +42,7 @@ instance MonadFileSystem TestM where
   fsDoesDirectoryExist _ = return False
   fsMakeAbsolute p = return p
   fsCreateDirectoryIfMissing _ _ = return ()
+  fsCopyFile _ _ = error "fsCopyFile is not implemented for this test"
 
 instance MonadHttp TestM where
   fetchReleasesFromAPI _ = do

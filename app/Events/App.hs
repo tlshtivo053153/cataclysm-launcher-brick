@@ -3,7 +3,6 @@
 module Events.App (handleAppEvent) where
 
 import Brick
-import Brick.BChan (writeBChan)
 import Brick.Widgets.List (list, listSelectedElement)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
