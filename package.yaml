@@ -77,6 +77,9 @@ library:
   - ModUtils
   - SandboxController
   - Types
+  - Types.Domain
+  - Types.UI
+  - Types.Handle
 
 executables:
   cataclysm-launcher-brick-gemini-exe:

@@ -40,6 +40,9 @@ library
       ModUtils
       SandboxController
       Types
+      Types.Domain
+      Types.UI
+      Types.Handle
   other-modules:
       Paths_cataclysm_launcher_brick_gemini
   autogen-modules:
