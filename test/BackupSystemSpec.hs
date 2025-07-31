@@ -4,11 +4,13 @@ module BackupSystemSpec (spec) where
 
 import Test.Hspec
 import System.Directory (createDirectoryIfMissing)
+import System.IO (writeFile)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Data.Text (pack)
 
 import BackupSystem (listBackups)
+import Handle (liveHandle)
 import Types
 
 spec :: Spec
@@ -23,11 +25,11 @@ spec = do
         createDirectoryIfMissing True profileBackupDir
         
         -- Create some dummy files
-        createFile (profileBackupDir </> "backup1.tar") ""
-        createFile (profileBackupDir </> "backup2.tar") ""
-        createFile (profileBackupDir </> "not_a_backup.txt") ""
+        writeFile (profileBackupDir </> "backup1.tar") ""
+        writeFile (profileBackupDir </> "backup2.tar") ""
+        writeFile (profileBackupDir </> "not_a_backup.txt") ""
         
-        result <- listBackups config profile
+        result <- listBackups liveHandle config profile
         
         case result of
           Left err -> expectationFailure $ "listBackups failed: " ++ show err
@@ -51,6 +53,3 @@ defaultConfig = Config
     , downloadThreads = 4
     , logLevel = "Info"
     }
-
-createFile :: FilePath -> String -> IO ()
-createFile path content = writeFile path content

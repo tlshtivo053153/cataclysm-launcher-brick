@@ -21,6 +21,7 @@ import SandboxController (listProfiles)
 import Types
 import UI (drawUI, theMap)
 import ModUtils (combineMods)
+import Handle (liveHandle)
 
 -- App Definition
 app :: App AppState UIEvent Name
@@ -49,7 +50,7 @@ main = do
     putStrLn "Fetching game versions..."
     versionsE <- getGameVersions config
     installed <- getInstalledVersions config
-    profilesE <- listProfiles config
+    profilesE <- listProfiles liveHandle config
     modSources <- loadModSources
     installedMods <- listAvailableMods (T.unpack $ sysRepoDirectory config) (T.unpack $ userRepoDirectory config)
     
@@ -76,6 +77,7 @@ main = do
                     , appActiveMods = list ActiveModListName (fromList activeMods) 1
                     , appInstalledModsCache = installedMods
                     , appConfig = config
+                    , appHandle = liveHandle
                     , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."
                     , appActiveList = AvailableList
                     , appEventChannel = chan

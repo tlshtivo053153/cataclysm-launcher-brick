@@ -45,6 +45,10 @@ testHandle = Handle
     , hDoesDirectoryExist = \_ -> return True
     , hRemoveDirectoryRecursive = \_ -> return ()
     , hWriteBChan = \_ event -> modify $ \s -> s { tsLog = show event : tsLog s }
+    , hListDirectory = \_ -> return [] -- Not used in these tests
+    , hMakeAbsolute = return -- Not used in these tests
+    , hGetCurrentTime = error "hGetCurrentTime not implemented"
+    , hCallCommand = \_ -> error "hCallCommand not implemented"
     }
 
 -- Helper to run tests

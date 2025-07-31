@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes          #-}
 
-module Events (handleEvent) where
+module Events (handleEvent, nextActiveList) where
 
 import Brick hiding (on)
 import qualified Graphics.Vty as V
@@ -33,13 +33,14 @@ handleVtyEvent ev = do
         AvailableModList   -> handleAvailableModEvents ev
         ActiveModList      -> handleActiveModEvents ev
 
+nextActiveList :: ActiveList -> ActiveList
+nextActiveList AvailableList      = InstalledList
+nextActiveList InstalledList      = SandboxProfileList
+nextActiveList SandboxProfileList = BackupList
+nextActiveList BackupList         = AvailableModList
+nextActiveList AvailableModList   = ActiveModList
+nextActiveList ActiveModList      = AvailableList
+
 toggleActiveList :: AppState -> AppState
-toggleActiveList st = st { appActiveList = nextActiveList }
-  where
-    nextActiveList = case appActiveList st of
-        AvailableList      -> InstalledList
-        InstalledList      -> SandboxProfileList
-        SandboxProfileList -> BackupList
-        BackupList         -> AvailableModList
-        AvailableModList   -> ActiveModList
-        ActiveModList      -> AvailableList
+toggleActiveList st = st { appActiveList = nextActiveList (appActiveList st) }
+

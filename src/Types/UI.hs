@@ -2,7 +2,6 @@
 
 module Types.UI (
     -- UI-related types
-    UIEvent(..),
     AppState(..),
     Name(..),
     ActiveList(..)
@@ -12,25 +11,12 @@ import Brick.Widgets.List (List)
 import Brick.BChan (BChan)
 import qualified Data.Text as T
 import Types.Domain
-
--- From Main.hs
-data UIEvent
-  = LogMessage T.Text
-  | CacheHit T.Text
-  | InstallFinished (Either ManagerError String)
-  | ProfileCreated (Either ManagerError ())
-  | BackupCreated (Either ManagerError ())
-  | BackupsListed (Either ManagerError [BackupInfo])
-  | ModInstallFinished (Either ModHandlerError ModInfo)
-  | ModEnableFinished (Either ModHandlerError ())
-  | ModDisableFinished (Either ModHandlerError ())
-  | AvailableModsListed ([AvailableMod], [ModInfo])
-  | ActiveModsListed [ModInfo]
-  deriving (Show)
+import Types.Handle
+import Types.Event
 
 data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName | AvailableModListName | ActiveModListName deriving (Eq, Ord, Show)
 
-data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList | AvailableModList | ActiveModList deriving (Eq)
+data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList | AvailableModList | ActiveModList deriving (Eq, Show)
 
 data AppState = AppState
     { appAvailableVersions :: List Name GameVersion
@@ -41,6 +27,7 @@ data AppState = AppState
     , appActiveMods        :: List Name ModInfo
     , appInstalledModsCache :: [ModInfo] -- Non-UI cache of installed mods
     , appConfig            :: Config
+    , appHandle            :: Handle IO
     , appStatus            :: T.Text
     , appActiveList        :: ActiveList
     , appEventChannel      :: BChan UIEvent

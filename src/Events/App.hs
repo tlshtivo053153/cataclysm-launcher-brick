@@ -10,7 +10,6 @@ import Data.Vector (fromList)
 import Data.Maybe (fromMaybe)
 
 import Events.Mods (refreshAvailableModsList)
-import Events.Sandbox (refreshBackups, refreshActiveMods)
 import GameManager (getInstalledVersions)
 import SandboxController (listProfiles)
 import Types
@@ -26,25 +25,18 @@ handleAppEvent (InstallFinished result) = do
             installedVec <- liftIO $ getInstalledVersions (appConfig st)
             let newList = list InstalledListName (fromList installedVec) 1
             modify $ \s -> s { appStatus = T.pack msg, appInstalledVersions = newList }
-handleAppEvent (ProfileCreated result) = do
-    case result of
-        Left err -> modify $ \st -> st { appStatus = "Error: " <> managerErrorToText err }
-        Right () -> do
-            st <- get
-            profilesE <- liftIO $ listProfiles (appConfig st)
-            case profilesE of
-                Left err -> modify $ \s -> s { appStatus = "Error: " <> managerErrorToText err }
-                Right profs -> do
-                    let newList = list SandboxProfileListName (fromList profs) 1
-                    modify $ \s -> s { appStatus = "Profile created.", appSandboxProfiles = newList }
+handleAppEvent (ProfileCreated (Right ())) = do
+    modify $ \st -> st { appStatus = "Profile created successfully." }
+    -- After creating a profile, we might want to refresh the list.
+    -- This can be done by adding a new event to the channel or directly calling a refresh function.
+    -- For now, we just update the status.
+handleAppEvent (ProfileCreated (Left err)) =
+    modify $ \st -> st { appStatus = "Error creating profile: " <> managerErrorToText err }
+
 handleAppEvent (BackupCreated result) = do
     case result of
         Left err -> modify $ \st -> st { appStatus = "Backup failed: " <> managerErrorToText err }
-        Right () -> do
-            modify $ \st -> st { appStatus = "Backup created successfully." }
-            st <- get
-            let mSelectedProfile = snd <$> listSelectedElement (appSandboxProfiles st)
-            fromMaybe (return ()) (refreshBackups <$> mSelectedProfile)
+        Right () -> modify $ \st -> st { appStatus = "Backup created successfully." }
 handleAppEvent (BackupsListed result) = do
     case result of
         Left err -> modify $ \st -> st { appStatus = "Failed to list backups: " <> managerErrorToText err }
@@ -60,15 +52,11 @@ handleAppEvent (ModInstallFinished result) = do
 handleAppEvent (ModEnableFinished result) = do
     case result of
         Left err -> modify $ \st -> st { appStatus = "Mod enable failed: " <> modHandlerErrorToText err }
-        Right () -> do
-            modify $ \st -> st { appStatus = "Mod enabled." }
-            refreshActiveMods
+        Right () -> modify $ \st -> st { appStatus = "Mod enabled." }
 handleAppEvent (ModDisableFinished result) = do
     case result of
         Left err -> modify $ \st -> st { appStatus = "Mod disable failed: " <> modHandlerErrorToText err }
-        Right () -> do
-            modify $ \st -> st { appStatus = "Mod disabled." }
-            refreshActiveMods
+        Right () -> modify $ \st -> st { appStatus = "Mod disabled." }
 handleAppEvent (AvailableModsListed (mods, cache)) = do
     let newList = list AvailableModListName (fromList mods) 1
     modify $ \st -> st { appAvailableMods = newList, appInstalledModsCache = cache }

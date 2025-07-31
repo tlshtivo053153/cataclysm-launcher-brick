@@ -43,6 +43,15 @@ library
       Types.Domain
       Types.UI
       Types.Handle
+      Types.Event
+      Events
+      Events.App
+      Events.Available
+      Events.Backup
+      Events.Installed
+      Events.List
+      Events.Mods
+      Events.Sandbox
   other-modules:
       Paths_cataclysm_launcher_brick_gemini
   autogen-modules:
@@ -61,6 +70,7 @@ library
     , containers
     , dhall
     , directory
+    , exceptions
     , filepath
     , http-conduit
     , katip
@@ -84,14 +94,6 @@ executable cataclysm-launcher-brick-gemini-exe
   main-is: Main.hs
   other-modules:
       UI
-      Events
-      Events.App
-      Events.Available
-      Events.Backup
-      Events.Installed
-      Events.List
-      Events.Mods
-      Events.Sandbox
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -107,6 +109,7 @@ executable cataclysm-launcher-brick-gemini-exe
     , containers
     , dhall
     , directory
+    , exceptions
     , filepath
     , http-conduit
     , katip
@@ -131,7 +134,6 @@ test-suite cataclysm-launcher-brick-gemini-test
   main-is: Spec.hs
   other-modules:
       FileSystemUtilsSpec
-      GitHubIntegrationSpec
       GameManagerSpec
       SandboxControllerSpec
       BackupSystemSpec
@@ -140,6 +142,8 @@ test-suite cataclysm-launcher-brick-gemini-test
       ConfigSpec
       ArchiveUtilsSpec
       HandleSpec
+      AppEventsSpec
+      TestUtils
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -156,6 +160,7 @@ test-suite cataclysm-launcher-brick-gemini-test
     , deepseq
     , dhall
     , directory
+    , exceptions
     , filepath
     , hspec
     , http-conduit

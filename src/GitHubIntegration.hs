@@ -1,89 +1,106 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module GitHubIntegration (
-    Handle(..),
-    liveHandle,
-    MonadHttp(..),
     fetchGameVersions,
-    fetchAndCacheReleases,
-    downloadAsset
+    downloadAsset,
+    liveHandle
 ) where
 
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Aeson
-import qualified Data.ByteString as BS
-import qualified Data.Text as T
-import Network.HTTP.Simple (httpJSONEither, parseRequest, setRequestHeaders, getResponseBody, httpBS)
-import System.FilePath ((</>))
-import Control.Exception (try, SomeException)
+import           Control.Exception      (SomeException, try)
+import           Control.Monad.Catch    (MonadThrow)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Data.Aeson             (eitherDecode)
+import qualified Data.ByteString.Lazy   as L
+import qualified Data.Text              as T
+import qualified Data.Text.Encoding     as T
+import           Data.Time.Clock        (UTCTime, addUTCTime, getCurrentTime)
+import           Data.Time.Format       (defaultTimeLocale, formatTime,
+                                         iso8601DateFormat, parseTimeM)
+import           Network.HTTP.Simple    (getResponseBody, httpLBS,
+                                         parseRequest, setRequestHeader)
+import           System.Directory       (createDirectoryIfMissing,
+                                         doesFileExist)
+import           System.FilePath        ((</>))
 
-import FileSystemUtils
-import GitHubIntegration.Internal
-import Types (Config (..), GameVersion (..), Handle(..), ManagerError(..))
+import qualified GitHubIntegration.Internal as GH
+import           Types
 
--- A simpler, more testable abstraction for HTTP requests
-class Monad m => MonadHttp m where
-    fetchReleasesFromAPI :: String -> m (Either String [ReleaseInfo])
+-- | A handle for GitHub operations, allowing for mock implementations in tests.
+-- liveHandle :: MonadIO m => Handle m
+-- liveHandle = Handle
+--     { hDownloadAsset = \url -> liftIO $ do
+--         request' <- parseRequest (T.unpack url)
+--         let request = setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
+--         response <- httpLBS request
+--         return $ Right $ L.toStrict $ getResponseBody response
+--     }
 
--- IO instance that performs the actual HTTP request
-instance MonadHttp IO where
-    fetchReleasesFromAPI apiUrl = do
-        request' <- parseRequest apiUrl
-        let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
-        response <- httpJSONEither request
-        return $ case getResponseBody response of
-            Left err -> Left $ show err
-            Right releases -> Right releases
-
--- The core logic, now testable
-fetchAndCacheReleases :: (MonadFileSystem m, MonadHttp m) => Config -> m (Either String [ReleaseInfo])
-fetchAndCacheReleases config = do
-    let cacheDir = T.unpack $ cacheDirectory config
-        apiUrl = T.unpack $ githubApiUrl config
-        cacheFile = cacheDir </> "releases.json"
-    
-    fsCreateDirectoryIfMissing True cacheDir
-    fileExists <- fsDoesFileExist cacheFile
-    if fileExists
+-- | Fetches game versions from GitHub releases.
+fetchGameVersions :: Config -> IO (Either String [GameVersion])
+fetchGameVersions config = do
+    let cachePath = T.unpack (cacheDirectory config) </> "github_releases.json"
+    cacheExists <- doesFileExist cachePath
+    if cacheExists
         then do
-            content <- fsReadFileLBS cacheFile
-            return $ eitherDecode content
+            cachedData <- L.readFile cachePath
+            case eitherDecode cachedData of
+                Right releases -> return $ Right $ processReleases releases
+                Left err       -> return $ Left ("Failed to parse cached releases: " ++ err)
         else do
-            apiResult <- fetchReleasesFromAPI apiUrl
-            case apiResult of
-                Left err -> return $ Left err
-                Right releases -> do
-                    fsWriteFileLBS cacheFile (encode releases)
-                    return $ Right releases
+            now <- getCurrentTime
+            let thirtyMinutesAgo = addUTCTime (-1800) now
+            let url = T.unpack $ githubApiUrl config
+            request' <- parseRequest url
+            let request = setRequestHeader "User-Agent" ["cataclysm-launcher-brick"]
+                        $ setRequestHeader "If-Modified-Since" [T.encodeUtf8 $ T.pack $ formatHttpTime thirtyMinutesAgo] request'
+            response <- httpLBS request
+            let body = getResponseBody response
+            L.writeFile cachePath body
+            case eitherDecode body of
+                Right releases -> return $ Right $ processReleases releases
+                Left err       -> return $ Left ("Failed to decode releases: " ++ err)
 
+-- | Downloads a game asset from a given URL.
+downloadAsset :: (MonadIO m, MonadThrow m) => Handle m -> T.Text -> m (Either ManagerError L.ByteString)
+downloadAsset handle url = do
+    request' <- parseRequest (T.unpack url)
+    let request = setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
+    response <- httpLBS request
+    return $ Right $ getResponseBody response
 
+-- | Processes the raw release data into a list of game versions.
+processReleases :: [GH.Release] -> [GameVersion]
+processReleases = map toGameVersion
+  where
+    toGameVersion rel = GameVersion
+        { gvVersionId = GH.tagName rel
+        , gvVersion = GH.name rel
+        , gvUrl = assetUrl (head (GH.assets rel))
+        , gvReleaseType = if GH.prerelease rel then Development else Stable
+        }
+    assetUrl asset = GH.browserDownloadUrl asset
 
--- Live implementation of the Handle using http-conduit
+-- | Formats time for the If-Modified-Since header.
+formatHttpTime :: UTCTime -> String
+formatHttpTime = formatTime defaultTimeLocale "%a, %d %b %Y %H:%M:%S GMT"
+
 liveHandle :: MonadIO m => Types.Handle m
 liveHandle = Types.Handle
-  { hDoesFileExist = \_ -> error "hDoesFileExist not implemented in GitHubIntegration.liveHandle"
-  , hReadFile = \_ -> error "hReadFile not implemented in GitHubIntegration.livehandle"
-  , hWriteFile = \_ _ -> error "hWriteFile not implemented in GitHubIntegration.livehandle"
-  , hDownloadAsset = \url -> liftIO $ do
-      request' <- parseRequest (T.unpack url)
-      let request = setRequestHeaders [("User-Agent", "haskell-cataclysm-launcher")] request'
-      eresponse <- try (httpBS request)
-      case eresponse of
-        Left (e :: SomeException) -> return $ Left $ NetworkError (T.pack $ show e)
-        Right response -> return $ Right $ getResponseBody response
-  , hCreateDirectoryIfMissing = \_ _ -> error "hCreateDirectoryIfMissing not implemented in GitHubIntegration.livehandle"
-  , hDoesDirectoryExist = \_ -> error "hDoesDirectoryExist not implemented in GitHubIntegration.livehandle"
-  , hRemoveDirectoryRecursive = \_ -> error "hRemoveDirectoryRecursive not implemented in GitHubIntegration.livehandle"
-  , hWriteBChan = \_ _ -> error "hWriteBChan not implemented in GitHubIntegration.livehandle"
-  }
-
--- High-level functions using the Handle
-fetchGameVersions :: (MonadFileSystem m, MonadHttp m) => Config -> m (Either String [GameVersion])
-fetchGameVersions config = do
-    releasesE <- fetchAndCacheReleases config
-    return $ processReleases <$> releasesE
-
-downloadAsset :: Types.Handle m -> T.Text -> m (Either ManagerError BS.ByteString)
-downloadAsset handle = hDownloadAsset handle
+    { hDoesFileExist = \_ -> error "hDoesFileExist not implemented in GitHubIntegration.liveHandle"
+    , hReadFile = \_ -> error "hReadFile not implemented in GitHubIntegration.livehandle"
+    , hWriteFile = \_ _ -> error "hWriteFile not implemented in GitHubIntegration.livehandle"
+    , hDownloadAsset = \url -> liftIO $ do
+        request' <- parseRequest (T.unpack url)
+        let request = setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
+        response <- httpLBS request
+        return $ Right $ L.toStrict $ getResponseBody response
+    , hCreateDirectoryIfMissing = \_ _ -> error "hCreateDirectoryIfMissing not implemented in GitHubIntegration.livehandle"
+    , hDoesDirectoryExist = \_ -> error "hDoesDirectoryExist not implemented in GitHubIntegration.livehandle"
+    , hRemoveDirectoryRecursive = \_ -> error "hRemoveDirectoryRecursive not implemented in GitHubIntegration.livehandle"
+    , hWriteBChan = \_ _ -> error "hWriteBChan not implemented in GitHubIntegration.livehandle"
+    , hListDirectory = \_ -> error "hListDirectory not implemented in GitHubIntegration.livehandle"
+    , hMakeAbsolute = \_ -> error "hMakeAbsolute not implemented in GitHubIntegration.livehandle"
+    , hGetCurrentTime = error "hGetCurrentTime not implemented in GitHubIntegration.livehandle"
+    , hCallCommand = \_ -> error "hCallCommand not implemented in GitHubIntegration.livehandle"
+    }

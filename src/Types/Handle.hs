@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Types.Handle (
     Handle(..)
@@ -7,8 +8,10 @@ module Types.Handle (
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 import Brick.BChan (BChan)
+import Data.Time (UTCTime)
+import Control.Monad.Catch (MonadCatch, SomeException)
+import Types.Event (UIEvent)
 import Types.Domain (ManagerError)
-import Types.UI (UIEvent)
 
 -- Handle for abstracting IO operations
 data Handle m = Handle
@@ -20,4 +23,8 @@ data Handle m = Handle
     , hDoesDirectoryExist  :: FilePath -> m Bool
     , hRemoveDirectoryRecursive :: FilePath -> m ()
     , hWriteBChan          :: BChan UIEvent -> UIEvent -> m ()
+    , hListDirectory       :: FilePath -> m [FilePath]
+    , hMakeAbsolute        :: FilePath -> m FilePath
+    , hGetCurrentTime      :: m UTCTime
+    , hCallCommand         :: String -> m ()
     }

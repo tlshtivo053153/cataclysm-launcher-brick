@@ -3,7 +3,6 @@
 
 module GameManager.Install (
     downloadAndInstall,
-    downloadAndInstallIO,
     getAssetData
 ) where
 
@@ -15,11 +14,7 @@ import System.FilePath ((</>), takeFileName)
 import Brick.BChan (BChan)
 
 import ArchiveUtils
-import Handle (liveHandle)
 import Types
-
-downloadAndInstallIO :: Config -> BChan UIEvent -> GameVersion -> IO (Either ManagerError String)
-downloadAndInstallIO = downloadAndInstall liveHandle
 
 downloadAndInstall :: MonadIO m => Handle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
 downloadAndInstall handle config eventChan gv = do

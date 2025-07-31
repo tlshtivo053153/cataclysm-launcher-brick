@@ -7,41 +7,37 @@ module BackupSystem (
     createBackup
 ) where
 
-import           Control.Exception      (SomeException, try)
+import           Control.Monad.Catch    (MonadCatch, SomeException, try)
 import           Control.Monad          (filterM)
+import           Control.Monad.IO.Class (MonadIO)
 import           Data.List              (isSuffixOf)
 import           Data.Text              (pack, unpack)
-import           Data.Time.Clock        (getCurrentTime)
 import           Data.Time.Format       (defaultTimeLocale, formatTime)
-import           System.Directory       (createDirectoryIfMissing,
-                                         doesDirectoryExist, doesFileExist,
-                                         listDirectory)
 import           System.FilePath        ((</>), takeBaseName)
-import           System.Process         (callCommand)
-import           Types                  (BackupInfo (..), Config (..),
-                                         ManagerError (..), SandboxProfile (..))
+import           Types
 
 -- | List all backups for a given sandbox profile.
 -- Creates the backup directory if it doesn't exist.
-listBackups :: Config -> SandboxProfile -> IO (Either ManagerError [BackupInfo])
-listBackups config profile = do
+listBackups :: (MonadIO m, MonadCatch m) => Handle m -> Config -> SandboxProfile -> m (Either ManagerError [BackupInfo])
+listBackups handle config profile = do
     let profileName = unpack (spName profile)
     let backupBaseDir = unpack (backupDirectory config)
     let backupDir = backupBaseDir </> profileName
     
-    createDirectoryIfMissing True backupDir
+    hCreateDirectoryIfMissing handle True backupDir
     
-    try (listDirectory backupDir) >>= \case
+    result <- try (hListDirectory handle backupDir)
+    case result of
         Left (e :: SomeException) -> return $ Left $ FileSystemError $ pack $ "Failed to list backups in " ++ backupDir ++ ": " ++ show e
         Right names -> do
             let paths = map (backupDir </>) names
-            tarFiles <- filterM isTarFile paths
+            tarFiles <- filterM (isTarFile handle) paths
             let backupInfos = map toBackupInfo tarFiles
             return $ Right backupInfos
   where
-    isTarFile :: FilePath -> IO Bool
-    isTarFile path = do
-        isFile <- doesFileExist path
+    isTarFile :: MonadIO m => Handle m -> FilePath -> m Bool
+    isTarFile h path = do
+        isFile <- hDoesFileExist h path
         return $ isFile && ".tar" `isSuffixOf` path
 
     toBackupInfo :: FilePath -> BackupInfo
@@ -55,20 +51,20 @@ listBackups config profile = do
 
 -- | Create a new backup for a given sandbox profile.
 -- The backup is an uncompressed tar archive of the 'save' directory.
-createBackup :: Config -> SandboxProfile -> IO (Either ManagerError ())
-createBackup config profile = do
+createBackup :: (MonadIO m, MonadCatch m) => Handle m -> Config -> SandboxProfile -> m (Either ManagerError ())
+createBackup handle config profile = do
     let saveDir = spDataDirectory profile </> "save"
     let profileName = unpack (spName profile)
     let backupBaseDir = unpack (backupDirectory config)
     let backupDir = backupBaseDir </> profileName
     
-    saveDirExists <- doesDirectoryExist saveDir
+    saveDirExists <- hDoesDirectoryExist handle saveDir
     if not saveDirExists
     then return $ Left $ FileSystemError $ "Save directory not found for backup: " <> pack saveDir
     else do
-        createDirectoryIfMissing True backupDir
+        hCreateDirectoryIfMissing handle True backupDir
         
-        currentTime <- getCurrentTime
+        currentTime <- hGetCurrentTime handle
         let timestamp = formatTime defaultTimeLocale "%Y-%m-%d_%H-%M-%S" currentTime
         let backupFileName = timestamp ++ ".tar"
         let backupFilePath = backupDir </> backupFileName
@@ -85,6 +81,7 @@ createBackup config profile = do
                 , "save"
                 ]
         
-        try (callCommand command) >>= \case
+        result <- try (hCallCommand handle command)
+        case result of
             Left (e :: SomeException) -> return $ Left $ ArchiveError $ pack $ "tar command failed: " ++ show e
             Right _ -> return $ Right ()

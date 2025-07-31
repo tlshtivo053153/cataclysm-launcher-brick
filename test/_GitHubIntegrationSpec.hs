@@ -15,7 +15,7 @@ import Data.Aeson (encode)
 import GitHubIntegration
 import FileSystemUtils
 import Types
-import GitHubIntegration.Internal (ReleaseInfo(..), Asset(..), processReleases)
+import GitHubIntegration.Internal (Release(..), Asset(..), processReleases)
 
 -- Test State
 data TestState = TestState

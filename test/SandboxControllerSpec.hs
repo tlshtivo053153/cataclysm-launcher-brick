@@ -11,6 +11,7 @@ import Data.List (sortOn)
 import Data.Either (isRight)
 
 import SandboxController
+import Handle (liveHandle)
 import Types
 
 -- Helper to provide a temporary sandbox directory for each test
@@ -43,14 +44,14 @@ spec = around withTempSandboxDir $ do
   describe "SandboxController" $ do
     describe "listProfiles" $ do
       it "returns an empty list when the sandbox directory is empty" $ \tempDir -> do
-        result <- listProfiles (testConfig tempDir)
+        result <- listProfiles liveHandle (testConfig tempDir)
         result `shouldBe` Right []
 
       it "returns a list of profiles for each subdirectory" $ \tempDir -> do
         createDirectory (tempDir </> "profile1")
         createDirectory (tempDir </> "profile2")
         
-        result <- listProfiles (testConfig tempDir)
+        result <- listProfiles liveHandle (testConfig tempDir)
         case result of
           Left e -> expectationFailure (show e)
           Right profiles -> do
@@ -63,7 +64,7 @@ spec = around withTempSandboxDir $ do
       it "creates a new directory for the profile and returns the correct profile data" $ \tempDir -> do
         let profileName = "my-new-profile"
         
-        result <- createProfile (testConfig tempDir) profileName
+        result <- createProfile liveHandle (testConfig tempDir) profileName
         
         case result of
           Left e -> expectationFailure (show e)
@@ -72,17 +73,16 @@ spec = around withTempSandboxDir $ do
             (T.pack (spDataDirectory profile)) `shouldSatisfy` T.isSuffixOf profileName
 
         -- Verify directory exists
-        profilesAfter <- listProfiles (testConfig tempDir)
+        profilesAfter <- listProfiles liveHandle (testConfig tempDir)
         fmap (map spName) profilesAfter `shouldBe` Right [profileName]
 
       it "succeeds even if the directory already exists" $ \tempDir -> do
         let profileName = "existing-profile"
         createDirectory (tempDir </> T.unpack profileName)
         
-        result <- createProfile (testConfig tempDir) profileName
+        result <- createProfile liveHandle (testConfig tempDir) profileName
         result `shouldSatisfy` isRight
         
         -- Verify directory still exists and is listed
-        profilesAfter <- listProfiles (testConfig tempDir)
+        profilesAfter <- listProfiles liveHandle (testConfig tempDir)
         fmap (map spName) profilesAfter `shouldBe` Right [profileName]
-

@@ -47,6 +47,7 @@ dependencies:
 - resourcet
 - temporary
 - conduit
+- exceptions
 
 ghc-options:
 - -Wall
@@ -80,6 +81,15 @@ library:
   - Types.Domain
   - Types.UI
   - Types.Handle
+  - Types.Event
+  - Events
+  - Events.App
+  - Events.Available
+  - Events.Backup
+  - Events.Installed
+  - Events.List
+  - Events.Mods
+  - Events.Sandbox
 
 executables:
   cataclysm-launcher-brick-gemini-exe:
@@ -93,14 +103,6 @@ executables:
     - cataclysm-launcher-brick-gemini
     other-modules:
     - UI
-    - Events
-    - Events.App
-    - Events.Available
-    - Events.Backup
-    - Events.Installed
-    - Events.List
-    - Events.Mods
-    - Events.Sandbox
 
 tests:
   cataclysm-launcher-brick-gemini-test:
@@ -117,9 +119,12 @@ tests:
     - mtl
     - temporary
     - deepseq
+    - brick
+    - vector
+    - text
     other-modules:
     - FileSystemUtilsSpec
-    - GitHubIntegrationSpec
+    # - GitHubIntegrationSpec
     - GameManagerSpec
     - SandboxControllerSpec
     - BackupSystemSpec
@@ -128,3 +133,5 @@ tests:
     - ConfigSpec
     - ArchiveUtilsSpec
     - HandleSpec
+    - AppEventsSpec
+    - TestUtils
