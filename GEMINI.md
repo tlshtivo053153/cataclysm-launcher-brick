@@ -220,7 +220,7 @@ These rules are designed to minimize build errors and rework when developing in 
 ### 1. Dependency and API Verification (Top Priority)
 
 -   **Rule 1.1: Verify Before Using:** Before using a function from a module that has not yet been used in the current file, **you must first verify its existence and package using Stackage.**
--   **Action:** Use a web search with the project's specific LTS version (e.g., `"lts-22.44 brick Brick.BChan"`) to confirm that the module is part of the specified package and that the function is exported.
+-   **Action:** Use a web search with the project's specific LTS version (e.g., "lts-22.44 brick Brick.BChan") to confirm that the module is part of the specified package and that the function is exported.
 -   **Rationale:** This prevents incorrect assumptions about library contents (e.g., `brick-bchan`) and outdated API knowledge (e.g., `mkVty`), which have been the primary source of build failures.
 
 ### 2. Rigorous Documentation Adherence
@@ -335,8 +335,8 @@ These rules are designed to minimize build errors and rework when developing in 
 -   **Action Steps**:
     1.  **Acknowledge Temporariness**: It is acceptable to add dependencies temporarily for debugging or testing.
     2.  **Verify Before Removal**: **Before** removing a dependency from `package.yaml`, use the `search_file_content` tool to ensure that no modules from that package are imported in the `src/` directory.
-        -   **Example Command**: `search_file_content --include "src/**/*.hs" --pattern "System.Process.ByteString.Lazy"`
-    3.  **Safe Removal**: Only remove the dependency from `package.yaml` if the above search returns no results. If results are found, the dependency is required by the production code and must not be removed.
+        -   **Example Command**: `search_file_content --include "src/**/*.hs" --pattern "System.Process.ByteString.Lazy"
+`    3.  **Safe Removal**: Only remove the dependency from `package.yaml` if the above search returns no results. If results are found, the dependency is required by the production code and must not be removed.
 
 ### 15. Principle of API Diligence (API精査の原則)
 
@@ -441,7 +441,7 @@ These rules are designed to minimize build errors and rework when developing in 
 -   **Action Steps**:
     1.  **Isolate the Core Function**: Identify the single library function call that is most critical and least understood (e.g., `Dhall.input auto`).
     2.  **Create a Minimal Test Case**: In the relevant `Spec.hs` file, create a new, temporary `describe` block labeled "Spike: [Library Name]".
-    3.  **Start with the Simplest Possible Input**: Write an `it` block that calls the function with the most trivial, self-contained input possible (e.g., for Dhall, a simple literal like `"\"Hello, world!\""` or `"1 + 1"`). Verify that it produces the expected outcome.
+    3.  **Start with the Simplest Possible Input**: Write an `it` block that calls the function with the most trivial, self-contained input possible (e.g., for Dhall, a simple literal like "\"Hello, world!\"" or "\"1 + 1\""). Verify that it produces the expected outcome.
     4.  **Incrementally Add Complexity**: Add subsequent `it` blocks, introducing one new concept at a time:
         -   A simple record (`{ a = 1 }`).
         -   A union/enum type (`<A | B>.A`).
