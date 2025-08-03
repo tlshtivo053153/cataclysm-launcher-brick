@@ -122,7 +122,7 @@ Follow Conventional Commits format:
 
 - **Example:**
 
-  - **Anti-Pattern (避��るべきパターン):**
+  - **Anti-Pattern (避けるべきパターン):**
     ```haskell
     -- This function is hard to test without running real IO.
     fetchGameVersions :: Config -> IO (Either String [GameVersion])
@@ -388,3 +388,23 @@ These principles provide a structured approach to diagnosing and resolving error
     2.  **Hypothesize Environmental Cause**: Formulate a hypothesis that the error is caused by the environment (e.g., permissions, working directory).
     3.  **Consult API for Control**: Review library documentation for options to control or disable the feature causing the error.
     4.  **Isolate and Abstract**: If direct control is not possible, abstract the problematic operation and replace it with a custom implementation that avoids the constraint.
+
+### Category 6: Testing & Tool Interaction
+
+**20. Principle of High-Fidelity Mocking (高忠実度モッキングの原則)**
+-   **Principle:** When mocking a function with side effects (e.g., file creation, state changes), the mock must not only return a value but also **accurately simulate the state changes** that the real function would cause.
+-   **Rationale:** This principle is crucial for ensuring the reliability of tests that depend on a sequence of operations. If a mock does not reflect state changes, subsequent functions may encounter an unexpected state (e.g., a file that should exist is missing), causing the test to fail unnaturally. This is a direct countermeasure to the problem where the `getDownloadAction` test failed because the `download` mock succeeded but did not simulate the file creation expected by the subsequent `extract` step.
+-   **Action Steps:**
+    1.  **Analyze Sequence:** Analyze the sequence of side effects the code under test will call (e.g., `downloadAsset` → `extractArchive`).
+    2.  **Identify State Change:** Identify the state change each side effect is supposed to cause (e.g., `downloadAsset` **creates** a file in the cache directory).
+    3.  **Simulate State Change:** When implementing the mock, ensure it updates the test's state (e.g., a mock file system managed by an `IORef`) to reflect reality, in addition to returning a value.
+    4.  **Verify Subsequent Steps:** Confirm that subsequent operations correctly read the updated mock state and succeed.
+
+**21. Principle of Robust Command Execution (堅牢なコマンド実行の原則)**
+-   **Principle:** When passing complex strings (multi-line or containing special characters) to a shell command, **prefer passing the argument via a file** (e.g., `git commit -F <file>`) over passing it directly as a command-line argument (e.g., `git commit -m "..."`).
+-   **Rationale:** This principle prevents unexpected command failures caused by shell interpretation or security restrictions. By writing the complex string to a temporary file and then passing that file to the command, the risk of the argument being misinterpreted by the shell is eliminated. This avoids rework, such as that encountered with `git commit`, and improves development efficiency.
+-   **Action Steps:**
+    1.  **Identify Complex Arguments:** Identify any argument that contains multi-line text or special characters like `$`, `*`, or `()`.
+    2.  **Write to Temporary File:** Use the `write_file` tool to write the argument's content to a temporary file (e.g., `/tmp/commit_msg.txt`).
+    3.  **Pass File to Command:** Execute the target command with the option to read the argument from the file (e.g., `git commit -F /tmp/commit_msg.txt`).
+    4.  **Cleanup:** (Recommended) Use `run_shell_command` to delete the temporary file after use.
