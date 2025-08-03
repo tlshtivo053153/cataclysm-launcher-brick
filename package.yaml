@@ -124,7 +124,7 @@ tests:
     - text
     other-modules:
     - FileSystemUtilsSpec
-    # - GitHubIntegrationSpec
+    - GitHubIntegrationSpec
     - GameManagerSpec
     - SandboxControllerSpec
     - BackupSystemSpec

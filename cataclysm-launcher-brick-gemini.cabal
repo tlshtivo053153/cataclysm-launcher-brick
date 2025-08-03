@@ -134,6 +134,7 @@ test-suite cataclysm-launcher-brick-gemini-test
   main-is: Spec.hs
   other-modules:
       FileSystemUtilsSpec
+      GitHubIntegrationSpec
       GameManagerSpec
       SandboxControllerSpec
       BackupSystemSpec

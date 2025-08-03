@@ -11,7 +11,7 @@ module ModHandler (
     ModSource(..)
 ) where
 
-import Types (ModHandlerError(..), ModInfo(..), ModSource(..))
+import Types
 import System.Directory (createDirectoryIfMissing, listDirectory, createDirectoryLink, removeFile, makeAbsolute, doesPathExist, getSymbolicLinkTarget, pathIsSymbolicLink)
 import System.FilePath ((</>), takeFileName)
 import System.Exit (ExitCode(..))
@@ -21,19 +21,16 @@ import Data.List (nubBy)
 import Data.Function (on)
 import Control.Exception (try, SomeException)
 import Control.Monad (forM, filterM)
-
--- | A type alias for a function that can execute a process.
-type ProcessRunner = String -> [String] -> String -> IO (ExitCode, String, String)
+import Control.Monad.IO.Class (MonadIO)
 
 -- | Clones a mod from a GitHub repository into the sys-repo/mods directory.
--- It takes a `ProcessRunner` to allow for mocking in tests.
-installModFromGitHub :: ProcessRunner -> FilePath -> T.Text -> ModSource -> IO (Either ModHandlerError ModInfo)
-installModFromGitHub runProcess sysRepoPath repoName (ModSource url) = do
+installModFromGitHub :: (Monad m) => Handle m -> FilePath -> T.Text -> ModSource -> m (Either ModHandlerError ModInfo)
+installModFromGitHub handle sysRepoPath repoName (ModSource url) = do
     let modName = repoName
     let installDir = sysRepoPath </> "mods"
     let modInstallPath = installDir </> unpack modName
-    createDirectoryIfMissing True installDir
-    (exitCode, _, stderr) <- runProcess "git" ["clone", "--depth", "1", unpack url, modInstallPath] ""
+    hCreateDirectoryIfMissing handle True installDir
+    (exitCode, _, stderr) <- hReadProcessWithExitCode handle "git" ["clone", "--depth", "1", unpack url, modInstallPath] ""
     case exitCode of
         ExitSuccess -> do
             let modInfo = ModInfo

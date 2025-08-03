@@ -49,6 +49,9 @@ testHandle = Handle
     , hMakeAbsolute = return -- Not used in these tests
     , hGetCurrentTime = error "hGetCurrentTime not implemented"
     , hCallCommand = \_ -> error "hCallCommand not implemented"
+    , hFetchReleasesFromAPI = \_ _ -> error "hFetchReleasesFromAPI not implemented"
+    , hReadProcessWithExitCode = \_ _ _ -> error "hReadProcessWithExitCode not implemented"
+    , hCreateProcess = \_ _ _ -> error "hCreateProcess not implemented"
     }
 
 -- Helper to run tests

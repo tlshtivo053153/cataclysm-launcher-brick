@@ -19,7 +19,7 @@ getLaunchAction st =
     Nothing -> Nothing
     Just (_, iv) ->
       let mSelectedProfile = snd <$> listSelectedElement (appSandboxProfiles st)
-      in Just $ launchGame (appConfig st) iv mSelectedProfile
+      in Just $ launchGame (appHandle st) (appConfig st) iv mSelectedProfile
 
 -- | Event handler for the installed versions list.
 handleInstalledEvents :: V.Event -> EventM Name AppState ()

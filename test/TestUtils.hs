@@ -14,7 +14,9 @@ import qualified Data.Vector as Vec
 import qualified Data.Text as T
 import Data.IORef
 import qualified Data.ByteString as B
-import Data.Time (getCurrentTime)
+import qualified Data.ByteString.Lazy as L
+import Data.Time (getCurrentTime, UTCTime)
+import System.Exit (ExitCode(..))
 
 import Types
 
@@ -28,6 +30,9 @@ data MockCall
     | MakeAbsolute FilePath
     | GetCurrentTime
     | CallCommand String
+    | FetchReleasesFromAPI String (Maybe UTCTime)
+    | ReadProcessWithExitCode String [String] String
+    | CreateProcess FilePath [String] (Maybe FilePath)
     | CreateProfile T.Text
     | CreateBackup SandboxProfile
     | ListBackups SandboxProfile
@@ -62,6 +67,13 @@ mockHandle ref = Handle
         modifyIORef' ref (GetCurrentTime :)
         getCurrentTime
     , hCallCommand = \cmd -> modifyIORef' ref (CallCommand cmd :)
+    , hFetchReleasesFromAPI = \url msince -> do
+        modifyIORef' ref (FetchReleasesFromAPI url msince :)
+        return $ Left "mocked API error"
+    , hReadProcessWithExitCode = \cmd args input -> do
+        modifyIORef' ref (ReadProcessWithExitCode cmd args input :)
+        return (ExitSuccess, "", "")
+    , hCreateProcess = \cmd args mcwd -> modifyIORef' ref (CreateProcess cmd args mcwd :)
     }
 
 initialAppState :: AppState

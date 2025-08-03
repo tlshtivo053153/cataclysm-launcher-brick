@@ -14,6 +14,8 @@ import qualified Data.Text as T
 import System.IO.Temp (withSystemTempDirectory)
 import qualified Data.Vector as Vec
 import System.FilePath ((</>))
+import System.Directory (createDirectory)
+import System.IO (writeFile)
 
 import Events (nextActiveList)
 import Events.List (handleListMove)
@@ -79,10 +81,35 @@ spec = describe "AppEvents" $ do
 
   describe "Events.Installed" $ do
     describe "getLaunchAction" $ do
-      it "returns a Just action when a version is selected" $ do
-        let st = initialAppState
-        let maybeAction = getLaunchAction st
-        isJust maybeAction `shouldBe` True
+      it "returns an action that calls hCreateProcess" $ do
+        withSystemTempDirectory "launch-test" $ \tempDir -> do
+          -- Setup a dummy executable
+          let exeDir = tempDir </> "game"
+          createDirectory exeDir
+          let exePath = exeDir </> "cataclysm-launcher"
+          writeFile exePath ""
+
+          mockRef <- newMockCallRef
+          chan <- newBChan 10
+          void $ forkIO $ forever $ void $ readBChan chan
+
+          let handle = mockHandle mockRef
+          let selectedVersion = InstalledVersion "v-test" exeDir
+          let st = initialAppState
+                  { appHandle = handle
+                  , appEventChannel = chan
+                  , appInstalledVersions = list InstalledListName (Vec.fromList [selectedVersion]) 1
+                  }
+          
+          let Just action = getLaunchAction st
+          -- The action returns an Either, but we don't care about the result here, only the side effect.
+          void action
+
+          -- Verify
+          calls <- recordedCalls mockRef
+          let selectedProfile = SandboxProfile "default" "/sandbox/default"
+          let expectedArgs = ["--userdir", spDataDirectory selectedProfile]
+          calls `shouldContain` [CreateProcess exePath expectedArgs (Just exeDir)]
 
   describe "Events.Sandbox" $ do
     it "getCreateProfileAcrion writes log and created events" $ do

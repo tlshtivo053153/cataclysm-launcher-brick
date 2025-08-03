@@ -42,7 +42,7 @@ getInstallModAction st =
                         let modSource = ModSource (msiUrl modSourceInfo)
                             repoName = msiRepositoryName modSourceInfo
                         writeBChan chan $ LogMessage $ "Installing mod from " <> msiUrl modSourceInfo <> "..."
-                        result <- MH.installModFromGitHub readProcessWithExitCode sysRepo repoName modSource
+                        result <- MH.installModFromGitHub (appHandle st) sysRepo repoName modSource
                         writeBChan chan $ ModInstallFinished result
                     TarGz -> writeBChan chan $ LogMessage "Installation from .tar.gz is not yet supported."
 

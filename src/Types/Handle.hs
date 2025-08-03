@@ -6,10 +6,11 @@ module Types.Handle (
 ) where
 
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import Brick.BChan (BChan)
 import Data.Time (UTCTime)
-import Control.Monad.Catch (MonadCatch, SomeException)
+import System.Exit (ExitCode)
 import Types.Event (UIEvent)
 import Types.Domain (ManagerError)
 
@@ -27,4 +28,7 @@ data Handle m = Handle
     , hMakeAbsolute        :: FilePath -> m FilePath
     , hGetCurrentTime      :: m UTCTime
     , hCallCommand         :: String -> m ()
+    , hFetchReleasesFromAPI :: String -> Maybe UTCTime -> m (Either String L.ByteString)
+    , hReadProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
+    , hCreateProcess       :: FilePath -> [String] -> Maybe FilePath -> m ()
     }

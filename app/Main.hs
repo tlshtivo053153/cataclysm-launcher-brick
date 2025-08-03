@@ -48,7 +48,7 @@ main = do
     chan <- newBChan 10
     config <- loadConfig
     putStrLn "Fetching game versions..."
-    versionsE <- getGameVersions config
+    versionsE <- getGameVersions liveHandle config
     installed <- getInstalledVersions config
     profilesE <- listProfiles liveHandle config
     modSources <- loadModSources

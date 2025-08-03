@@ -6,19 +6,18 @@ module GameManager (
 ) where
 
 import qualified Data.Text as T
-import Control.Monad (void)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.Directory (createDirectoryIfMissing, listDirectory, makeAbsolute)
 import System.FilePath ((</>), takeDirectory)
-import System.Process (createProcess, proc, cwd)
 
 import qualified GitHubIntegration as GH
 import FileSystemUtils
 import Types
 import GameManager.Install
 
-getGameVersions :: Config -> IO (Either ManagerError [GameVersion])
-getGameVersions config = do
-    result <- GH.fetchGameVersions config
+getGameVersions :: Handle IO -> Config -> IO (Either ManagerError [GameVersion])
+getGameVersions handle config = do
+    result <- GH.fetchGameVersions handle config
     return $ case result of
         Left err -> Left $ NetworkError (T.pack err)
         Right versions -> Right versions
@@ -31,12 +30,12 @@ getInstalledVersions config = do
     dirs <- listDirectory absGameDir
     return $ map (\d -> InstalledVersion (T.pack d) (absGameDir </> d)) dirs
 
-launchGame :: Config -> InstalledVersion -> Maybe SandboxProfile -> IO (Either ManagerError ())
-launchGame _ iv mProfile = do
+launchGame :: (MonadIO m) => Handle m -> Config -> InstalledVersion -> Maybe SandboxProfile -> m (Either ManagerError ())
+launchGame handle _ iv mProfile = do
     let installDir = ivPath iv
         executableName = "cataclysm-launcher"
     
-    foundPaths <- findFilesRecursively installDir [executableName]
+    foundPaths <- liftIO $ findFilesRecursively installDir [executableName]
 
     case foundPaths of
         [executablePath] -> do
@@ -44,7 +43,7 @@ launchGame _ iv mProfile = do
                 args = case mProfile of
                     Just profile -> ["--userdir", spDataDirectory profile]
                     Nothing      -> []
-            void $ createProcess (proc executablePath args) { cwd = Just workDir }
+            hCreateProcess handle executablePath args (Just workDir)
             return $ Right ()
         [] ->
             return $ Left $ LaunchError $ T.pack ("Executable '" <> executableName <> "' not found in " <> installDir)
