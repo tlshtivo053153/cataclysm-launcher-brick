@@ -74,4 +74,4 @@ processReleases = map toGameVersion
         , gvUrl = assetUrl (head (GH.assets rel))
         , gvReleaseType = if GH.prerelease rel then Development else Stable
         }
-    assetUrl asset = GH.browserDownloadUrl asset
+    assetUrl = GH.browserDownloadUrl

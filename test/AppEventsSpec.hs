@@ -72,7 +72,7 @@ spec = describe "AppEvents" $ do
                     modifyIORef' fsRef (Map.insert cachePath "")
                     return $ Right ""
                 , hDoesFileExist = \fp -> Map.member fp <$> readIORef fsRef
-                , hReadFile = \fp -> maybe "" id . Map.lookup fp <$> readIORef fsRef
+                , hReadFile = \fp -> Data.Maybe.fromMaybe "" . Map.lookup fp <$> readIORef fsRef
                 }
           
           let st = initialAppState

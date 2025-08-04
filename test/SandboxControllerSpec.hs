@@ -70,7 +70,7 @@ spec = around withTempSandboxDir $ do
           Left e -> expectationFailure (show e)
           Right profile -> do
             spName profile `shouldBe` profileName
-            (T.pack (spDataDirectory profile)) `shouldSatisfy` T.isSuffixOf profileName
+            T.pack (spDataDirectory profile) `shouldSatisfy` T.isSuffixOf profileName
 
         -- Verify directory exists
         profilesAfter <- listProfiles liveHandle (testConfig tempDir)

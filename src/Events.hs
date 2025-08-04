@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes          #-}
 
 module Events (handleEvent, nextActiveList) where

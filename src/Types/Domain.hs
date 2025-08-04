@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Types.Domain (
     -- Config-related types

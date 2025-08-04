@@ -69,7 +69,7 @@ createTestHandles = do
     calledRef <- newIORef False
     let handle = Handle
             { hDoesFileExist = \fp -> Map.member fp <$> readIORef fsRef
-            , hReadFile = \fp -> maybe (error "file not found") id . Map.lookup fp <$> readIORef fsRef
+            , hReadFile = \fp -> Data.Maybe.fromMaybe (error "file not found") . Map.lookup fp <$> readIORef fsRef
             , hWriteFile = \fp content -> modifyIORef' fsRef (Map.insert fp content)
             , hGetCurrentTime = return mockTime
             , hFetchReleasesFromAPI = \_ _ -> do

@@ -57,7 +57,7 @@ findCommonPrefix paths =
 findFilesRecursively :: MonadFileSystem m => FilePath -> [String] -> m [FilePath]
 findFilesRecursively baseDir names = do
     contents <- fsListDirectory baseDir
-    paths <- fmap concat $ forM contents $ \item -> do
+    fmap concat $ forM contents $ \item -> do
         let path = baseDir </> item
         isDir <- fsDoesDirectoryExist path
         if isDir
@@ -65,7 +65,6 @@ findFilesRecursively baseDir names = do
         else if item `elem` names
              then return [path]
              else return []
-    return paths
 
 isSafePath :: MonadFileSystem m => FilePath -> FilePath -> m Bool
 isSafePath baseDir targetPath = do

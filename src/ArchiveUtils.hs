@@ -45,7 +45,7 @@ extractTarball archivePath installDir = do
         let fp = destDir </> BS.Char8.unpack (Tar.filePath fi)
         absDestDir <- liftIO $ makeAbsolute destDir
         absFp <- liftIO $ makeAbsolute fp
-        when (isPrefixOf absDestDir absFp) $ do
+        when (absDestDir `isPrefixOf` absFp) $ do
             case Tar.fileType fi of
                 Tar.FTNormal -> do
                     liftIO $ createDirectoryIfMissing True (takeDirectory fp)

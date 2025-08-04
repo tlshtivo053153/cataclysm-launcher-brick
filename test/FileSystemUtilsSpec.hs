@@ -51,7 +51,7 @@ instance MonadFileSystem TestM where
             Just (File _) -> return True
             _ -> return False
 
-    fsMakeAbsolute path = return path -- simplified for test
+    fsMakeAbsolute = return -- simplified for test
 
     fsReadFileLBS path = do
         fs <- get

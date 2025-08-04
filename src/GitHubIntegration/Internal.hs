@@ -27,7 +27,7 @@ data Release = Release
     , assets      :: [Asset]
     } deriving (Generic, Show, Eq)
 
-data Asset = Asset
+newtype Asset = Asset
     { browserDownloadUrl :: T.Text
     } deriving (Generic, Show, Eq)
 

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Events.Available (handleAvailableEvents, getDownloadAction) where
 
 import Brick
