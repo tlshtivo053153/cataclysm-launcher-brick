@@ -9,7 +9,7 @@ import Data.IORef
 import Brick.BChan (newBChan, readBChan)
 import Control.Concurrent (forkIO)
 import Control.Monad (forever, void)
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (isJust, isNothing, fromMaybe)
 import qualified Data.Text as T
 import System.IO.Temp (withSystemTempDirectory)
 import qualified Data.Vector as Vec

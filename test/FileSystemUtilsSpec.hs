@@ -63,6 +63,8 @@ instance MonadFileSystem TestM where
 
     fsCreateDirectoryIfMissing _ _ = return ()
 
+    fsCopyFile _ _ = return ()
+
 
 spec :: Spec
 spec = do

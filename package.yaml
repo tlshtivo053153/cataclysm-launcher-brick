@@ -135,3 +135,4 @@ tests:
     - HandleSpec
     - AppEventsSpec
     - TestUtils
+    - IntegrationSpec

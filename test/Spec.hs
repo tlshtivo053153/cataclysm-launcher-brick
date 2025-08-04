@@ -11,6 +11,7 @@ import qualified ArchiveUtilsSpec
 import qualified HandleSpec
 import qualified AppEventsSpec
 import qualified FileSystemUtilsSpec
+import qualified IntegrationSpec
 
 main :: IO ()
 main = hspec spec
@@ -27,3 +28,4 @@ spec = do
   describe "ArchiveUtils" ArchiveUtilsSpec.spec
   describe "Handle" HandleSpec.spec
   describe "AppEvents" AppEventsSpec.spec
+  describe "Integration" IntegrationSpec.spec

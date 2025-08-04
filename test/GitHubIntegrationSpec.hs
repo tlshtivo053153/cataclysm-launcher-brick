@@ -13,6 +13,7 @@ import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Aeson (encode)
 import Data.Time (UTCTime(..), Day(..), DiffTime, secondsToDiffTime, fromGregorian)
 import qualified Data.Text as T
+import Data.Maybe (fromMaybe)
 
 import Types
 import GitHubIntegration
