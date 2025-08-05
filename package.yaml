@@ -122,6 +122,7 @@ tests:
     - brick
     - vector
     - text
+    - bytestring
     other-modules:
     - FileSystemUtilsSpec
     - GitHubIntegrationSpec

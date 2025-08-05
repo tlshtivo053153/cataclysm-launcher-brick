@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module TestUtils (
   initialAppState,
@@ -19,6 +20,7 @@ import Data.Time (getCurrentTime, UTCTime)
 import System.Exit (ExitCode(..))
 
 import Types
+
 
 type IORefList a = IORef [a]
 
