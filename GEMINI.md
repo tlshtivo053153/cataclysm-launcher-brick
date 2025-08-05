@@ -231,6 +231,7 @@ This category focuses on the critical importance of thorough analysis and planni
         b.  All available data constructors for ADTs.
         c.  All field names for records.
         d.  All required methods for typeclasses.
+        e.  **CRITICAL**: This verification must be performed via `read_file` immediately before writing the code that uses the dependency, not based on memory.
     3.  **Formulate Plan**: Based *only* on the verified information, formulate a brief, step-by-step implementation plan.
     4.  **Pre-Compilation Review**: After writing the code but **before** running `stack build`, execute `git diff HEAD` and visually review the changes to check for:
         a.  **Missing Imports**: Ensure corresponding `import` statements are added for all new symbols.
@@ -333,13 +334,12 @@ These principles guide the process of writing clean, robust, and maintainable Ha
 These principles ensure that file and data operations are performed safely and reliably.
 
 **13. Principle of Safe File Writes (安全なファイル書き込みの原則)**
--   **Principle**: File modifications **must**, by default, be performed by overwriting the entire file with `write_file`. The use of the `replace` tool is strictly limited to trivial, single-line substitutions.
--   **Rationale**: The `replace` tool is unreliable due to its vulnerability to subtle differences in whitespace and line endings. Adopting `write_file` as the primary method eradicates this class of repetitive failures.
+-   **Principle**: File modifications **must**, by default, be performed by overwriting the entire file with `write_file`. The use of the `replace` tool is strictly limited to trivial, single-line, unambiguous substitutions.
+-   **Rationale**: The `replace` tool is powerful but brittle. It can fail silently or cause unexpected changes if the `old_string` is not perfectly unique or if there are subtle differences in whitespace or line endings. Adopting `write_file` as the primary modification strategy eradicates this entire class of frustrating, repetitive failures.
 -   **Action Steps**:
-    1.  The default strategy for modifying a file is always: **Read full content → Modify in memory → Write complete content back.**
-    2.  Before any write operation, check for uncommitted changes with `git diff HEAD <file_path>` and ask for instructions if changes exist.
-    3.  Limit `replace` to simple, single-line, unique substitutions (e.g., a version number).
-    4.  If `replace` fails even once, **immediately abandon it and switch to the `write_file` strategy.**
+    1.  The default strategy for modifying a file is always: **Read full content → Modify in memory → Write complete content back with `write_file`**.
+    2.  Limit `replace` to simple, single-line, unique substitutions where the risk of error is minimal (e.g., replacing a version number in a config file).
+    3.  If `replace` fails even once for a given task, **immediately abandon it and switch to the `write_file` strategy.** Do not re-attempt the `replace`.
 
 **14. Principle of Data Integrity for Non-ASCII Text (非ASCIIテキストのデータ完全性原則)**
 -   **Principle**: To prevent data corruption (e.g., Mojibake) when writing non-ASCII text, a strict write-verify-correct protocol must be followed.
@@ -391,14 +391,14 @@ These principles provide a structured approach to diagnosing and resolving error
 
 ### Category 6: Testing & Tool Interaction
 
-**20. Principle of High-Fidelity Mocking (高忠実度モッキングの原則)**
--   **Principle:** When mocking a function with side effects (e.g., file creation, state changes), the mock must not only return a value but also **accurately simulate the state changes** that the real function would cause.
--   **Rationale:** This principle is crucial for ensuring the reliability of tests that depend on a sequence of operations. If a mock does not reflect state changes, subsequent functions may encounter an unexpected state (e.g., a file that should exist is missing), causing the test to fail unnaturally. This is a direct countermeasure to the problem where the `getDownloadAction` test failed because the `download` mock succeeded but did not simulate the file creation expected by the subsequent `extract` step.
+**20. Principle of High-Fidelity Mocking / Test Setup (高忠実度モッキング/セットアップの原則)**
+-   **Principle:** When testing a function with side effects (especially file I/O), the test setup **must** explicitly create all environmental preconditions (e.g., directories, files, environment variables) that the function expects to exist. Mocks must not only return values but also simulate the state changes the real function would cause.
+-   **Rationale:** Functions with side effects often fail not because of their internal logic, but because the environment they expect has not been correctly prepared. This principle forces a meticulous setup of the test environment to mirror reality, preventing runtime errors like "No such file or directory" and ensuring the test validates the function's logic, not the test's setup.
 -   **Action Steps:**
-    1.  **Analyze Sequence:** Analyze the sequence of side effects the code under test will call (e.g., `downloadAsset` → `extractArchive`).
-    2.  **Identify State Change:** Identify the state change each side effect is supposed to cause (e.g., `downloadAsset` **creates** a file in the cache directory).
-    3.  **Simulate State Change:** When implementing the mock, ensure it updates the test's state (e.g., a mock file system managed by an `IORef`) to reflect reality, in addition to returning a value.
-    4.  **Verify Subsequent Steps:** Confirm that subsequent operations correctly read the updated mock state and succeed.
+    1.  **Identify Side Effects:** Before writing the test action, list all functions with side effects (e.g., `readFile`, `createDirectory`, `getEnv`) that the function under test will call.
+    2.  **List Preconditions:** For each side effect, determine the environmental preconditions required for it to succeed (e.g., `readFile` requires the file to exist; `createDirectory`'s parent must exist).
+    3.  **Implement Setup:** In the test's setup phase (e.g., inside `before` or at the start of an `it` block), write explicit code to create every single precondition (e.g., use `createDirectoryIfMissing True ...`).
+    4.  **Simulate State Changes:** If using mocks, ensure the mock function simulates the real function's state change (e.g., a mock `download` function must also create a mock file in the mock filesystem).
 
 **21. Principle of Robust Command Execution (堅牢なコマンド実行の原則)**
 -   **Principle:** When passing complex strings (multi-line or containing special characters) to a shell command, **prefer passing the argument via a file** (e.g., `git commit -F <file>`) over passing it directly as a command-line argument (e.g., `git commit -m "..."`).
