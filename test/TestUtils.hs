@@ -76,6 +76,11 @@ mockHandle ref = Handle
         modifyIORef' ref (ReadProcessWithExitCode cmd args input :)
         return (ExitSuccess, "", "")
     , hCreateProcess = \cmd args mcwd -> modifyIORef' ref (CreateProcess cmd args mcwd :)
+    , hLaunchGame = \_ _ -> return ()
+    , hCreateSymbolicLink = \_ _ -> return ()
+    , hDoesSymbolicLinkExist = \_ -> return False
+    , hGetSymbolicLinkTarget = \_ -> return ""
+    , hRemoveFile = \_ -> return ()
     }
 
 initialAppState :: AppState

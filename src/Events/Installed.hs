@@ -40,4 +40,5 @@ managerErrorToText err = case err of
     FileSystemError msg -> "File System Error: " <> msg
     ArchiveError msg -> "Archive Error: " <> msg
     LaunchError msg -> "Launch Error: " <> msg
+    GeneralManagerError msg -> "Error: " <> msg
     UnknownError msg -> "Unknown Error: " <> msg

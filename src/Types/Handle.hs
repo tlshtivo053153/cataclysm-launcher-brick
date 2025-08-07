@@ -30,4 +30,9 @@ data Handle m = Handle
     , hFetchReleasesFromAPI :: String -> Maybe UTCTime -> m (Either String L.ByteString)
     , hReadProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
     , hCreateProcess       :: FilePath -> [String] -> Maybe FilePath -> m ()
+    , hLaunchGame          :: FilePath -> [String] -> m ()
+    , hCreateSymbolicLink  :: FilePath -> FilePath -> m ()
+    , hDoesSymbolicLinkExist :: FilePath -> m Bool
+    , hGetSymbolicLinkTarget :: FilePath -> m FilePath
+    , hRemoveFile          :: FilePath -> m ()
     }

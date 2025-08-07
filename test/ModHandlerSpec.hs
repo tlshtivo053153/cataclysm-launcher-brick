@@ -51,6 +51,11 @@ testHandle = Handle
     , hCallCommand = \_ -> error "not implemented"
     , hFetchReleasesFromAPI = \_ _ -> error "not implemented"
     , hCreateProcess = \_ _ _ -> error "not implemented"
+    , hLaunchGame = \_ _ -> error "not implemented"
+    , hCreateSymbolicLink = \_ _ -> error "not implemented"
+    , hDoesSymbolicLinkExist = \_ -> error "not implemented"
+    , hGetSymbolicLinkTarget = \_ -> error "not implemented"
+    , hRemoveFile = \_ -> error "not implemented"
     }
 
 runTest :: TestM a -> TestState -> (a, TestState)

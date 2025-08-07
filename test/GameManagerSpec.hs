@@ -52,6 +52,11 @@ testHandle = Handle
     , hFetchReleasesFromAPI = \_ _ -> error "hFetchReleasesFromAPI not implemented"
     , hReadProcessWithExitCode = \_ _ _ -> error "hReadProcessWithExitCode not implemented"
     , hCreateProcess = \_ _ _ -> error "hCreateProcess not implemented"
+    , hLaunchGame = \_ _ -> error "hLaunchGame not implemented"
+    , hCreateSymbolicLink = \_ _ -> error "hCreateSymbolicLink not implemented"
+    , hDoesSymbolicLinkExist = \_ -> error "hDoesSymbolicLinkExist not implemented"
+    , hGetSymbolicLinkTarget = \_ -> error "hGetSymbolicLinkTarget not implemented"
+    , hRemoveFile = \_ -> error "hRemoveFile not implemented"
     }
 
 -- Helper to run tests

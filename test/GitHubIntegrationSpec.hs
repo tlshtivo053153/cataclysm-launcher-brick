@@ -37,8 +37,8 @@ mockConfig = Config
 
 mockReleases :: [GH.Release]
 mockReleases =
-  [ GH.Release { GH.tagName = "v1.0", GH.name = "Version 1.0", GH.prerelease = False, GH.assets = [GH.Asset "url1.0"] }
-  , GH.Release { GH.tagName = "v0.9", GH.name = "Version 0.9", GH.prerelease = True,  GH.assets = [GH.Asset "url0.9"] }
+  [ GH.Release { GH.tagName = "v1.0", GH.name = "Version 1.0", GH.prerelease = False, GH.published_at = "2025-01-01T00:00:00Z", GH.assets = [GH.Asset "url1.0"] }
+  , GH.Release { GH.tagName = "v0.9", GH.name = "Version 0.9", GH.prerelease = True, GH.published_at = "2024-12-31T00:00:00Z",  GH.assets = [GH.Asset "url0.9"] }
   ]
 
 encodedMockReleases :: L.ByteString
@@ -87,6 +87,11 @@ createTestHandles = do
             , hCallCommand = \_ -> error "hCallCommand not implemented"
             , hReadProcessWithExitCode = \_ _ _ -> error "hReadProcessWithExitCode not implemented"
             , hCreateProcess = \_ _ _ -> error "hCreateProcess not implemented"
+            , hLaunchGame = \_ _ -> error "hLaunchGame not implemented"
+            , hCreateSymbolicLink = \_ _ -> error "hCreateSymbolicLink not implemented"
+            , hDoesSymbolicLinkExist = \_ -> error "hDoesSymbolicLinkExist not implemented"
+            , hGetSymbolicLinkTarget = \_ -> error "hGetSymbolicLinkTarget not implemented"
+            , hRemoveFile = \_ -> error "hRemoveFile not implemented"
             }
     return $ TestHandles fsRef apiRef calledRef handle
 

@@ -123,6 +123,8 @@ tests:
     - vector
     - text
     - bytestring
+    - unix
+    - dhall
     other-modules:
     - FileSystemUtilsSpec
     - GitHubIntegrationSpec

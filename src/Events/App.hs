@@ -16,6 +16,8 @@ import Types
 
 handleAppEvent :: UIEvent -> EventM Name AppState ()
 handleAppEvent (LogMessage msg) = modify $ \st -> st { appStatus = msg }
+handleAppEvent (LogEvent msg) = modify $ \st -> st { appStatus = msg }
+handleAppEvent (ErrorEvent msg) = modify $ \st -> st { appStatus = "Error: " <> msg }
 handleAppEvent (CacheHit msg) = modify $ \st -> st { appStatus = msg }
 handleAppEvent (InstallFinished result) = do
     case result of
@@ -70,6 +72,7 @@ managerErrorToText err = case err of
     FileSystemError msg -> "File System Error: " <> msg
     ArchiveError msg -> "Archive Error: " <> msg
     LaunchError msg -> "Launch Error: " <> msg
+    GeneralManagerError msg -> msg
     UnknownError msg -> "Unknown Error: " <> msg
 
 modHandlerErrorToText :: ModHandlerError -> T.Text

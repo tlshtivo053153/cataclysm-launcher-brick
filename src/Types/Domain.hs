@@ -27,6 +27,7 @@ data ManagerError
     | FileSystemError T.Text
     | ArchiveError T.Text
     | LaunchError T.Text
+    | GeneralManagerError T.Text
     | UnknownError T.Text
     deriving (Show, Eq)
 

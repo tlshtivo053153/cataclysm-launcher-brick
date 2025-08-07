@@ -15,7 +15,8 @@ import           Control.Exception (SomeException)
 import           Control.Monad (void)
 import           Control.Monad.Catch (MonadCatch, try)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           System.Directory (doesFileExist, createDirectoryIfMissing, doesDirectoryExist, removeDirectoryRecursive, listDirectory, makeAbsolute)
+import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, makeAbsolute, pathIsSymbolicLink, removeDirectoryRecursive, removeFile)
+import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
 import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, addRequestHeader)
@@ -59,4 +60,9 @@ liveHandle = Handle
             Right response -> return $ Right $ getResponseBody response
     , hReadProcessWithExitCode = \cmd args input -> liftIO $ readProcessWithExitCode cmd args input
     , hCreateProcess = \cmd args mcwd -> liftIO $ void $ createProcess (proc cmd args) { cwd = mcwd }
+    , hLaunchGame = \cmd args -> liftIO $ void $ createProcess (proc cmd args)
+    , hCreateSymbolicLink = \src dest -> liftIO $ createSymbolicLink src dest
+    , hDoesSymbolicLinkExist = liftIO . pathIsSymbolicLink
+    , hGetSymbolicLinkTarget = liftIO . readSymbolicLink
+    , hRemoveFile = liftIO . removeFile
     }

@@ -7,6 +7,8 @@ import Types.Domain
 
 data UIEvent
   = LogMessage T.Text
+  | LogEvent T.Text
+  | ErrorEvent T.Text
   | CacheHit T.Text
   | InstallFinished (Either ManagerError String)
   | ProfileCreated (Either ManagerError ())
