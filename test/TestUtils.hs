@@ -1,25 +1,104 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module TestUtils (
+  -- AppState for integration tests
   initialAppState,
   mockHandle,
   MockCall(..),
   newMockCallRef,
   recordedCalls,
-  IORefList
+  IORefList,
+
+  -- Mock FileSystem for unit tests
+  MockFileSystem(..),
+  MockFsState(..),
+  runMockFs
 ) where
 
 import Brick.Widgets.List (list)
 import qualified Data.Vector as Vec
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import Data.IORef
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Time (getCurrentTime, UTCTime)
 import System.Exit (ExitCode(..))
+import System.FilePath (isPathSeparator, normalise, (</>), takeDirectory, addTrailingPathSeparator, splitDirectories)
+import Data.List (isPrefixOf, nub, stripPrefix)
+import Data.Maybe (mapMaybe)
+import Control.Monad.State
 
 import Types
+import FileSystemUtils (MonadFileSystem(..))
+
+
+-- | State for the mock file system.
+data MockFsState = MockFsState
+    { mfsContents :: [(FilePath, String)] -- File path and content
+    , mfsLog      :: [String]
+    } deriving (Show, Eq)
+
+-- | The mock file system monad.
+newtype MockFileSystem a = MockFileSystem { runMockFileSystem :: State MockFsState a }
+    deriving (Functor, Applicative, Monad, MonadState MockFsState)
+
+-- | Run a computation in the mock file system.
+runMockFs :: MockFileSystem a -> MockFsState -> (a, MockFsState)
+runMockFs = runState . runMockFileSystem
+
+instance MonadFileSystem MockFileSystem where
+    fsListDirectory = mockFsListDirectory
+    fsDoesDirectoryExist = mockFsDoesDirectoryExist
+    fsDoesFileExist = mockFsDoesFileExist
+    fsMakeAbsolute p = return $ normalise p -- simplified
+    fsReadFileLBS p = do
+        st <- get
+        case lookup p (mfsContents st) of
+            Just content -> return $ L.fromStrict $ T.encodeUtf8 $ T.pack content
+            Nothing      -> error $ "File not found in mock: " ++ p
+    fsWriteFileLBS p content = do
+        modify $ \st -> st { mfsContents = (p, T.unpack $ T.decodeUtf8 $ L.toStrict content) : mfsContents st }
+    fsCreateDirectoryIfMissing _ _ = return ()
+    fsCopyFile src dest = do
+        st <- get
+        case lookup src (mfsContents st) of
+            Just content -> modify $ \s -> s { mfsContents = (dest, content) : mfsContents s }
+            Nothing      -> error $ "Source file not found in mock: " ++ src
+
+
+mockFsListDirectory :: FilePath -> MockFileSystem [FilePath]
+mockFsListDirectory dirPath = do
+    st <- get
+    let normalizedDirPath = addTrailingPathSeparator $ normalise dirPath
+    let allFiles = map (normalise . fst) (mfsContents st)
+    let directChildren = nub $ mapMaybe (getDirectChild normalizedDirPath) allFiles
+    return directChildren
+  where
+    getDirectChild :: FilePath -> FilePath -> Maybe FilePath
+    getDirectChild parent child =
+      case stripPrefix parent child of
+        Just relativePath ->
+          if null relativePath || isPathSeparator (head relativePath)
+          then Nothing
+          else Just $ head $ splitDirectories relativePath
+        Nothing -> Nothing
+
+mockFsDoesDirectoryExist :: FilePath -> MockFileSystem Bool
+mockFsDoesDirectoryExist dirPath = do
+    st <- get
+    let normalizedDirPath = addTrailingPathSeparator $ normalise dirPath
+    let allDirs = nub $ map (addTrailingPathSeparator . normalise . takeDirectory . fst) (mfsContents st)
+    return $ any (isPrefixOf normalizedDirPath) allDirs
+
+mockFsDoesFileExist :: FilePath -> MockFileSystem Bool
+mockFsDoesFileExist filePath = do
+    st <- get
+    let normalizedFilePath = normalise filePath
+    return $ any ((== normalizedFilePath) . fst) (mfsContents st)
 
 
 type IORefList a = IORef [a]
