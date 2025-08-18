@@ -18,7 +18,7 @@ import qualified Graphics.Vty as V
 import Types
 
 -- UI Drawing
-drawUI :: AppState -> [Widget Name]
+drawUI :: AppState m -> [Widget Name]
 drawUI st = [ui]
   where
     available = renderListPane "Available Versions" (appActiveList st == AvailableList) $

@@ -4,6 +4,7 @@ module Events (handleEvent, nextActiveList) where
 
 import Brick hiding (on)
 import qualified Graphics.Vty as V
+import Katip (KatipContextT)
 
 import Events.App (handleAppEvent)
 import Events.Available (handleAvailableEvents)
@@ -14,12 +15,12 @@ import Events.Sandbox (handleSandboxProfileEvents)
 import Types
 
 -- Event Handling
-handleEvent :: BrickEvent Name UIEvent -> EventM Name AppState ()
+handleEvent :: BrickEvent Name UIEvent -> EventM Name (AppState (KatipContextT IO)) ()
 handleEvent (AppEvent e) = handleAppEvent e
 handleEvent (VtyEvent e) = handleVtyEvent e
 handleEvent _            = return ()
 
-handleVtyEvent :: V.Event -> EventM Name AppState ()
+handleVtyEvent :: V.Event -> EventM Name (AppState (KatipContextT IO)) ()
 handleVtyEvent (V.EvKey (V.KChar '\t') []) = modify toggleActiveList
 handleVtyEvent (V.EvKey V.KEsc [])         = halt
 handleVtyEvent ev = do
@@ -40,6 +41,6 @@ nextActiveList BackupList         = AvailableModList
 nextActiveList AvailableModList   = ActiveModList
 nextActiveList ActiveModList      = AvailableList
 
-toggleActiveList :: AppState -> AppState
+toggleActiveList :: AppState m -> AppState m
 toggleActiveList st = st { appActiveList = nextActiveList (appActiveList st) }
 

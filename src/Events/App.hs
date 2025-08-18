@@ -3,18 +3,17 @@
 module Events.App (handleAppEvent) where
 
 import Brick
-import Brick.Widgets.List (list, listSelectedElement)
+import Brick.Widgets.List (list)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.Vector (fromList)
-import Data.Maybe (fromMaybe)
+import Katip (KatipContextT)
 
 import Events.Mods (refreshAvailableModsList)
 import GameManager (getInstalledVersions)
-import SandboxController (listProfiles)
 import Types
 
-handleAppEvent :: UIEvent -> EventM Name AppState ()
+handleAppEvent :: UIEvent -> EventM Name (AppState (KatipContextT IO)) ()
 handleAppEvent (LogMessage msg) = modify $ \st -> st { appStatus = msg }
 handleAppEvent (LogEvent msg) = modify $ \st -> st { appStatus = msg }
 handleAppEvent (ErrorEvent msg) = modify $ \st -> st { appStatus = "Error: " <> msg }
@@ -29,9 +28,6 @@ handleAppEvent (InstallFinished result) = do
             modify $ \s -> s { appStatus = T.pack msg, appInstalledVersions = newList }
 handleAppEvent (ProfileCreated (Right ())) = do
     modify $ \st -> st { appStatus = "Profile created successfully." }
-    -- After creating a profile, we might want to refresh the list.
-    -- This can be done by adding a new event to the channel or directly calling a refresh function.
-    -- For now, we just update the status.
 handleAppEvent (ProfileCreated (Left err)) =
     modify $ \st -> st { appStatus = "Error creating profile: " <> managerErrorToText err }
 

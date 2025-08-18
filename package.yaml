@@ -90,6 +90,8 @@ library:
   - Events.List
   - Events.Mods
   - Events.Sandbox
+  - App
+  - UI
 
 executables:
   cataclysm-launcher-brick-gemini-exe:
@@ -101,8 +103,6 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - cataclysm-launcher-brick-gemini
-    other-modules:
-    - UI
 
 tests:
   cataclysm-launcher-brick-gemini-test:
@@ -139,3 +139,4 @@ tests:
     - AppEventsSpec
     - TestUtils
     - IntegrationSpec
+    - TUISpec
