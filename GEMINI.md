@@ -257,7 +257,24 @@ This category focuses on the critical importance of thorough analysis and planni
     3.  **Analyze and Plan**: For every file found, use `read_file` to understand its context. Create a comprehensive plan to fix **all** affected locations at once.
     4.  **Execute and Verify**: Execute the plan and run `stack build` to verify the entire refactoring was successful.
 
-**4. Principle of Planned Module Refactoring (モジュール分割の計画実行原則)**
+**4. Principle of Core Data Type Refactoring (コアデータ型リファクタリングの原則)**
+-   **Principle:** When modifying a central, project-wide data type (e.g., `AppState`, `Config`, or a key type in `Types.Domain`), you **must first** identify **all** modules that use or are affected by it and create a comprehensive, multi-file refactoring plan. **Piecemeal modifications are strictly forbidden.**
+    *   (中心的かつプロジェクト横断的なデータ型（例: `AppState`, `Config`, `Types.Domain` の主要型）を変更する場合、**必ず**最初にその型を使用する、あるいは影響を受ける**すべての**モジュールを特定し、包括的な複数ファイルのリファクタリング計画を立てなければならない。**断片的な修正は固く禁止する。**)
+-   **Rationale:** This principle prevents the cascading build failures that occur when a core data type is refactored incompletely. A change to `AppState` is not a single change; it is a transaction that affects dozens of functions across the entire codebase. This rule forces a holistic, transactional approach, ensuring that all consequences of the change are understood and addressed in a single, atomic operation. This drastically improves efficiency, reduces rework, and prevents the "whack-a-mole" debugging cycle.
+    *   (この原則は、中心的データ型の不完全なリファクタリングによって引き起こされる連鎖的なビルド失敗を防ぐ。`AppState` への変更は単一の変更ではなく、コードベース全体の多数の関数に影響を与えるトランザクションである。本ルールは、全体的かつトランザクショナルなアプローチを強制し、変更がもたらすすべての影響を単一の不可分な操作で理解し対処することを保証する。これにより、効率性が劇的に向上し、手戻りが削減され、「モグラ叩き」的なデバッグサイクルを防止する。)
+-   **Action Steps:**
+    1.  **Declare the Change Target:** Explicitly state the core data type to be modified.
+        *   (変更対象のコアデータ型を宣言する。)
+    2.  **Search for Impact Scope:** Use `search_file_content` with the type name to find all usage locations across the entire project.
+        *   (データ型名を使い `search_file_content` を実行し、プロジェクト全体のすべての使用箇所を特定する。)
+    3.  **Analyze and Plan:** For every file found, use `read_file` to understand the context of the usage. Create a detailed checklist of all files and function signatures that will require modification.
+        *   (見つかった各ファイルについて `read_file` で文脈を分析する。修正が必要となるすべてのファイルと関数シグネチャの詳細なチェックリストを作成する。)
+    4.  **Execute as a Single Transaction:** Execute the plan by modifying all affected files as a single logical change. Do not proceed to the build step until all items on the checklist are complete.
+        *   (計画を実行し、影響を受けるすべてのファイルを単一の論理的変更として修正する。チェックリストの全項目が完了するまで、ビルドステップに進んではならない。)
+    5.  **Verify:** Run `stack build` only after all planned changes are complete.
+        *   (`stack build` は計画されたすべての変更が完了した後にのみ実行する。)
+
+**5. Principle of Planned Module Refactoring (モジュール分割の計画実行原則)**
 -   **Principle**: When refactoring a large module by splitting it, you **must** create a clear, acyclic dependency plan **before** moving any code.
 -   **Rationale**: This is a direct countermeasure to build failures caused by circular dependencies. It prohibits a reactive, trial-and-error approach.
 -   **Action Steps**:
@@ -266,7 +283,7 @@ This category focuses on the critical importance of thorough analysis and planni
     3.  **Design New Structure**: Design a new, acyclic file structure. Use low-level modules for shared definitions (like `Types.hs`) to break dependency cycles.
     4.  **Execute the Plan**: **Only after** the new structure is confirmed to be acyclic, begin moving code.
 
-**5. Principle of Planned Test Implementation (テスト実装の計画実行原則)**
+**6. Principle of Planned Test Implementation (テスト実装の計画実行原則)**
 -   **Principle**: When implementing test code, especially involving file system I/O, create a complete execution plan before implementation to avoid trial-and-error.
 -   **Rationale**: This prevents test failures caused by incorrect test environment setup (e.g., missing directories).
 -   **Action Steps**:
@@ -274,7 +291,7 @@ This category focuses on the critical importance of thorough analysis and planni
     2.  **Robust Implementation**: In setup code, prefer robust functions like `createDirectoryIfMissing True`.
     3.  **Self-Review**: Before running `stack test`, review the written test code to confirm the planned pre-conditions are met.
 
-**6. Principle of Incremental Integration (段階的インテグレーションの原則)**
+**7. Principle of Incremental Integration (段階的インテグレーションの原則)**
 -   **Principle**: When integrating a new or complex external library feature (e.g., Dhall), **you must first** verify its behavior in isolation within the test environment.
 -   **Rationale**: This mandates a "spike" or "toy example" approach to de-risk the integration of complex libraries, preventing hard-to-debug trial-and-error cycles.
 -   **Action Steps**:
@@ -289,22 +306,22 @@ This category focuses on the critical importance of thorough analysis and planni
 
 These principles guide the process of writing clean, robust, and maintainable Haskell code.
 
-**7. Principle of Stepwise Refinement (段階的リファクタリングの原則)**
+**8. Principle of Stepwise Refinement (段階的リファクタリングの原則)**
 -   **Principle**: As soon as a function or module begins to handle multiple responsibilities (e.g., business logic, file I/O, UI updates), **plan and execute a refactoring without delay.**
 -   **Rationale**: Early separation of concerns prevents future bugs and improves maintainability.
 
-**8. Principle of Cautious Concurrency (慎重な並行処理の原則)**
+**9. Principle of Cautious Concurrency (慎重な並行処理の原則)**
 -   **Principle**: When using `forkIO`, you **must** ensure that any exceptions within the forked thread are explicitly handled and communicated back to the main thread.
 -   **Rationale**: This prevents silent failures in background threads.
 -   **Action**: Use mechanisms like `try` combined with `MVar` or `BChan` to pass an `Either SomeException a` result back to the UI thread for safe processing. Do not rely on `throwIO` inside a forked thread.
 
-**9. Principle of Execution Context Normalization (実行コンテキスト正規化の原則)**
+**10. Principle of Execution Context Normalization (実行コンテキスト正規化の原則)**
 -   **Principle**:
     1.  **Absolute Paths**: When handling paths to managed resources (installed games, cache, configs), **immediately convert them to absolute paths.**
     2.  **UI-Thread Synchronization**: When launching a background process from the UI thread, **always ensure its result (success or error) is communicated back to the UI thread** via a channel (`BChan`, `MVar`, etc.).
 -   **Rationale**: Prevents runtime errors from changes in the working directory and avoids race conditions that `halt` the UI before a background task can complete.
 
-**10. Principle of String-Type Hygiene (文字列型の衛生原則)**
+**11. Principle of String-Type Hygiene (文字列型の衛生原則)**
 -   **Principle**: Maintain strict type hygiene when dealing with `String`, `Text`, and `ByteString`.
 -   **Rationale**: Prevents common `Couldn't match type` errors and data corruption bugs at I/O boundaries.
 -   **Action Steps**:
@@ -313,7 +330,7 @@ These principles guide the process of writing clean, robust, and maintainable Ha
     3.  **Convert at the Boundary**: Perform conversions immediately where the type is required.
     4.  **Choose Converters Wisely**: Explicitly acknowledge encoding assumptions (e.g., prefer `decodeUtf8` over `Char8.unpack` when UTF-8 is expected).
 
-**11. Principle of Data Flow Sanity (データフロー健全性の原則)**
+**12. Principle of Data Flow Sanity (データフロー健全性の原則)**
 -   **Principle**: When fixing a bug or adding a feature, you **must** analyze the entire lifecycle of the data involved (generation, state representation, UI display, and updates) to ensure consistency.
 -   **Rationale**: Prevents "can't see the forest for the trees" fixes where a backend change negatively impacts the UI state.
 -   **Action Steps**:
@@ -322,7 +339,7 @@ These principles guide the process of writing clean, robust, and maintainable Ha
     3.  **Analyze UI Impact**: Simulate how a change will alter `AppState` and the UI.
     4.  **Verify Update Flow**: Confirm the entire user-action-to-UI-feedback loop.
 
-**12. Principle of File Header Cleanliness (ファイルヘッダー清浄性の原則)**
+**13. Principle of File Header Cleanliness (ファイルヘッダー清浄性の原則)**
 -   **Principle**: The file header (pragmas, module declaration, imports) **must** be kept clean and free of duplicates.
 -   **Rationale**: Duplicate pragmas or unnecessary imports degrade readability and trigger compiler warnings.
 -   **Action Steps**:
@@ -333,7 +350,7 @@ These principles guide the process of writing clean, robust, and maintainable Ha
 
 These principles ensure that file and data operations are performed safely and reliably.
 
-**13. Principle of Safe File Writes (安全なファイル書き込みの原則)**
+**14. Principle of Safe File Writes (安全なファイル書き込みの原則)**
 -   **Principle**: File modifications **must**, by default, be performed by overwriting the entire file with `write_file`. The use of the `replace` tool is strictly limited to trivial, single-line, unambiguous substitutions.
 -   **Rationale**: The `replace` tool is powerful but brittle. It can fail silently or cause unexpected changes if the `old_string` is not perfectly unique or if there are subtle differences in whitespace or line endings. Adopting `write_file` as the primary modification strategy eradicates this entire class of frustrating, repetitive failures.
 -   **Action Steps**:
@@ -341,7 +358,7 @@ These principles ensure that file and data operations are performed safely and r
     2.  Limit `replace` to simple, single-line, unique substitutions where the risk of error is minimal (e.g., replacing a version number in a config file).
     3.  If `replace` fails even once for a given task, **immediately abandon it and switch to the `write_file` strategy.** Do not re-attempt the `replace`.
 
-**14. Principle of Data Integrity for Non-ASCII Text (非ASCIIテキストのデータ完全性原則)**
+**15. Principle of Data Integrity for Non-ASCII Text (非ASCIIテキストのデータ完全性原則)**
 -   **Principle**: To prevent data corruption (e.g., Mojibake) when writing non-ASCII text, a strict write-verify-correct protocol must be followed.
 -   **Action Steps**:
     1.  **Write**: Execute `write_file`.
@@ -354,18 +371,18 @@ These principles ensure that file and data operations are performed safely and r
 
 These principles focus on maintaining a healthy and reproducible build environment.
 
-**15. Principle of Proactive Dependency Management (プロアクティブな依存関係管理の原則)**
+**16. Principle of Proactive Dependency Management (プロアクティブな依存関係管理の原則)**
 -   **Principle**: When a standard library function is needed, proactively add the corresponding package to `package.yaml` *before* attempting to build.
 -   **Rationale**: Reduces build-fail-fix cycles for common, predictable dependencies.
 
-**16. Principle of Build Configuration File Synchronization (ビルド設定ファイルの同期原則)**
+**17. Principle of Build Configuration File Synchronization (ビルド設定ファイルの同期原則)**
 -   **Principle**: The `package.yaml` and `<project-name>.cabal` files **must** always be synchronized within the same commit.
 -   **Rationale**: `stack` uses `package.yaml` to generate the `.cabal` file. Desynchronization compromises build reproducibility.
 -   **Action Steps**:
     1.  After modifying `package.yaml`, run `stack build` to update the `.cabal` file *before* committing.
     2.  Verify with `git status` that both files are staged together.
 
-**17. Principle of Temporary Dependency Cleanup (一時的な依存関係のクリーンアップ原則)**
+**18. Principle of Temporary Dependency Cleanup (一時的な依存関係のクリーンアップ原則)**
 -   **Principle**: Before removing a dependency that was added for temporary testing or debugging, confirm that the final production code does not still require it.
 -   **Rationale**: Prevents removing a dependency that has been promoted from temporary to permanent use.
 -   **Action Steps**:
@@ -376,11 +393,11 @@ These principles focus on maintaining a healthy and reproducible build environme
 
 These principles provide a structured approach to diagnosing and resolving errors.
 
-**18. Principle of Self-Accountability (自己責任の原則)**
+**19. Principle of Self-Accountability (自己責任の原則)**
 -   **Principle**: When an unexpected error occurs, **thoroughly review your own recent changes with `git diff HEAD` before suspecting external factors.**
 -   **Rationale**: The root cause is often a subtle typo or logic error you just introduced.
 
-**19. Principle of Runtime Environment Analysis (実行時環境分析の原則)**
+**20. Principle of Runtime Environment Analysis (実行時環境分析の原則)**
 -   **Principle**: When a runtime error occurs that is not a pure logic bug (e.g., "permission denied", "file not found"), a systematic analysis of the environment interaction is required.
 -   **Rationale**: Treats runtime exceptions as signals about the execution context, leading to more robust solutions.
 -   **Action Steps**:
@@ -391,7 +408,7 @@ These principles provide a structured approach to diagnosing and resolving error
 
 ### Category 6: Testing & Tool Interaction
 
-**20. Principle of High-Fidelity Mocking / Test Setup (高忠実度モッキング/セットアップの原則)**
+**21. Principle of High-Fidelity Mocking / Test Setup (高忠実度モッキング/セットアップの原則)**
 -   **Principle:** When testing a function with side effects (especially file I/O), the test setup **must** explicitly create all environmental preconditions (e.g., directories, files, environment variables) that the function expects to exist. Mocks must not only return values but also simulate the state changes the real function would cause.
 -   **Rationale:** Functions with side effects often fail not because of their internal logic, but because the environment they expect has not been correctly prepared. This principle forces a meticulous setup of the test environment to mirror reality, preventing runtime errors like "No such file or directory" and ensuring the test validates the function's logic, not the test's setup.
 -   **Action Steps:**
@@ -400,7 +417,7 @@ These principles provide a structured approach to diagnosing and resolving error
     3.  **Implement Setup:** In the test's setup phase (e.g., inside `before` or at the start of an `it` block), write explicit code to create every single precondition (e.g., use `createDirectoryIfMissing True ...`).
     4.  **Simulate State Changes:** If using mocks, ensure the mock function simulates the real function's state change (e.g., a mock `download` function must also create a mock file in the mock filesystem).
 
-**21. Principle of Robust Command Execution (堅牢なコマンド実行の原則)**
+**22. Principle of Robust Command Execution (堅牢なコマンド実行の原則)**
 - **Principle:** When passing complex strings (multi-line or containing special characters) to a shell command, **prefer passing the argument via a file** (e.g., `git commit -F <file>`) over passing it directly as a command-line argument (e.g., `git commit -m "..."`).
 - **Rationale:** This principle prevents unexpected command failures caused by shell interpretation or security restrictions. By writing the complex string to a temporary file and then passing that file to the command, the risk of the argument being misinterpreted by the shell is eliminated. This avoids rework, such as that encountered with `git commit`, and improves development efficiency.
 - **Action Steps:**
