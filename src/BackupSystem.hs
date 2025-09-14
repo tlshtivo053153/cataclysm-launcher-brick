@@ -1,7 +1,5 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module BackupSystem (
     listBackups,
@@ -16,30 +14,24 @@ import           Data.Text              (pack, unpack)
 import           Data.Time.Format       (defaultTimeLocale, formatTime)
 import           System.FilePath        ((</>), takeBaseName)
 import           Types
-import           Katip
 
 -- | List all backups for a given sandbox profile.
 -- Creates the backup directory if it doesn't exist.
-listBackups :: (MonadIO m, MonadCatch m, KatipContext m) => Handle m -> Config -> SandboxProfile -> m (Either ManagerError [BackupInfo])
-listBackups handle config profile = katipAddContext (sl "profile_name" (spName profile)) $ do
-    $(logTM) InfoS "Listing backups."
+listBackups :: (MonadIO m, MonadCatch m) => Handle m -> Config -> SandboxProfile -> m (Either ManagerError [BackupInfo])
+listBackups handle config profile = do
     let profileName = unpack (spName profile)
     let backupBaseDir = unpack (backupDirectory config)
     let backupDir = backupBaseDir </> profileName
-
+    
     hCreateDirectoryIfMissing handle True backupDir
-
+    
     result <- try (hListDirectory handle backupDir)
     case result of
-        Left (e :: SomeException) -> do
-            let errMsg = "Failed to list backups in " <> pack backupDir <> ": " <> pack (show e)
-            $(logTM) ErrorS $ ls errMsg
-            return $ Left $ FileSystemError errMsg
+        Left (e :: SomeException) -> return $ Left $ FileSystemError $ pack $ "Failed to list backups in " ++ backupDir ++ ": " ++ show e
         Right names -> do
             let paths = map (backupDir </>) names
             tarFiles <- filterM (isTarFile handle) paths
             let backupInfos = map toBackupInfo tarFiles
-            $(logTM) InfoS $ "Found " <> ls (show $ length backupInfos) <> " backups."
             return $ Right backupInfos
   where
     isTarFile :: MonadIO m => Handle m -> FilePath -> m Bool
@@ -58,30 +50,27 @@ listBackups handle config profile = katipAddContext (sl "profile_name" (spName p
 
 -- | Create a new backup for a given sandbox profile.
 -- The backup is an uncompressed tar archive of the 'save' directory.
-createBackup :: (MonadIO m, MonadCatch m, KatipContext m) => Handle m -> Config -> SandboxProfile -> m (Either ManagerError ())
-createBackup handle config profile = katipAddContext (sl "profile_name" (spName profile)) $ do
-    $(logTM) InfoS "Creating backup."
+createBackup :: (MonadIO m, MonadCatch m) => Handle m -> Config -> SandboxProfile -> m (Either ManagerError ())
+createBackup handle config profile = do
     let saveDir = spDataDirectory profile </> "save"
     let profileName = unpack (spName profile)
     let backupBaseDir = unpack (backupDirectory config)
     let backupDir = backupBaseDir </> profileName
-
+    
     saveDirExists <- hDoesDirectoryExist handle saveDir
     if not saveDirExists
-    then do
-        let errMsg = "Save directory not found for backup: " <> pack saveDir
-        $(logTM) ErrorS $ ls errMsg
-        return $ Left $ FileSystemError errMsg
+    then return $ Left $ FileSystemError $ "Save directory not found for backup: " <> pack saveDir
     else do
         hCreateDirectoryIfMissing handle True backupDir
-
+        
         currentTime <- hGetCurrentTime handle
         let timestamp = formatTime defaultTimeLocale "%Y-%m-%d_%H-%M-%S" currentTime
         let backupFileName = timestamp ++ ".tar"
         let backupFilePath = backupDir </> backupFileName
-
+        
+        -- The directory containing the 'save' directory
         let parentOfSaveDir = spDataDirectory profile
-
+        
         let command = unwords
                 [ "tar"
                 , "-cf"
@@ -90,15 +79,8 @@ createBackup handle config profile = katipAddContext (sl "profile_name" (spName 
                 , "\"" ++ parentOfSaveDir ++ "\""
                 , "save"
                 ]
-
-        $(logTM) InfoS $ "Executing backup command: " <> ls command
+        
         result <- try (hCallCommand handle command)
         case result of
-            Left (e :: SomeException) -> do
-                let errMsg = "tar command failed: " <> pack (show e)
-                $(logTM) ErrorS $ ls errMsg
-                return $ Left $ ArchiveError errMsg
-            Right _ -> do
-                $(logTM) InfoS "Backup created successfully."
-                return $ Right ()
-
+            Left (e :: SomeException) -> return $ Left $ ArchiveError $ pack $ "tar command failed: " ++ show e
+            Right _ -> return $ Right ()

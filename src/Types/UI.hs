@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-
 module Types.UI (
     -- UI-related types
     AppState(..),
@@ -10,7 +8,6 @@ module Types.UI (
 import Brick.Widgets.List (List)
 import Brick.BChan (BChan)
 import qualified Data.Text as T
-import Katip (LogEnv, LogContexts, Namespace)
 import Types.Domain
 import Types.Handle
 import Types.Event
@@ -19,7 +16,7 @@ data Name = AvailableListName | InstalledListName | SandboxProfileListName | Bac
 
 data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList | AvailableModList | ActiveModList deriving (Eq, Show)
 
-data AppState m = AppState
+data AppState = AppState
     { appAvailableVersions :: List Name GameVersion
     , appInstalledVersions :: List Name InstalledVersion
     , appSandboxProfiles   :: List Name SandboxProfile
@@ -28,11 +25,8 @@ data AppState m = AppState
     , appActiveMods        :: List Name ModInfo
     , appInstalledModsCache :: [ModInfo] -- Non-UI cache of installed mods
     , appConfig            :: Config
-    , appHandle            :: Handle m
+    , appHandle            :: Handle IO
     , appStatus            :: T.Text
     , appActiveList        :: ActiveList
     , appEventChannel      :: BChan UIEvent
-    , appLogEnv            :: LogEnv
-    , appLogContext        :: LogContexts
-    , appLogNamespace      :: Namespace
     }

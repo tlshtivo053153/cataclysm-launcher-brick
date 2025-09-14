@@ -8,12 +8,12 @@ import qualified Graphics.Vty as V
 
 import Types
 
-handleListEvents :: V.Event -> ActiveList -> EventM Name (AppState m) ()
+handleListEvents :: V.Event -> ActiveList -> EventM Name AppState ()
 handleListEvents (V.EvKey V.KUp []) activeList = modify $ \st -> handleListMove st listMoveUp activeList
 handleListEvents (V.EvKey V.KDown []) activeList = modify $ \st -> handleListMove st listMoveDown activeList
 handleListEvents _ _ = return ()
 
-handleListMove :: AppState m -> (forall a. List Name a -> List Name a) -> ActiveList -> AppState m
+handleListMove :: AppState -> (forall a. List Name a -> List Name a) -> ActiveList -> AppState
 handleListMove st moveFn activeList =
     case activeList of
         AvailableList      -> st { appAvailableVersions = moveFn (appAvailableVersions st) }

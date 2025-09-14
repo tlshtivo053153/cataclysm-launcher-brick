@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -9,43 +8,61 @@ module Handle (
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
-import           Data.Time.Clock (UTCTime, getCurrentTime)
+import qualified Data.Text.Encoding as T
+import           Data.Time (UTCTime, getCurrentTime)
+import           Data.Time.Format       (defaultTimeLocale, formatTime)
+import           Control.Exception (SomeException)
+import           Control.Monad (void)
+import           Control.Monad.Catch (MonadCatch, try)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Control.Monad.Catch (MonadCatch)
-import           System.Directory (doesFileExist, createDirectoryIfMissing, doesDirectoryExist, removeDirectoryRecursive, listDirectory, makeAbsolute, removeFile, doesPathExist, pathIsSymbolicLink)
-import           System.FilePath ((</>))
+import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, makeAbsolute, pathIsSymbolicLink, removeDirectoryRecursive, removeFile)
 import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
-import           Katip
-import           Control.Monad (void)
+import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, addRequestHeader)
+
 
 import qualified GitHubIntegration as GH
 import           Types
 
-liveHandle :: (MonadIO m, MonadCatch m, KatipContext m) => Handle m
+-- | Formats time for the If-Modified-Since header.
+formatHttpTime :: UTCTime -> String
+formatHttpTime = formatTime defaultTimeLocale "%a, %d %b %Y %H:%M:%S GMT"
+
+liveHandle :: (MonadIO m, MonadCatch m) => Handle m
 liveHandle = Handle
     { hDoesFileExist = liftIO . doesFileExist
     , hReadFile = liftIO . B.readFile
-    , hWriteFile = \p d -> liftIO $ B.writeFile p d
-    , hCreateDirectoryIfMissing = \b p -> liftIO $ createDirectoryIfMissing b p
+    , hWriteFile = \fp content -> liftIO $ B.writeFile fp content
+    , hDownloadAsset = \url -> do
+        result <- GH.downloadAsset url
+        return $ case result of
+            Left e -> Left e
+            Right assetData -> Right $ L.toStrict assetData
+    , hCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
     , hDoesDirectoryExist = liftIO . doesDirectoryExist
     , hRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
+    , hWriteBChan = \chan event -> liftIO $ writeBChan chan event
     , hListDirectory = liftIO . listDirectory
-    , hDownloadAsset = GH.downloadAsset
-    , hFetchReleasesFromAPI = GH.fetchReleasesFromAPI
-    , hGetCurrentTime = liftIO getCurrentTime
-    , hWriteBChan = \c e -> liftIO $ writeBChan c e
-    , hReadProcessWithExitCode = \c a i -> liftIO $ readProcessWithExitCode c a i
-    , hCreateProcess = \c a d -> liftIO $ void $ createProcess (proc c a){ cwd = d }
-    , hLaunchGame = \c a -> liftIO $ void $ createProcess $ proc c a
-    , hCallCommand = liftIO . callCommand
     , hMakeAbsolute = liftIO . makeAbsolute
-    , hCreateSymbolicLink = \s d -> liftIO $ createSymbolicLink s d
+    , hGetCurrentTime = liftIO getCurrentTime
+    , hCallCommand = liftIO . callCommand
+    , hFetchReleasesFromAPI = \url msince -> liftIO $ do
+        eresponse <- try $ do
+            request' <- parseRequest url
+            let requestWithAgent = setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
+            let request = case msince of
+                  Nothing -> requestWithAgent
+                  Just since -> addRequestHeader "If-Modified-Since" (T.encodeUtf8 $ T.pack $ formatHttpTime since) requestWithAgent
+            httpLBS request
+        case eresponse of
+            Left (e :: SomeException) -> return $ Left (show e)
+            Right response -> return $ Right $ getResponseBody response
+    , hReadProcessWithExitCode = \cmd args input -> liftIO $ readProcessWithExitCode cmd args input
+    , hCreateProcess = \cmd args mcwd -> liftIO $ void $ createProcess (proc cmd args) { cwd = mcwd }
+    , hLaunchGame = \cmd args -> liftIO $ void $ createProcess (proc cmd args)
+    , hCreateSymbolicLink = \src dest -> liftIO $ createSymbolicLink src dest
     , hDoesSymbolicLinkExist = liftIO . pathIsSymbolicLink
     , hGetSymbolicLinkTarget = liftIO . readSymbolicLink
     , hRemoveFile = liftIO . removeFile
-    , hLog = \sev msg -> $(logTM) sev msg
-    , hDoesPathExist = liftIO . doesPathExist
-    , hPathIsSymbolicLink = liftIO . pathIsSymbolicLink
     }
