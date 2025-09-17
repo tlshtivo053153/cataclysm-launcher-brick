@@ -126,16 +126,27 @@ tests:
     - unix
     - dhall
     other-modules:
+    - ArchiveUtilsSpec
+    - BackupSystemSpec
+    - ConfigSpec
+    - ContentManagerSpec
     - FileSystemUtilsSpec
     - GitHubIntegrationSpec
-    - GameManagerSpec
-    - SandboxControllerSpec
-    - BackupSystemSpec
+    - HandleSpec
+    - IntegrationSpec
     - ModHandlerSpec
     - ModUtilsSpec
-    - ConfigSpec
-    - ArchiveUtilsSpec
-    - HandleSpec
-    - AppEventsSpec
+    - SandboxControllerSpec
     - TestUtils
-    - IntegrationSpec
+    - Events.AppSpec
+    - Events.AvailableSpec
+    - Events.InstalledSpec
+    - Events.ListSpec
+    - Events.ModsSpec
+    - Events.SandboxSpec
+    - GameManager.InstallSpec
+    - GitHubIntegration.InternalSpec
+    - Types.DomainSpec
+    - Types.EventSpec
+    - Types.HandleSpec
+    - Types.UISpec

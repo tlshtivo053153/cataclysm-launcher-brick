@@ -22,7 +22,8 @@ import qualified GitHubIntegration.Internal as GH
 -- Mock data
 mockConfig :: Config
 mockConfig = Config
-  { launcherRootDirectory = "/root"
+  {
+    launcherRootDirectory = "/root"
   , cacheDirectory = "/root/cache"
   , sysRepoDirectory = "/root/sys-repo"
   , userRepoDirectory = "/root/user-repo"
@@ -37,16 +38,18 @@ mockConfig = Config
 
 mockReleases :: [GH.Release]
 mockReleases =
-  [ GH.Release { GH.tagName = "v1.0", GH.name = "Version 1.0", GH.prerelease = False, GH.published_at = "2025-01-01T00:00:00Z", GH.assets = [GH.Asset "url1.0"] }
+  [
+    GH.Release { GH.tagName = "v1.0", GH.name = "Version 1.0", GH.prerelease = False, GH.published_at = "2025-01-01T00:00:00Z", GH.assets = [GH.Asset "url1.0"] }
   , GH.Release { GH.tagName = "v0.9", GH.name = "Version 0.9", GH.prerelease = True, GH.published_at = "2024-12-31T00:00:00Z",  GH.assets = [GH.Asset "url0.9"] }
   ]
 
 encodedMockReleases :: L.ByteString
-encodedMockReleases = L8.pack "[{\"assets\":[{\"browser_download_url\":\"url1.0\"}],\"name\":\"Version 1.0\",\"prerelease\":false,\"tag_name\":\"v1.0\"},{\"assets\":[{\"browser_download_url\":\"url0.9\"}],\"name\":\"Version 0.9\",\"prerelease\":true,\"tag_name\":\"v0.9\"}]"
+encodedMockReleases = L8.pack "[{\"assets\":[{\"browser_download_url\":\"url1.0\"}],\"name\":\"Version 1.0\",\"prerelease\":false,\"published_at\":\"2025-01-01T00:00:00Z\",\"tag_name\":\"v1.0\"},{\"assets\":[{\"browser_download_url\":\"url0.9\"}],\"name\":\"Version 0.9\",\"prerelease\":true,\"published_at\":\"2024-12-31T00:00:00Z\",\"tag_name\":\"v0.9\"}]"
 
 mockGameVersions :: [GameVersion]
 mockGameVersions =
-  [ GameVersion { gvVersionId = "v1.0", gvVersion = "Version 1.0", gvUrl = "url1.0", gvReleaseType = Stable }
+  [
+    GameVersion { gvVersionId = "v1.0", gvVersion = "Version 1.0", gvUrl = "url1.0", gvReleaseType = Stable }
   , GameVersion { gvVersionId = "v0.9", gvVersion = "Version 0.9", gvUrl = "url0.9", gvReleaseType = Development }
   ]
 
@@ -56,7 +59,8 @@ mockTime = UTCTime (fromGregorian 2025 1 1) (secondsToDiffTime 0)
 
 -- Test State
 data TestHandles = TestHandles
-    { thFileSystem :: IORef (Map.Map FilePath B.ByteString)
+    {
+      thFileSystem :: IORef (Map.Map FilePath B.ByteString)
     , thApiContent :: IORef (Either String L.ByteString)
     , thApiCalled  :: IORef Bool
     , thHandle     :: Handle IO
@@ -69,7 +73,8 @@ createTestHandles = do
     apiRef <- newIORef (Right "")
     calledRef <- newIORef False
     let handle = Handle
-            { hDoesFileExist = \fp -> Map.member fp <$> readIORef fsRef
+            {
+              hDoesFileExist = \fp -> Map.member fp <$> readIORef fsRef
             , hReadFile = \fp -> Data.Maybe.fromMaybe (error "file not found") . Map.lookup fp <$> readIORef fsRef
             , hWriteFile = \fp content -> modifyIORef' fsRef (Map.insert fp content)
             , hGetCurrentTime = return mockTime
@@ -155,7 +160,7 @@ spec = before createTestHandles $ do
       
       -- Verify
       case result of
-        Left err -> "Failed to parse cached releases" `shouldBe` take 30 err
+        Left err -> take 31 err `shouldBe` "Failed to parse cached releases"
         Right _  -> expectationFailure "Expected a Left value but got Right"
       
       apiCalled <- readIORef (thApiCalled th)

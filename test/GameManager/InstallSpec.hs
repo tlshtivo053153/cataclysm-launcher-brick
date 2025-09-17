@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
 
-module GameManagerSpec (spec) where
+module GameManager.InstallSpec (spec) where
 
 import qualified Data.ByteString as B
 import qualified Data.Map as Map
@@ -13,8 +13,7 @@ import           System.FilePath ((</>))
 import           Test.Hspec
 import           Brick.BChan (newBChan)
 
-import           FileSystemUtils (findCommonPrefix)
-import           GameManager
+import           GameManager.Install
 import           Types
 
 -- Test State for mocking file system and network
@@ -132,23 +131,3 @@ spec = do
       -- Check that the cache content was used (implicitly by successful extraction)
       -- and that the file system still contains the original cached data.
       Map.lookup cachePath (tsFileSystem finalState) `shouldBe` Just cachedContent
-
-
-  describe "findCommonPrefix" $ do
-    it "returns Nothing for empty list" $
-      findCommonPrefix [] `shouldBe` Nothing
-
-    it "returns the parent directory for a single file path" $
-      findCommonPrefix ["a/b/c"] `shouldBe` Just "a/b/"
-
-    it "finds the correct common prefix for multiple paths" $
-      findCommonPrefix ["a/b/c", "a/b/d", "a/b/e/f"] `shouldBe` Just "a/b/"
-
-    it "returns Nothing if no common prefix" $
-      findCommonPrefix ["a/b", "c/d"] `shouldBe` Nothing
-
-    it "handles root paths correctly" $
-      findCommonPrefix ["/a/b", "/a/c"] `shouldBe` Just "/a/"
-
-    it "handles identical paths" $
-      findCommonPrefix ["a/b/c", "a/b/c"] `shouldBe` Just "a/b/c/"

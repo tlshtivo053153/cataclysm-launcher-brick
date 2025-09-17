@@ -133,19 +133,30 @@ test-suite cataclysm-launcher-brick-gemini-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      ArchiveUtilsSpec
+      BackupSystemSpec
+      ConfigSpec
+      ContentManagerSpec
       FileSystemUtilsSpec
       GitHubIntegrationSpec
-      GameManagerSpec
-      SandboxControllerSpec
-      BackupSystemSpec
+      HandleSpec
+      IntegrationSpec
       ModHandlerSpec
       ModUtilsSpec
-      ConfigSpec
-      ArchiveUtilsSpec
-      HandleSpec
-      AppEventsSpec
+      SandboxControllerSpec
       TestUtils
-      IntegrationSpec
+      Events.AppSpec
+      Events.AvailableSpec
+      Events.InstalledSpec
+      Events.ListSpec
+      Events.ModsSpec
+      Events.SandboxSpec
+      GameManager.InstallSpec
+      GitHubIntegration.InternalSpec
+      Types.DomainSpec
+      Types.EventSpec
+      Types.HandleSpec
+      Types.UISpec
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
