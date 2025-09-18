@@ -29,7 +29,7 @@ You are a dedicated, expert Haskell engineer focused solely on this project. You
 - Analyze and report: current situation, attempts made, failure analysis, next strategy
 - Never repeat the same failed approach without modification
 
-### Repetitive Failure Protocol (反復的失敗プロトコル)
+### Repetitive Failure Protocol
 - **CRITICAL**: If the exact same user-visible error (e.g., a build failure with the same error message, persistent data corruption after a write-verify-rewrite cycle) occurs **three consecutive times**, you must stop the current approach.
 - **Action Steps**:
   1.  **STOP**: Immediately cease the failing approach. Do not attempt the same fix a fourth time.
@@ -49,7 +49,7 @@ You are a dedicated, expert Haskell engineer focused solely on this project. You
 - **Action Steps**:
   1.  **Write**: Execute `write_file` or `replace` as planned.
   2.  **Verify**: Immediately after the write operation, use the `read_file` tool to read the same file back.
-  3.  **Check**: Compare the original text with the content read back, specifically looking for corruption indicators like the Unicode replacement character (`�`).
+  3.  **Check**: Compare the original text with the content read back, specifically looking for corruption indicators like the Unicode replacement character (``).
   4.  **Auto-Correct**: If corruption is detected:
       a. Report the failure and the detection of corruption to the user.
       b. Immediately re-attempt the write operation with the original, correct content.
@@ -113,7 +113,7 @@ Follow Conventional Commits format:
 - **DRY/SOLID**: Avoid duplication, follow SOLID principles for loose coupling and high cohesion
 - **Type-Driven Development**: Leverage GHC's type checker as your ally for refactoring and development
 
-### Principle of Testable Abstractions (テスト容易性のための抽象化原則)
+### Principle of Testable Abstractions
 - **Rule:** When implementing or refactoring any function that involves side effects (IO, network, file system), the primary design goal is to separate pure logic from impure actions. Abstractions **must** be used from the outset to facilitate testing.
 - **Rationale:** This prevents creating code that is difficult or impossible to unit-test, which avoids significant rework and improves reliability.
 - **Action:**
@@ -122,13 +122,13 @@ Follow Conventional Commits format:
 
 - **Example:**
 
-  - **Anti-Pattern (避けるべきパターン):**
+  - **Anti-Pattern:**
     ```haskell
     -- This function is hard to test without running real IO.
     fetchGameVersions :: Config -> IO (Either String [GameVersion])
     ```
 
-  - **Correct Pattern (遵守すべきパターン):**
+ - **Correct Pattern:**
     ```haskell
     -- This function is testable by providing mock instances for the constraints.
     fetchGameVersions :: (MonadHttp m, MonadFileSystem m) => Config -> m (Either String [GameVersion])

@@ -1,11 +1,13 @@
 # GEMINI Documentation
 
-The GEMINI documentation has been split into the following files:
+This document provides guidelines and best practices for developing, implementing, testing, and debugging Haskell projects. To ensure the quality, maintainability, and reliability of the project, please follow the guidelines categorized below.
 
-- [00_development_guidelines.md](doc/gemini/00_development_guidelines.md)
-- [01_pre_implementation_analysis_and_planning.md](doc/gemini/01_pre_implementation_analysis_and_planning.md)
-- [02_implementation_and_code_quality.md](doc/gemini/02_implementation_and_code_quality.md)
-- [03_file_and_data_manipulation.md](doc/gemini/03_file_and_data_manipulation.md)
-- [04_build_and_dependency_management.md](doc/gemini/04_build_and_dependency_management.md)
-- [05_debugging_and_error_handling.md](doc/gemini/05_debugging_and_error_handling.md)
-- [06_testing_and_tool_interaction.md](doc/gemini/06_testing_and_tool_interaction.md)
+## Category List
+
+- [00_development_guidelines.md](doc/gemini/00_development_guidelines.md) - Overall project development policies, security rules, Haskell design philosophy, code quality standards, etc.
+- [01_pre_implementation_analysis_and_planning.md](doc/gemini/01_pre_implementation_analysis_and_planning.md) - Principles for pre-implementation analysis and planning. API diligence, refactoring impact analysis, test implementation planning, etc.
+- [02_implementation_and_code_quality.md](doc/gemini/02_implementation_and_code_quality.md) - Principles for implementation and code quality. Stepwise refactoring, concurrency, string-type hygiene, data flow sanity, etc.
+- [03_file_and_data_manipulation.md](doc/gemini/03_file_and_data_manipulation.md) - Principles for file and data manipulation. Safe file writes, data integrity for non-ASCII text, etc.
+- [04_build_and_dependency_management.md](doc/gemini/04_build_and_dependency_management.md) - Principles for build and dependency management. Proactive dependency management, build configuration file synchronization, etc.
+- [05_debugging_and_error_handling.md](doc/gemini/05_debugging_and_error_handling.md) - Principles for debugging and error handling. Self-accountability, runtime environment analysis, etc.
+- [06_testing_and_tool_interaction.md](doc/gemini/06_testing_and_tool_interaction.md) - Principles for testing and tool interaction. High-fidelity mocking, robust command execution, etc.
