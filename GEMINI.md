@@ -14,6 +14,13 @@ These guidelines are living documents. If you have suggestions for improvements,
 
 The guidelines are organized by development phase. Each section includes a brief summary of its content.
 
+<!---
+@doc/gemini/00_core_rules.md
+@doc/gemini/01_planning_and_design.md
+@doc/gemini/02_implementation.md
+@doc/gemini/03_testing_and_debugging.md
+-->
+
 - [**00 Core Rules**](doc/gemini/00_core_rules.md)
   - *Summary: Defines the universal rules for the AI agent's behavior, communication, security, and commit standards.*
 
