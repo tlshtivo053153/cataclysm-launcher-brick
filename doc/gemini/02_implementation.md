@@ -81,6 +81,10 @@ This document provides principles for writing high-quality, maintainable, and ro
     2.  Limit `replace` to simple, unique substitutions where the risk of error is minimal.
     3.  If `replace` fails even once for a given task, **immediately abandon it and switch to the `write_file` strategy.**
 
+**Principle of Exact Replacement [CRITICAL]**
+-   **Principle**: When using the `replace` tool, you **must** first execute `read_file` and then **copy and paste the exact, unmodified text** from its output to use as the `old_string` argument. Relying on memory or inference is strictly forbidden.
+-   **Rationale**: The vast majority of `replace` tool failures stem from minute discrepancies between the intended `old_string` and the actual file content (e.g., whitespace, newlines, comments). This principle enforces that the `read_file` output is the single source of truth, maximizing the success rate of `replace` and eliminating cycles of frustrating trial-and-error.
+
 **Data Integrity Protocol for Non-ASCII Text [CRITICAL]**
 - **Principle**: To prevent data corruption (e.g., Mojibake) when writing non-ASCII text, a strict write-then-verify protocol must be followed.
 - **Action Steps**:

@@ -10,6 +10,10 @@ This document provides a structured approach to testing, debugging, and error ha
 - Use example-based tests (`Hspec`) for specific behaviors.
 - Mock external dependencies using the Handle pattern or typeclasses to test pure logic.
 
+### Principle of Test Suite Integration [HIGH]
+-   **Principle**: When creating a new test file (e.g., `*Spec.hs`), you **must** also register it with the main test runner (e.g., `test/Spec.hs`) in the same step. The two actions are indivisible.
+-   **Rationale**: A new test file is silently ignored if it is not registered with the test runner. This creates a false sense of security that coverage has improved when, in fact, the new tests are not even running. This principle prevents such omissions by ensuring that test creation and integration are treated as a single, atomic operation.
+
 ### Principle of Planned Test Implementation [HIGH]
 -   **Principle**: When implementing test code, especially involving file system I/O, create a complete execution plan before implementation to avoid trial-and-error.
 -   **Rationale**: This prevents test failures caused by incorrect test environment setup (e.g., missing directories).

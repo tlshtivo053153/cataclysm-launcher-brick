@@ -53,3 +53,7 @@ This category focuses on the critical importance of thorough analysis and planni
     2.  **Analyze Dependencies**: For each candidate, map out its dependencies (what it needs, and what will need it).
     3.  **Design New Structure**: Design a new, acyclic file structure. Use low-level modules for shared definitions (like `Types.hs`) to break dependency cycles.
     4.  **Execute the Plan**: **Only after** the new structure is confirmed to be acyclic, begin moving code.
+
+**5. Principle of Entry Point Verification [HIGH]**
+-   **Principle**: When a task appears to target a specific file (e.g., `Lib.hs`), you **must** first verify how that file is called from the application's entry point or main logic hub (e.g., `Main.hs`, `App.hs`).
+-   **Rationale**: Over time, a codebase evolves, and a file's name may no longer reflect its actual role. This principle mandates an initial analysis of the call hierarchy to confirm that the target file is indeed the correct focus for the task, rather than a wrapper or an obsolete remnant. This prevents rework by ensuring effort is directed at the correct location from the start.
