@@ -1,70 +1,74 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Events.App (handleAppEvent) where
+module Events.App (handleAppEvent, handleAppEventPure) where
 
 import Brick
-import Brick.Widgets.List (list, listSelectedElement)
+import Brick.Widgets.List (list)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.Vector (fromList)
-import Data.Maybe (fromMaybe)
 
 import Events.Mods (refreshAvailableModsList)
 import GameManager (getInstalledVersions)
-import SandboxController (listProfiles)
 import Types
 
+-- | Handles IO-related events and calls the pure event handler.
 handleAppEvent :: UIEvent -> EventM Name AppState ()
-handleAppEvent (LogMessage msg) = modify $ \st -> st { appStatus = msg }
-handleAppEvent (LogEvent msg) = modify $ \st -> st { appStatus = msg }
-handleAppEvent (ErrorEvent msg) = modify $ \st -> st { appStatus = "Error: " <> msg }
-handleAppEvent (CacheHit msg) = modify $ \st -> st { appStatus = msg }
-handleAppEvent (InstallFinished result) = do
-    case result of
-        Left err -> modify $ \st -> st { appStatus = "Error: " <> managerErrorToText err }
-        Right msg -> do
-            st <- get
-            installedVec <- liftIO $ getInstalledVersions (appConfig st)
-            let newList = list InstalledListName (fromList installedVec) 1
-            modify $ \s -> s { appStatus = T.pack msg, appInstalledVersions = newList }
-handleAppEvent (ProfileCreated (Right ())) = do
-    modify $ \st -> st { appStatus = "Profile created successfully." }
-    -- After creating a profile, we might want to refresh the list.
-    -- This can be done by adding a new event to the channel or directly calling a refresh function.
-    -- For now, we just update the status.
-handleAppEvent (ProfileCreated (Left err)) =
-    modify $ \st -> st { appStatus = "Error creating profile: " <> managerErrorToText err }
+handleAppEvent event@(InstallFinished (Right msg)) = do
+    st <- get
+    installedVec <- liftIO $ getInstalledVersions (appConfig st)
+    let newList = list InstalledListName (fromList installedVec) 1
+    -- We manually update the state here because it involves IO.
+    -- For a pure approach, we could create a new UIEvent like `InstalledVersionsUpdated`.
+    modify $ \s -> (handleAppEventPure s event) { appInstalledVersions = newList, appStatus = T.pack msg }
+handleAppEvent event@(ModInstallFinished (Right _)) = do
+    modify (`handleAppEventPure` event)
+    refreshAvailableModsList
+handleAppEvent event = modify (`handleAppEventPure` event)
 
-handleAppEvent (BackupCreated result) = do
-    case result of
-        Left err -> modify $ \st -> st { appStatus = "Backup failed: " <> managerErrorToText err }
-        Right () -> modify $ \st -> st { appStatus = "Backup created successfully." }
-handleAppEvent (BackupsListed result) = do
-    case result of
-        Left err -> modify $ \st -> st { appStatus = "Failed to list backups: " <> managerErrorToText err }
-        Right backups -> do
-            let newList = list BackupListName (fromList backups) 1
-            modify $ \st -> st { appBackups = newList }
-handleAppEvent (ModInstallFinished result) = do
-    case result of
-        Left err -> modify $ \st -> st { appStatus = "Mod install failed: " <> modHandlerErrorToText err }
-        Right _ -> do
-            modify $ \st -> st { appStatus = "Mod installed successfully." }
-            refreshAvailableModsList
-handleAppEvent (ModEnableFinished result) = do
-    case result of
-        Left err -> modify $ \st -> st { appStatus = "Mod enable failed: " <> modHandlerErrorToText err }
-        Right () -> modify $ \st -> st { appStatus = "Mod enabled." }
-handleAppEvent (ModDisableFinished result) = do
-    case result of
-        Left err -> modify $ \st -> st { appStatus = "Mod disable failed: " <> modHandlerErrorToText err }
-        Right () -> modify $ \st -> st { appStatus = "Mod disabled." }
-handleAppEvent (AvailableModsListed (mods, cache)) = do
+-- | A pure function to handle state changes based on UI events.
+handleAppEventPure :: AppState -> UIEvent -> AppState
+handleAppEventPure st (LogMessage msg) = st { appStatus = msg }
+handleAppEventPure st (LogEvent msg) = st { appStatus = msg }
+handleAppEventPure st (ErrorEvent msg) = st { appStatus = "Error: " <> msg }
+handleAppEventPure st (CacheHit msg) = st { appStatus = msg }
+handleAppEventPure st (InstallFinished (Left err)) =
+    st { appStatus = "Error: " <> managerErrorToText err }
+handleAppEventPure st (InstallFinished (Right msg)) =
+    -- This case is mostly handled in the IO part of handleAppEvent,
+    -- but we can set a preliminary status.
+    st { appStatus = T.pack msg }
+handleAppEventPure st (ProfileCreated (Right ())) =
+    st { appStatus = "Profile created successfully." }
+handleAppEventPure st (ProfileCreated (Left err)) =
+    st { appStatus = "Error creating profile: " <> managerErrorToText err }
+handleAppEventPure st (BackupCreated (Left err)) =
+    st { appStatus = "Backup failed: " <> managerErrorToText err }
+handleAppEventPure st (BackupCreated (Right ())) =
+    st { appStatus = "Backup created successfully." }
+handleAppEventPure st (BackupsListed (Left err)) =
+    st { appStatus = "Failed to list backups: " <> managerErrorToText err }
+handleAppEventPure st (BackupsListed (Right backups)) =
+    let newList = list BackupListName (fromList backups) 1
+    in st { appBackups = newList }
+handleAppEventPure st (ModInstallFinished (Left err)) =
+    st { appStatus = "Mod install failed: " <> modHandlerErrorToText err }
+handleAppEventPure st (ModInstallFinished (Right _)) =
+    st { appStatus = "Mod installed successfully." }
+handleAppEventPure st (ModEnableFinished (Left err)) =
+    st { appStatus = "Mod enable failed: " <> modHandlerErrorToText err }
+handleAppEventPure st (ModEnableFinished (Right ())) =
+    st { appStatus = "Mod enabled." }
+handleAppEventPure st (ModDisableFinished (Left err)) =
+    st { appStatus = "Mod disable failed: " <> modHandlerErrorToText err }
+handleAppEventPure st (ModDisableFinished (Right ())) =
+    st { appStatus = "Mod disabled." }
+handleAppEventPure st (AvailableModsListed (mods, cache)) =
     let newList = list AvailableModListName (fromList mods) 1
-    modify $ \st -> st { appAvailableMods = newList, appInstalledModsCache = cache }
-handleAppEvent (ActiveModsListed mods) = do
+    in st { appAvailableMods = newList, appInstalledModsCache = cache }
+handleAppEventPure st (ActiveModsListed mods) =
     let newList = list ActiveModListName (fromList mods) 1
-    modify $ \st -> st { appActiveMods = newList }
+    in st { appActiveMods = newList }
 
 managerErrorToText :: ManagerError -> T.Text
 managerErrorToText err = case err of

@@ -23,6 +23,7 @@ import qualified Events.SandboxSpec
 import qualified GameManager.InstallSpec
 
 import qualified GitHubIntegration.InternalSpec
+import qualified LibSpec
 
 -- Note: Types specs are omitted as they are pending
 
@@ -50,3 +51,4 @@ spec = do
   describe "Events.Sandbox" Events.SandboxSpec.spec
   describe "GameManager.Install" GameManager.InstallSpec.spec
   describe "GitHubIntegration.Internal" GitHubIntegration.InternalSpec.spec
+  describe "Lib" LibSpec.spec

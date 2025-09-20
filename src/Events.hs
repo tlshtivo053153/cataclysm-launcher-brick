@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes          #-}
 
-module Events (handleEvent, nextActiveList) where
+module Events (handleEvent, nextActiveList, toggleActiveList) where
 
 import Brick hiding (on)
 import qualified Graphics.Vty as V
