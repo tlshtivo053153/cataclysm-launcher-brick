@@ -18,7 +18,6 @@ import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.List (find)
 import qualified Graphics.Vty as V
-import System.Process (readProcessWithExitCode)
 
 import Config (loadModSources)
 import Events.List (handleListEvents)

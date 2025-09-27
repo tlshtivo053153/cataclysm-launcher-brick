@@ -6,12 +6,11 @@ module GameManager (
 ) where
 
 import qualified Data.Text as T
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO)
 import System.Directory (createDirectoryIfMissing, listDirectory, makeAbsolute)
 import System.FilePath ((</>), takeDirectory)
 
 import qualified GitHubIntegration as GH
-import FileSystemUtils
 import Types
 import GameManager.Install
 
@@ -35,7 +34,7 @@ launchGame handle _ iv mProfile = do
     let installDir = ivPath iv
         executableName = "cataclysm-launcher"
     
-    foundPaths <- liftIO $ findFilesRecursively installDir [executableName]
+    foundPaths <- hFindFilesRecursively handle installDir [executableName]
 
     case foundPaths of
         [executablePath] -> do

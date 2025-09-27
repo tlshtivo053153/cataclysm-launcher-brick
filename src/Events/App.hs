@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Events.App (handleAppEvent, handleAppEventPure) where
+module Events.App (handleAppEvent, handleAppEventPure, managerErrorToText, modHandlerErrorToText) where
 
 import Brick
 import Brick.Widgets.List (list)

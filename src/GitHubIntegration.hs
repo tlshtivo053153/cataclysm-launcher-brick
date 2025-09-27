@@ -3,23 +3,30 @@
 
 module GitHubIntegration (
     fetchGameVersions,
-    downloadAsset
+    downloadAsset,
+    fetchReleasesFromAPI
 ) where
 
 import           Control.Exception      (SomeException, try)
-import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.IO.Class (MonadIO)
 import           Data.Aeson             (eitherDecode)
+import           Data.Bifunctor         (bimap)
 import qualified Data.ByteString.Lazy   as L
-import qualified Data.Text              as T
+import qualified Data.Text                as T
 import qualified Data.Text.Encoding     as T
-import           Data.Time.Clock        (addUTCTime)
+import           Data.Time.Clock          (UTCTime, addUTCTime)
 import           Data.Time.Format       (defaultTimeLocale, formatTime)
-import           Network.HTTP.Simple    (getResponseBody, httpLBS,
-                                         parseRequest, setRequestHeader)
+import           Network.HTTP.Simple      (addRequestHeader,
+                                           getResponseBody, getResponseStatusCode,
+                                           httpJSONEither, parseRequest, httpLBS, setRequestHeader)
 import           System.FilePath        ((</>))
 
-import qualified GitHubIntegration.Internal as GH
+import           GitHubIntegration.Internal
 import           Types
+
+-- | Formats time for the If-Modified-Since header.
+formatHttpTime :: UTCTime -> String
+formatHttpTime = formatTime defaultTimeLocale "%a, %d %b %Y %H:%M:%S GMT"
 
 -- | Fetches game versions from GitHub releases.
 -- This function is now dependent on a Handle for its operations.
@@ -52,26 +59,23 @@ fetchGameVersions handle config = do
                         Right releases -> return $ Right $ processReleases releases
                         Left err'      -> return $ Left ("Failed to decode releases: " ++ err')
 
--- | Downloads a game asset from a given URL.
--- This function no longer depends on a Handle.
-downloadAsset :: (MonadIO m) => T.Text -> m (Either ManagerError L.ByteString)
-downloadAsset url = do
-    eresponse <- liftIO $ try $ do
-        request' <- parseRequest (T.unpack url)
-        let request = setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
-        httpLBS request
-    case eresponse of
-        Left (e :: SomeException) -> return $ Left $ NetworkError (T.pack $ show e)
-        Right response            -> return $ Right $ getResponseBody response
+fetchReleasesFromAPI :: String -> Maybe UTCTime -> IO (Either String [Release])
+fetchReleasesFromAPI url msince = do
+    request' <- parseRequest url
+    let request = case msince of
+            Nothing -> setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
+            Just since -> addRequestHeader "If-Modified-Since" (T.encodeUtf8 $ T.pack $ formatHttpTime since) $ setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
+    response <- httpJSONEither request
+    return $ bimap show id $ getResponseBody response
 
--- | Processes the raw release data into a list of game versions.
-processReleases :: [GH.Release] -> [GameVersion]
-processReleases = map toGameVersion
-  where
-    toGameVersion rel = GameVersion
-        { gvVersionId = GH.tagName rel
-        , gvVersion = GH.name rel
-        , gvUrl = assetUrl (head (GH.assets rel))
-        , gvReleaseType = if GH.prerelease rel then Development else Stable
-        }
-    assetUrl = GH.browserDownloadUrl
+downloadAsset :: T.Text -> IO (Either String L.ByteString)
+downloadAsset url = do
+    request' <- parseRequest $ T.unpack url
+    let request = setRequestHeader "User-agent" ["cataclysm-launcher-brick"] request'
+    eresponse <- try (httpLBS request)
+    case eresponse of
+        Left (e :: SomeException) -> return $ Left (show e)
+        Right response ->
+            if getResponseStatusCode response == 200
+            then return $ Right $ getResponseBody response
+            else return $ Left ("Failed to download asset: " ++ show (getResponseStatusCode response))

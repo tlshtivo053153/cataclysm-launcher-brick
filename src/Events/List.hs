@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 
-module Events.List (handleListEvents, handleListMove) where
+module Events.List (handleListEvents, handleListMove, handleListEvents') where
 
 import Brick
 import Brick.Widgets.List (List, listMoveUp, listMoveDown)
@@ -9,9 +9,12 @@ import qualified Graphics.Vty as V
 import Types
 
 handleListEvents :: V.Event -> ActiveList -> EventM Name AppState ()
-handleListEvents (V.EvKey V.KUp []) activeList = modify $ \st -> handleListMove st listMoveUp activeList
-handleListEvents (V.EvKey V.KDown []) activeList = modify $ \st -> handleListMove st listMoveDown activeList
-handleListEvents _ _ = return ()
+handleListEvents ev activeList = modify $ handleListEvents' ev activeList
+
+handleListEvents' :: V.Event -> ActiveList -> AppState -> AppState
+handleListEvents' (V.EvKey V.KUp []) activeList st = handleListMove st listMoveUp activeList
+handleListEvents' (V.EvKey V.KDown []) activeList st = handleListMove st listMoveDown activeList
+handleListEvents' _ _ st = st
 
 handleListMove :: AppState -> (forall a. List Name a -> List Name a) -> ActiveList -> AppState
 handleListMove st moveFn activeList =

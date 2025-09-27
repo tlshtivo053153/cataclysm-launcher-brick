@@ -20,10 +20,15 @@ import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
 import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, addRequestHeader)
+import           Data.Aeson (encode)
 
 
+import System.Process (readProcessWithExitCode, createProcess, callCommand)
+import System.Directory (doesFileExist, removeFile)
+import FileSystemUtils (findFilesRecursively)
 import qualified GitHubIntegration as GH
-import           Types
+
+import Types
 
 -- | Formats time for the If-Modified-Since header.
 formatHttpTime :: UTCTime -> String
@@ -34,35 +39,30 @@ liveHandle = Handle
     { hDoesFileExist = liftIO . doesFileExist
     , hReadFile = liftIO . B.readFile
     , hWriteFile = \fp content -> liftIO $ B.writeFile fp content
-    , hDownloadAsset = \url -> do
-        result <- GH.downloadAsset url
-        return $ case result of
-            Left e -> Left e
-            Right assetData -> Right $ L.toStrict assetData
-    , hCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
-    , hDoesDirectoryExist = liftIO . doesDirectoryExist
-    , hRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
-    , hWriteBChan = \chan event -> liftIO $ writeBChan chan event
-    , hListDirectory = liftIO . listDirectory
-    , hMakeAbsolute = liftIO . makeAbsolute
-    , hGetCurrentTime = liftIO getCurrentTime
-    , hCallCommand = liftIO . callCommand
-    , hFetchReleasesFromAPI = \url msince -> liftIO $ do
-        eresponse <- try $ do
-            request' <- parseRequest url
-            let requestWithAgent = setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
-            let request = case msince of
-                  Nothing -> requestWithAgent
-                  Just since -> addRequestHeader "If-Modified-Since" (T.encodeUtf8 $ T.pack $ formatHttpTime since) requestWithAgent
-            httpLBS request
-        case eresponse of
-            Left (e :: SomeException) -> return $ Left (show e)
-            Right response -> return $ Right $ getResponseBody response
-    , hReadProcessWithExitCode = \cmd args input -> liftIO $ readProcessWithExitCode cmd args input
-    , hCreateProcess = \cmd args mcwd -> liftIO $ void $ createProcess (proc cmd args) { cwd = mcwd }
-    , hLaunchGame = \cmd args -> liftIO $ void $ createProcess (proc cmd args)
-    , hCreateSymbolicLink = \src dest -> liftIO $ createSymbolicLink src dest
-    , hDoesSymbolicLinkExist = liftIO . pathIsSymbolicLink
-    , hGetSymbolicLinkTarget = liftIO . readSymbolicLink
-    , hRemoveFile = liftIO . removeFile
-    }
+        , hDownloadAsset = \url -> liftIO $ do
+            result <- GH.downloadAsset url
+            case result of
+                Left err -> return $ Left $ NetworkError $ T.pack err
+                Right bs -> return $ Right $ L.toStrict bs
+        , hCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
+        , hDoesDirectoryExist = liftIO . doesDirectoryExist
+        , hRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
+        , hWriteBChan = \chan event -> liftIO $ writeBChan chan event
+        , hListDirectory = liftIO . listDirectory
+        , hMakeAbsolute = liftIO . makeAbsolute
+        , hGetCurrentTime = liftIO getCurrentTime
+        , hCallCommand = liftIO . callCommand
+        , hFetchReleasesFromAPI = \url msince -> liftIO $ do
+            result <- GH.fetchReleasesFromAPI url msince
+            return $ case result of
+                Left err -> Left err
+                Right releases -> Right $ encode releases
+        , hReadProcessWithExitCode = \cmd args input -> liftIO $ readProcessWithExitCode cmd args input
+        , hCreateProcess = \cmd args mcwd -> liftIO $ void $ createProcess (proc cmd args) { cwd = mcwd }
+        , hLaunchGame = \cmd args -> liftIO $ void $ createProcess (proc cmd args)
+        , hCreateSymbolicLink = \src dest -> liftIO $ createSymbolicLink src dest
+        , hDoesSymbolicLinkExist = liftIO . pathIsSymbolicLink
+        , hGetSymbolicLinkTarget = liftIO . readSymbolicLink
+        , hRemoveFile = liftIO . removeFile
+        , hFindFilesRecursively = \fp names -> liftIO $ findFilesRecursively fp names
+        }

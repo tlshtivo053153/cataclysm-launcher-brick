@@ -160,6 +160,7 @@ mockHandle ref = Handle
     , hDoesSymbolicLinkExist = \_ -> return False
     , hGetSymbolicLinkTarget = \_ -> return ""
     , hRemoveFile = \_ -> return ()
+    , hFindFilesRecursively = \_ names -> return $ map ("/mock/path/to/" ++) names
     }
 
 initialAppState :: AppState

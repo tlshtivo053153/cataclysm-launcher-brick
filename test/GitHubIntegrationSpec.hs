@@ -39,18 +39,18 @@ mockConfig = Config
 mockReleases :: [GH.Release]
 mockReleases =
   [
-    GH.Release { GH.tagName = "v1.0", GH.name = "Version 1.0", GH.prerelease = False, GH.published_at = "2025-01-01T00:00:00Z", GH.assets = [GH.Asset "url1.0"] }
-  , GH.Release { GH.tagName = "v0.9", GH.name = "Version 0.9", GH.prerelease = True, GH.published_at = "2024-12-31T00:00:00Z",  GH.assets = [GH.Asset "url0.9"] }
+    GH.Release { GH.tag_name = "0.G", GH.name = "Stable Release", GH.prerelease = False, GH.published_at = "2025-01-01T00:00:00Z", GH.assets = [GH.Asset "url-stable-linux-with-graphics-and-sounds-x64"] }
+  , GH.Release { GH.tag_name = "2024-01-01-0000", GH.name = "Dev Release", GH.prerelease = True, GH.published_at = "2024-12-31T00:00:00Z",  GH.assets = [GH.Asset "url-dev-linux-with-graphics-and-sounds-x64"] }
   ]
 
 encodedMockReleases :: L.ByteString
-encodedMockReleases = L8.pack "[{\"assets\":[{\"browser_download_url\":\"url1.0\"}],\"name\":\"Version 1.0\",\"prerelease\":false,\"published_at\":\"2025-01-01T00:00:00Z\",\"tag_name\":\"v1.0\"},{\"assets\":[{\"browser_download_url\":\"url0.9\"}],\"name\":\"Version 0.9\",\"prerelease\":true,\"published_at\":\"2024-12-31T00:00:00Z\",\"tag_name\":\"v0.9\"}]"
+encodedMockReleases = encode mockReleases
 
 mockGameVersions :: [GameVersion]
 mockGameVersions =
   [
-    GameVersion { gvVersionId = "v1.0", gvVersion = "Version 1.0", gvUrl = "url1.0", gvReleaseType = Stable }
-  , GameVersion { gvVersionId = "v0.9", gvVersion = "Version 0.9", gvUrl = "url0.9", gvReleaseType = Development }
+    GameVersion { gvVersionId = "0.G", gvVersion = "Stable Release", gvUrl = "url-stable-linux-with-graphics-and-sounds-x64", gvReleaseType = Stable }
+  , GameVersion { gvVersionId = "2024-01-01-0000", gvVersion = "Dev Release", gvUrl = "url-dev-linux-with-graphics-and-sounds-x64", gvReleaseType = Development }
   ]
 
 -- A fixed time for testing
@@ -97,6 +97,7 @@ createTestHandles = do
             , hDoesSymbolicLinkExist = \_ -> error "hDoesSymbolicLinkExist not implemented"
             , hGetSymbolicLinkTarget = \_ -> error "hGetSymbolicLinkTarget not implemented"
             , hRemoveFile = \_ -> error "hRemoveFile not implemented"
+            , hFindFilesRecursively = \_ _ -> return []
             }
     return $ TestHandles fsRef apiRef calledRef handle
 
@@ -152,7 +153,7 @@ spec = before createTestHandles $ do
     it "returns an error if cache file is corrupt" $ \th -> do
       -- Setup: Filesystem has a corrupt cache file
       let cacheFilePath = "/root/cache/github_releases.json"
-      let corruptJson = "{\"key\":}"
+      let corruptJson = "{\"key\":}" -- Corrected escaping for inner quotes
       writeIORef (thFileSystem th) (Map.singleton cacheFilePath corruptJson)
       
       -- Run

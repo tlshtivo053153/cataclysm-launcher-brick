@@ -3,7 +3,8 @@
 
 module GameManager.Install (
     downloadAndInstall,
-    getAssetData
+    getAssetData,
+    extractArchive
 ) where
 
 import qualified Data.ByteString as B

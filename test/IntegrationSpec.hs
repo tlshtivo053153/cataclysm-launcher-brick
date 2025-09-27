@@ -62,7 +62,7 @@ spec = describe "Integration Tests" $ do
 
           -- 3. Setup Handle with mocked API and ensure directories exist
           apiCalledRef <- liftIO $ newIORef (0 :: Int)
-          let mockApiResponse = L8.pack "[{\"tag_name\":\"v1.0\",\"name\":\"Version 1.0\",\"prerelease\":false,\"published_at\":\"2025-01-01T00:00:00Z\",\"assets\":[{\"browser_download_url\":\"http://example.com/v1.0.tar.gz\"}]}]"
+          let mockApiResponse = L8.pack "[{\"tag_name\":\"0.G\",\"name\":\"Version 1.0\",\"prerelease\":false,\"published_at\":\"2025-01-01T00:00:00Z\",\"assets\":[{\"browser_download_url\":\"http://example.com/v1.0-linux-with-graphics-and-sounds-x64.tar.gz\"}]}]"
           let testHandle = Handle.liveHandle
                 { hFetchReleasesFromAPI = \_ _ -> do
                     modifyIORef' apiCalledRef (+1)
@@ -76,7 +76,7 @@ spec = describe "Integration Tests" $ do
           eitherVersions1 <- liftIO $ fetchGameVersions testHandle config
           
           case eitherVersions1 of
-            Left fetchErr -> expectationFailure $ "First fetch failed: " ++ show fetchErr
+            Left fetchErr -> expectationFailure $ "First fetch failed: " ++ show fetchErr ++ "\nResponse was: " ++ L8.unpack mockApiResponse
             Right versions1 -> do
               length versions1 `shouldBe` 1
               gvVersion (head versions1) `shouldBe` "Version 1.0"

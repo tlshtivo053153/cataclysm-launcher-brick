@@ -3,7 +3,6 @@
 module LibSpec (spec) where
 
 import Test.Hspec
-import qualified Data.Text as T
 
 import Events (nextActiveList, toggleActiveList)
 import Events.App (handleAppEventPure)

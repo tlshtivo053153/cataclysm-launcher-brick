@@ -34,5 +34,6 @@ data Handle m = Handle
     , hCreateSymbolicLink  :: FilePath -> FilePath -> m ()
     , hDoesSymbolicLinkExist :: FilePath -> m Bool
     , hGetSymbolicLinkTarget :: FilePath -> m FilePath
-    , hRemoveFile          :: FilePath -> m ()
+    , hRemoveFile :: FilePath -> m ()
+    , hFindFilesRecursively :: FilePath -> [String] -> m [FilePath]
     }

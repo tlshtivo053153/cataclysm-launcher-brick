@@ -21,7 +21,6 @@ import Data.List (nubBy)
 import Data.Function (on)
 import Control.Exception (try, SomeException)
 import Control.Monad (forM, filterM)
-import Control.Monad.IO.Class (MonadIO)
 
 -- | Clones a mod from a GitHub repository into the sys-repo/mods directory.
 installModFromGitHub :: (Monad m) => Handle m -> FilePath -> T.Text -> ModSource -> m (Either ModHandlerError ModInfo)

@@ -10,7 +10,7 @@ module SandboxController (
 
 import qualified Data.Text as T
 import System.FilePath ((</>), takeDirectory)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad (forM_, when)
 import Control.Monad.Catch (MonadCatch, try)
 import Control.Exception (SomeException)

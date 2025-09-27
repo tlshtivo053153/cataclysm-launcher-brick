@@ -116,6 +116,7 @@ tests:
     - cataclysm-launcher-brick-gemini
     - hspec
     - containers
+    - microlens
     - mtl
     - temporary
     - deepseq
@@ -140,6 +141,7 @@ tests:
     - TestUtils
     - Events.AppSpec
     - Events.AvailableSpec
+    - Events.BackupSpec
     - Events.InstalledSpec
     - Events.ListSpec
     - Events.ModsSpec

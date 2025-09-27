@@ -56,6 +56,7 @@ testHandle = Handle
     , hDoesSymbolicLinkExist = \_ -> error "hDoesSymbolicLinkExist not implemented"
     , hGetSymbolicLinkTarget = \_ -> error "hGetSymbolicLinkTarget not implemented"
     , hRemoveFile = \_ -> error "hRemoveFile not implemented"
+    , hFindFilesRecursively = \_ _ -> return []
     }
 
 -- Helper to run tests
@@ -70,7 +71,7 @@ mockExtractArchive _ _ url
 
 spec :: Spec
 spec = do
-  describe "downloadAndInstall" $ do
+  describe "getAssetData" $ do
     let config = Config
             { launcherRootDirectory = "/tmp/launcher"
             , cacheDirectory = "/tmp/launcher/cache"
@@ -131,3 +132,13 @@ spec = do
       -- Check that the cache content was used (implicitly by successful extraction)
       -- and that the file system still contains the original cached data.
       Map.lookup cachePath (tsFileSystem finalState) `shouldBe` Just cachedContent
+
+  describe "extractArchive" $ do
+    -- This test is pure and doesn't need the TestM monad.
+    -- It checks the logic of choosing the extraction method based on the URL.
+    -- We can't fully test the IO part here, so we just check if it returns Left for unsupported types.
+    it "returns an error for unsupported archive formats" $ do
+        result <- extractArchive "installDir" "archivePath" "http://example.com/file.rar"
+        case result of
+            Left (ArchiveError msg) -> msg `shouldBe` "Unsupported archive format for URL: http://example.com/file.rar"
+            _ -> expectationFailure "Expected ArchiveError"

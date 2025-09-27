@@ -4,8 +4,9 @@ module Events.ListSpec (spec) where
 
 import Test.Hspec
 import Brick.Widgets.List (listSelected, listMoveDown, listMoveUp)
+import qualified Graphics.Vty as V
 
-import Events.List (handleListMove)
+import Events.List (handleListMove, handleListEvents')
 import TestUtils
 import Types
 
@@ -35,3 +36,35 @@ spec = describe "Events.List" $ do
     it "does not move past the top of the list" $ do
       let newState = handleListMove st listMoveUp AvailableList
       listSelected (appAvailableVersions newState) `shouldBe` Just 0
+
+    it "moves down in BackupList" $ do
+      listSelected (appBackups st) `shouldBe` Just 0
+      let newState = handleListMove st listMoveDown BackupList
+      listSelected (appBackups newState) `shouldBe` Just 1
+
+    it "moves up in BackupList" $ do
+      let movedDownState = handleListMove st listMoveDown BackupList
+      listSelected (appBackups movedDownState) `shouldBe` Just 1
+      let newState = handleListMove movedDownState listMoveUp BackupList
+      listSelected (appBackups newState) `shouldBe` Just 0
+
+  describe "handleListEvents'" $ do
+    let st = initialAppState
+
+    it "handles KUp event" $ do
+      let movedDownState = handleListMove st listMoveDown AvailableList
+      listSelected (appAvailableVersions movedDownState) `shouldBe` Just 1
+      let ev = V.EvKey V.KUp []
+          newState = handleListEvents' ev AvailableList movedDownState
+      listSelected (appAvailableVersions newState) `shouldBe` Just 0
+
+    it "handles KDown event" $ do
+      listSelected (appAvailableVersions st) `shouldBe` Just 0
+      let ev = V.EvKey V.KDown []
+          newState = handleListEvents' ev AvailableList st
+      listSelected (appAvailableVersions newState) `shouldBe` Just 1
+
+    it "ignores other events" $ do
+      let ev = V.EvKey V.KEnter []
+          newState = handleListEvents' ev AvailableList st
+      listSelected (appAvailableVersions newState) `shouldBe` listSelected (appAvailableVersions st)
