@@ -21,6 +21,7 @@ handleEvent _            = return ()
 
 handleVtyEvent :: V.Event -> EventM Name AppState ()
 handleVtyEvent (V.EvKey (V.KChar '\t') []) = modify toggleActiveList
+handleVtyEvent (V.EvKey V.KBackTab [])     = modify toggleActiveListBackward
 handleVtyEvent (V.EvKey V.KEsc [])         = halt
 handleVtyEvent ev = do
     st <- get
@@ -40,6 +41,16 @@ nextActiveList BackupList         = AvailableModList
 nextActiveList AvailableModList   = ActiveModList
 nextActiveList ActiveModList      = SandboxProfileList
 
+prevActiveList :: ActiveList -> ActiveList
+prevActiveList SandboxProfileList = ActiveModList
+prevActiveList ActiveModList      = AvailableModList
+prevActiveList AvailableModList   = BackupList
+prevActiveList BackupList         = InstalledList
+prevActiveList InstalledList      = AvailableList
+prevActiveList AvailableList      = SandboxProfileList
+
 toggleActiveList :: AppState -> AppState
 toggleActiveList st = st { appActiveList = nextActiveList (appActiveList st) }
 
+toggleActiveListBackward :: AppState -> AppState
+toggleActiveListBackward st = st { appActiveList = prevActiveList (appActiveList st) }
