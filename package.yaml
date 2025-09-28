@@ -153,3 +153,6 @@ tests:
     - Types.HandleSpec
     - Types.UISpec
     - LibSpec
+    - Integration.WorkflowSpec
+    - Integration.DownloadSpec
+    - Integration.SandboxSpec
