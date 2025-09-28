@@ -33,12 +33,12 @@ handleVtyEvent ev = do
         ActiveModList      -> handleActiveModEvents ev
 
 nextActiveList :: ActiveList -> ActiveList
+nextActiveList SandboxProfileList = AvailableList
 nextActiveList AvailableList      = InstalledList
-nextActiveList InstalledList      = SandboxProfileList
-nextActiveList SandboxProfileList = BackupList
+nextActiveList InstalledList      = BackupList
 nextActiveList BackupList         = AvailableModList
 nextActiveList AvailableModList   = ActiveModList
-nextActiveList ActiveModList      = AvailableList
+nextActiveList ActiveModList      = SandboxProfileList
 
 toggleActiveList :: AppState -> AppState
 toggleActiveList st = st { appActiveList = nextActiveList (appActiveList st) }

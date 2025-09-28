@@ -80,7 +80,7 @@ main = do
                     , appConfig = config
                     , appHandle = liveHandle
                     , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."
-                    , appActiveList = AvailableList
+                    , appActiveList = SandboxProfileList
                     , appEventChannel = chan
                     }
             void $ customMain initialVty buildVty (Just chan) app initialState

@@ -34,7 +34,7 @@ drawUI st = [ui]
     activeMods = renderListPane "Active Mods" (appActiveList st == ActiveModList) $
                  renderList renderModInfo (appActiveList st == ActiveModList) (appActiveMods st)
     status = str $ T.unpack $ appStatus st
-    topPanes = hBox [available, installed, sandboxes, backups]
+    topPanes = hBox [sandboxes, available, installed, backups]
     bottomPanes = hBox [availableMods, activeMods]
     ui = center $ vBox [ topPanes
                        , hBorder
