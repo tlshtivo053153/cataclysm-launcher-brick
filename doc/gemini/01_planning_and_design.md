@@ -70,3 +70,21 @@ This category focuses on the critical importance of thorough analysis and planni
 **6. Principle of Entry Point Verification [HIGH]**
 -   **Principle**: When a task appears to target a specific file (e.g., `Lib.hs`), you **must** first verify how that file is called from the application's entry point or main logic hub (e.g., `Main.hs`, `App.hs`).
 -   **Rationale**: Over time, a codebase evolves, and a file's name may no longer reflect its actual role. This principle mandates an initial analysis of the call hierarchy to confirm that the target file is indeed the correct focus for the task, rather than a wrapper or an obsolete remnant. This prevents rework by ensuring effort is directed at the correct location from the start.
+
+**7. Principle of External Resource Verification [HIGH]**
+-   **Principle**: Before implementing a feature that depends on an external resource (e.g., a third-party API, a specific file format, a Git repository structure), you **must** first manually verify the resource to ensure your assumptions about its structure, content, and accessibility are correct.
+-   **Rationale**: This prevents significant rework caused by building on incorrect assumptions about external systems. For example, an API might not return the expected data structure, or a repository might not have the release assets you planned to use.
+-   **Action Steps**:
+    1.  **Identify External Dependencies**: List all external resources the new feature will interact with.
+    2.  **Formulate Assumptions**: For each resource, explicitly state your assumptions (e.g., "The GitHub repository will have release assets in `.zip` format," "The API endpoint `/users` will return a JSON array of user objects").
+    3.  **Verify Manually**: Use simple tools (`curl`, a web browser, `unzip -l`) to directly inspect the resource and confirm each assumption.
+    4.  **Adjust Plan**: Adjust your implementation plan based on the verified information *before* writing any code.
+
+**8. Principle of Decoupled State and Side-Effects [HIGH]**
+-   **Principle**: When a user action should both update the application's state and trigger a side-effect (like a network request or file I/O), the two operations **must** be decoupled. The initial event handler should only be responsible for dispatching a new, specific event indicating the state has changed. A separate handler for this new event will then execute the side-effect.
+-   **Rationale**: This prevents race conditions and ensures a predictable, one-way data flow. Directly coupling state changes with asynchronous side-effects in the same event handler can lead to bugs where the side-effect is triggered before the state is fully updated, or where multiple, conflicting side-effects are triggered in rapid succession.
+-   **Action Steps**:
+    1.  **Identify Coupled Operations**: Recognize when a single event (like a key press) is intended to both change state (e.g., the selected item in a list) and trigger an action (e.g., fetch details for that item).
+    2.  **Handle State Change**: The first event handler should *only* update the state (e.g., `modify $ handleListEvents' ev ...`).
+    3.  **Dispatch New Event**: Immediately after the state change, dispatch a new, more semantic event (e.g., `ProfileSelectionChanged`, `ItemSelected`) to an event channel.
+    4.  **Handle Side-Effect**: A separate, top-level event handler (like `handleAppEvent`) will listen for this new event and execute the corresponding side-effect (e.g., `refreshActiveModsList`, `refreshInstalledSoundpacksList`).
