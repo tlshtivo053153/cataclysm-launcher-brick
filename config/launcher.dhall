@@ -19,4 +19,5 @@ in {
   , githubApiUrl = "https://api.github.com/repos/CleverRaven/Cataclysm-DDA/releases"
   , downloadThreads = 4
   , logLevel = "Info"
+  , soundpackRepos = [ "https://github.com/Kenan2000/Otopack-Mods-Updates" ]
 }

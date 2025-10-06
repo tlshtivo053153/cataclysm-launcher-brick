@@ -11,7 +11,7 @@ data UIEvent
   | ErrorEvent T.Text
   | CacheHit T.Text
   | InstallFinished (Either ManagerError String)
-  | ProfileCreated (Either ManagerError ())
+  | ProfileCreated (Either ManagerError SandboxProfile)
   | BackupCreated (Either ManagerError ())
   | BackupsListed (Either ManagerError [BackupInfo])
   | ModInstallFinished (Either ModHandlerError ModInfo)
@@ -19,4 +19,11 @@ data UIEvent
   | ModDisableFinished (Either ModHandlerError ())
   | AvailableModsListed ([AvailableMod], [ModInfo])
   | ActiveModsListed [ModInfo]
+  | FetchSoundpacks
+  | InstallSoundpack SandboxProfile SoundpackInfo
+  | UninstallSoundpack SandboxProfile InstalledSoundpack
+  | SoundpackInstallFinished (Either ManagerError InstalledSoundpack)
+  | SoundpackUninstallFinished (Either ManagerError InstalledSoundpack)
+  | InstalledSoundpacksListed [InstalledSoundpack]
+  | ProfileSelectionChanged
   deriving (Show, Eq)

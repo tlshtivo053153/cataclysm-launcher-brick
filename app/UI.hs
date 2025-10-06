@@ -33,10 +33,17 @@ drawUI st = [ui]
                     renderList renderAvailableMod (appActiveList st == AvailableModList) (appAvailableMods st)
     activeMods = renderListPane "Active Mods" (appActiveList st == ActiveModList) $
                  renderList renderModInfo (appActiveList st == ActiveModList) (appActiveMods st)
+    availableSoundpacks = renderListPane "Available Soundpacks" (appActiveList st == AvailableSoundpackList) $
+                          renderList renderSoundpackInfo (appActiveList st == AvailableSoundpackList) (appAvailableSoundpacks st)
+    installedSoundpacks = renderListPane "Installed Soundpacks" (appActiveList st == InstalledSoundpackList) $
+                          renderList renderInstalledSoundpack (appActiveList st == InstalledSoundpackList) (appInstalledSoundpacks st)
     status = str $ T.unpack $ appStatus st
     topPanes = hBox [sandboxes, available, installed, backups]
-    bottomPanes = hBox [availableMods, activeMods]
+    middlePanes = hBox [availableMods, activeMods]
+    bottomPanes = hBox [availableSoundpacks, installedSoundpacks]
     ui = center $ vBox [ topPanes
+                       , hBorder
+                       , middlePanes
                        , hBorder
                        , bottomPanes
                        , hBorder
@@ -67,6 +74,13 @@ renderAvailableMod :: Bool -> AvailableMod -> Widget Name
 renderAvailableMod _ a =
     let installedMarker = if amIsInstalled a then " [installed]" else ""
     in str $ T.unpack (msiName (amSource a)) ++ installedMarker
+
+renderSoundpackInfo :: Bool -> SoundpackInfo -> Widget Name
+renderSoundpackInfo _ a = str $ T.unpack $ spiAssetName a
+
+renderInstalledSoundpack :: Bool -> InstalledSoundpack -> Widget Name
+renderInstalledSoundpack _ a = str $ T.unpack $ ispName a
+
 
 attrPaneDef :: AttrName
 attrPaneDef = attrName "panedef"

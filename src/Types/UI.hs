@@ -12,9 +12,9 @@ import Types.Domain
 import Types.Handle
 import Types.Event
 
-data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName | AvailableModListName | ActiveModListName deriving (Eq, Ord, Show)
+data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName | AvailableModListName | ActiveModListName | AvailableSoundpackListName | InstalledSoundpackListName deriving (Eq, Ord, Show)
 
-data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList | AvailableModList | ActiveModList deriving (Eq, Show)
+data ActiveList = AvailableList | InstalledList | SandboxProfileList | BackupList | AvailableModList | ActiveModList | AvailableSoundpackList | InstalledSoundpackList deriving (Eq, Show)
 
 data AppState = AppState
     { appAvailableVersions :: List Name GameVersion
@@ -24,6 +24,8 @@ data AppState = AppState
     , appAvailableMods     :: List Name AvailableMod
     , appActiveMods        :: List Name ModInfo
     , appInstalledModsCache :: [ModInfo] -- Non-UI cache of installed mods
+    , appAvailableSoundpacks :: List Name SoundpackInfo
+    , appInstalledSoundpacks :: List Name InstalledSoundpack
     , appConfig            :: Config
     , appHandle            :: Handle IO
     , appStatus            :: T.Text

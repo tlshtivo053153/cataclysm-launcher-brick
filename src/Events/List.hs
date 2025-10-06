@@ -25,3 +25,5 @@ handleListMove st moveFn activeList =
         BackupList         -> st { appBackups = moveFn (appBackups st) }
         AvailableModList   -> st { appAvailableMods = moveFn (appAvailableMods st) }
         ActiveModList      -> st { appActiveMods = moveFn (appActiveMods st) }
+        AvailableSoundpackList -> st { appAvailableSoundpacks = moveFn (appAvailableSoundpacks st) }
+        InstalledSoundpackList -> st { appInstalledSoundpacks = moveFn (appInstalledSoundpacks st) }

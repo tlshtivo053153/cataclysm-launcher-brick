@@ -90,6 +90,8 @@ library:
   - Events.List
   - Events.Mods
   - Events.Sandbox
+  - Events.Soundpack
+  - SoundpackManager
 
 executables:
   cataclysm-launcher-brick-gemini-exe:

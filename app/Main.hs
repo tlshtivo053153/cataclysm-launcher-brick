@@ -10,7 +10,8 @@ import qualified Graphics.Vty.CrossPlatform as VCP
 import Data.Maybe (listToMaybe)
 
 import Brick hiding (on)
-import Brick.BChan (newBChan)
+import Brick.BChan (newBChan, writeBChan)
+import Control.Concurrent (forkIO)
 import Brick.Widgets.List (list)
 
 import Config (loadConfig, loadModSources)
@@ -18,6 +19,7 @@ import Events (handleEvent)
 import GameManager (getGameVersions, getInstalledVersions)
 import ModHandler (listAvailableMods, listActiveMods)
 import SandboxController (listProfiles)
+import SoundpackManager (listInstalledSoundpacks)
 import Types
 import UI (drawUI, theMap)
 import ModUtils (combineMods)
@@ -64,6 +66,11 @@ main = do
                 Just firstProfile -> listActiveMods (spDataDirectory firstProfile)
                 Nothing -> return []
 
+            -- Load installed soundpacks for the first profile
+            installedSoundpacks <- case listToMaybe profs of
+                Just firstProfile -> listInstalledSoundpacks liveHandle (spDataDirectory firstProfile)
+                Nothing -> return []
+
             -- Combine mod sources and installed mods into a single list for the UI
             let combinedMods = combineMods modSources installedMods
             
@@ -77,11 +84,14 @@ main = do
                     , appAvailableMods = list AvailableModListName (fromList combinedMods) 1
                     , appActiveMods = list ActiveModListName (fromList activeMods) 1
                     , appInstalledModsCache = installedMods
+                    , appAvailableSoundpacks = list AvailableSoundpackListName (fromList []) 1
+                    , appInstalledSoundpacks = list InstalledSoundpackListName (fromList installedSoundpacks) 1
                     , appConfig = config
                     , appHandle = liveHandle
                     , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."
                     , appActiveList = SandboxProfileList
                     , appEventChannel = chan
                     }
+            writeBChan chan FetchSoundpacks
             void $ customMain initialVty buildVty (Just chan) app initialState
             putStrLn "App finished."

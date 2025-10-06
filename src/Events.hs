@@ -11,6 +11,7 @@ import Events.Backup (handleBackupEvents)
 import Events.Installed (handleInstalledEvents)
 import Events.Mods (handleActiveModEvents, handleAvailableModEvents)
 import Events.Sandbox (handleSandboxProfileEvents)
+import Events.Soundpack (handleAvailableSoundpackEvents, handleInstalledSoundpackEvents)
 import Types
 
 -- Event Handling
@@ -32,6 +33,8 @@ handleVtyEvent ev = do
         BackupList         -> handleBackupEvents ev
         AvailableModList   -> handleAvailableModEvents ev
         ActiveModList      -> handleActiveModEvents ev
+        AvailableSoundpackList -> handleAvailableSoundpackEvents ev
+        InstalledSoundpackList -> handleInstalledSoundpackEvents ev
 
 nextActiveList :: ActiveList -> ActiveList
 nextActiveList SandboxProfileList = AvailableList
@@ -39,10 +42,14 @@ nextActiveList AvailableList      = InstalledList
 nextActiveList InstalledList      = BackupList
 nextActiveList BackupList         = AvailableModList
 nextActiveList AvailableModList   = ActiveModList
-nextActiveList ActiveModList      = SandboxProfileList
+nextActiveList ActiveModList      = AvailableSoundpackList
+nextActiveList AvailableSoundpackList = InstalledSoundpackList
+nextActiveList InstalledSoundpackList = SandboxProfileList
 
 prevActiveList :: ActiveList -> ActiveList
-prevActiveList SandboxProfileList = ActiveModList
+prevActiveList SandboxProfileList = InstalledSoundpackList
+prevActiveList InstalledSoundpackList = AvailableSoundpackList
+prevActiveList AvailableSoundpackList = ActiveModList
 prevActiveList ActiveModList      = AvailableModList
 prevActiveList AvailableModList   = BackupList
 prevActiveList BackupList         = InstalledList

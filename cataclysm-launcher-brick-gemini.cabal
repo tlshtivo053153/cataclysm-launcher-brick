@@ -52,6 +52,8 @@ library
       Events.List
       Events.Mods
       Events.Sandbox
+      Events.Soundpack
+      SoundpackManager
   other-modules:
       Paths_cataclysm_launcher_brick_gemini
   autogen-modules:

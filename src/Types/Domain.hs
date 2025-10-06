@@ -15,6 +15,9 @@ module Types.Domain (
     ModDistributionType(..),
     ModSourceInfo(..),
     AvailableMod(..),
+    -- Soundpack-related types
+    SoundpackInfo(..),
+    InstalledSoundpack(..),
     ManagerError(..)
 ) where
 
@@ -44,6 +47,7 @@ data Config = Config
     , githubApiUrl          :: T.Text
     , downloadThreads       :: Natural
     , logLevel              :: T.Text
+    , soundpackRepos        :: [T.Text]
     } deriving (Generic, Show)
 
 instance FromDhall Config
@@ -108,3 +112,15 @@ data AvailableMod = AvailableMod
   { amSource      :: ModSourceInfo
   , amIsInstalled :: Bool
   } deriving (Show, Eq)
+
+data SoundpackInfo = SoundpackInfo
+    { spiRepoName :: T.Text
+    , spiAssetName :: T.Text
+    , spiBrowserDownloadUrl :: T.Text
+    } deriving (Show, Eq)
+
+data InstalledSoundpack = InstalledSoundpack
+    { ispName :: T.Text
+    , ispDirectoryName :: FilePath
+    } deriving (Show, Eq)
+

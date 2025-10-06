@@ -4,6 +4,7 @@ module Events.Mods (
     handleAvailableModEvents,
     handleActiveModEvents,
     refreshAvailableModsList,
+    refreshActiveModsList,
     getInstallModAction,
     getEnableModAction,
     getDisableModAction
@@ -24,6 +25,17 @@ import Events.List (handleListEvents)
 import qualified ModHandler as MH
 import Types
 import ModUtils (combineMods)
+
+refreshActiveModsList :: EventM Name AppState ()
+refreshActiveModsList = do
+    st <- get
+    let chan = appEventChannel st
+    case listSelectedElement (appSandboxProfiles st) of
+        Nothing -> return ()
+        Just (_, profile) ->
+            liftIO $ void $ forkIO $ do
+                activeMods <- MH.listActiveMods (spDataDirectory profile)
+                writeBChan chan $ ActiveModsListed activeMods
 
 getInstallModAction :: AppState -> Maybe (IO ())
 getInstallModAction st =

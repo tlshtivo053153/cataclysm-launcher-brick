@@ -28,7 +28,7 @@ data Handle m = Handle
     , hGetCurrentTime      :: m UTCTime
     , hCallCommand         :: String -> m ()
     , hFetchReleasesFromAPI :: String -> Maybe UTCTime -> m (Either String L.ByteString)
-    , hReadProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
+    , hReadProcessWithExitCode :: String -> [String] -> String -> m (ExitCode, String, String)
     , hCreateProcess       :: FilePath -> [String] -> Maybe FilePath -> m ()
     , hLaunchGame          :: FilePath -> [String] -> m ()
     , hCreateSymbolicLink  :: FilePath -> FilePath -> m ()

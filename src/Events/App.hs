@@ -3,23 +3,48 @@
 module Events.App (handleAppEvent, handleAppEventPure, managerErrorToText, modHandlerErrorToText) where
 
 import Brick
+import Brick.BChan (writeBChan)
+import qualified Brick.Widgets.List
 import Brick.Widgets.List (list)
+import qualified Data.Vector
+import Control.Concurrent (forkIO)
+import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.Vector (fromList)
 
-import Events.Mods (refreshAvailableModsList)
+import Events.Mods (refreshActiveModsList, refreshAvailableModsList)
+import Events.Soundpack (refreshInstalledSoundpacksList)
 import GameManager (getInstalledVersions)
+import GitHubIntegration (generateSoundpackDownloadInfos)
+import SoundpackManager (installSoundpack, uninstallSoundpack)
 import Types
 
 -- | Handles IO-related events and calls the pure event handler.
 handleAppEvent :: UIEvent -> EventM Name AppState ()
+handleAppEvent ProfileSelectionChanged = do
+    refreshActiveModsList
+    refreshInstalledSoundpacksList
+handleAppEvent (InstallSoundpack profile soundpackInfo) = do
+    st <- get
+    let handle = appHandle st
+    let config = appConfig st
+    let chan = appEventChannel st
+    liftIO $ void $ forkIO $ do
+        result <- installSoundpack handle config profile soundpackInfo
+        writeBChan chan (SoundpackInstallFinished result)
+handleAppEvent (UninstallSoundpack profile installedSoundpack) = do
+    st <- get
+    let handle = appHandle st
+    let config = appConfig st
+    let chan = appEventChannel st
+    liftIO $ void $ forkIO $ do
+        result <- uninstallSoundpack handle config profile installedSoundpack
+        writeBChan chan (SoundpackUninstallFinished (fmap (const installedSoundpack) result))
 handleAppEvent event@(InstallFinished (Right msg)) = do
     st <- get
     installedVec <- liftIO $ getInstalledVersions (appConfig st)
     let newList = list InstalledListName (fromList installedVec) 1
-    -- We manually update the state here because it involves IO.
-    -- For a pure approach, we could create a new UIEvent like `InstalledVersionsUpdated`.
     modify $ \s -> (handleAppEventPure s event) { appInstalledVersions = newList, appStatus = T.pack msg }
 handleAppEvent event@(ModInstallFinished (Right _)) = do
     modify (`handleAppEventPure` event)
@@ -28,6 +53,10 @@ handleAppEvent event = modify (`handleAppEventPure` event)
 
 -- | A pure function to handle state changes based on UI events.
 handleAppEventPure :: AppState -> UIEvent -> AppState
+handleAppEventPure st FetchSoundpacks =
+    let soundpacks = generateSoundpackDownloadInfos (appConfig st)
+        newList = list AvailableSoundpackListName (fromList soundpacks) 1
+    in st { appAvailableSoundpacks = newList, appStatus = "Available soundpacks listed." }
 handleAppEventPure st (LogMessage msg) = st { appStatus = msg }
 handleAppEventPure st (LogEvent msg) = st { appStatus = msg }
 handleAppEventPure st (ErrorEvent msg) = st { appStatus = "Error: " <> msg }
@@ -35,11 +64,11 @@ handleAppEventPure st (CacheHit msg) = st { appStatus = msg }
 handleAppEventPure st (InstallFinished (Left err)) =
     st { appStatus = "Error: " <> managerErrorToText err }
 handleAppEventPure st (InstallFinished (Right msg)) =
-    -- This case is mostly handled in the IO part of handleAppEvent,
-    -- but we can set a preliminary status.
     st { appStatus = T.pack msg }
-handleAppEventPure st (ProfileCreated (Right ())) =
-    st { appStatus = "Profile created successfully." }
+handleAppEventPure st (ProfileCreated (Right newProfile)) =
+    let currentProfiles = listToList (appSandboxProfiles st)
+        newList = list SandboxProfileListName (fromList (newProfile : currentProfiles)) 1
+    in st { appSandboxProfiles = newList, appStatus = "Profile created successfully." }
 handleAppEventPure st (ProfileCreated (Left err)) =
     st { appStatus = "Error creating profile: " <> managerErrorToText err }
 handleAppEventPure st (BackupCreated (Left err)) =
@@ -69,6 +98,25 @@ handleAppEventPure st (AvailableModsListed (mods, cache)) =
 handleAppEventPure st (ActiveModsListed mods) =
     let newList = list ActiveModListName (fromList mods) 1
     in st { appActiveMods = newList }
+handleAppEventPure st (SoundpackInstallFinished (Right installed)) =
+    let currentInstalled = listToList (appInstalledSoundpacks st)
+        newList = list InstalledSoundpackListName (fromList (installed : currentInstalled)) 1
+    in st { appInstalledSoundpacks = newList, appStatus = "Soundpack installed successfully." }
+handleAppEventPure st (SoundpackInstallFinished (Left err)) =
+    st { appStatus = "Soundpack installation failed: " <> managerErrorToText err }
+handleAppEventPure st (SoundpackUninstallFinished (Right removed)) =
+    let currentInstalled = filter (/= removed) $ listToList (appInstalledSoundpacks st)
+        newList = list InstalledSoundpackListName (fromList currentInstalled) 1
+    in st { appInstalledSoundpacks = newList, appStatus = "Soundpack uninstalled successfully." }
+handleAppEventPure st (SoundpackUninstallFinished (Left err)) =
+    st { appStatus = "Soundpack uninstallation failed: " <> managerErrorToText err }
+handleAppEventPure st (InstalledSoundpacksListed soundpacks) =
+    let newList = list InstalledSoundpackListName (fromList soundpacks) 1
+    in st { appInstalledSoundpacks = newList }
+handleAppEventPure st ProfileSelectionChanged = st -- This is handled in handleAppEvent, so we just return the state.
+
+listToList :: Brick.Widgets.List.List n e -> [e]
+listToList = Data.Vector.toList . Brick.Widgets.List.listElements
 
 managerErrorToText :: ManagerError -> T.Text
 managerErrorToText err = case err of
