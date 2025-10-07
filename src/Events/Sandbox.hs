@@ -1,6 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Events.Sandbox (handleSandboxProfileEvents) where
+module Events.Sandbox (
+    handleSandboxProfileEvents,
+    -- Pure logic for testing
+    decideNewProfileName,
+    shouldBackupProfile
+) where
 
 import Brick
 import Brick.BChan (writeBChan)
@@ -14,30 +19,39 @@ import Control.Monad (void)
 
 import qualified BackupSystem as BS
 import Events.List (handleListEvents')
-import Events.Mods (refreshActiveModsList)
-import Events.Soundpack (refreshInstalledSoundpacksList)
-import qualified ModHandler as MH
 import qualified SandboxController as SC
 import Types
 
+-- | Pure function to decide the name of a new profile.
+decideNewProfileName :: AppState -> T.Text
+decideNewProfileName st =
+    let profileCount = Vec.length . listElements $ appSandboxProfiles st
+    in "NewProfile" <> T.pack (show (profileCount + 1))
+
+-- | Pure function to determine if a backup should be created.
+shouldBackupProfile :: AppState -> Maybe SandboxProfile
+shouldBackupProfile st =
+    fmap snd (listSelectedElement (appSandboxProfiles st))
+
+-- | EventM action to create a new profile.
 createProfile :: EventM Name AppState ()
 createProfile = do
     st <- get
     let h = appHandle st
         cfg = appConfig st
         chan = appEventChannel st
-        profileCount = Vec.length . listElements $ appSandboxProfiles st
-        newProfileName = "NewProfile" <> T.pack (show (profileCount + 1))
+        newProfileName = decideNewProfileName st
     liftIO $ void $ forkIO $ do
         result <- SC.createProfile h cfg newProfileName
         writeBChan chan $ ProfileCreated result
 
+-- | EventM action to back up the selected profile.
 backupProfile :: EventM Name AppState ()
 backupProfile = do
     st <- get
-    case listSelectedElement (appSandboxProfiles st) of
+    case shouldBackupProfile st of
         Nothing -> return ()
-        Just (_, profile) -> do
+        Just profile -> do
             let h = appHandle st
                 cfg = appConfig st
                 chan = appEventChannel st
@@ -45,33 +59,9 @@ backupProfile = do
                 result <- BS.createBackup h cfg profile
                 writeBChan chan $ BackupCreated result
 
-listBackupsForProfile :: EventM Name AppState ()
-listBackupsForProfile = do
-    st <- get
-    case listSelectedElement (appSandboxProfiles st) of
-        Nothing -> return ()
-        Just (_, profile) -> do
-            let h = appHandle st
-                cfg = appConfig st
-                chan = appEventChannel st
-            liftIO $ void $ forkIO $ do
-                backupResult <- BS.listBackups h cfg profile
-                writeBChan chan $ BackupsListed backupResult
-
-refreshActiveMods :: EventM Name AppState ()
-refreshActiveMods = do
-    st <- get
-    case listSelectedElement (appSandboxProfiles st) of
-        Nothing -> return ()
-        Just (_, profile) -> do
-            let chan = appEventChannel st
-            liftIO $ void $ forkIO $ do
-                mods <- MH.listActiveMods (spDataDirectory profile)
-                writeBChan chan $ ActiveModsListed mods
-
 -- | Event handler for the sandbox profiles list.
 handleSandboxProfileEvents :: V.Event -> EventM Name AppState ()
-handboxProfileEvents (V.EvKey (V.KChar 'n') []) = createProfile
+handleSandboxProfileEvents (V.EvKey (V.KChar 'n') []) = createProfile
 handleSandboxProfileEvents (V.EvKey (V.KChar 'b') []) = backupProfile
 handleSandboxProfileEvents ev = do
     -- First, handle the list movement, which might change the selection.
@@ -80,4 +70,3 @@ handleSandboxProfileEvents ev = do
     st <- get
     let chan = appEventChannel st
     liftIO $ writeBChan chan ProfileSelectionChanged
-
