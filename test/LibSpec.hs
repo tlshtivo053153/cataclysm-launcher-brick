@@ -15,12 +15,14 @@ spec = describe "Lib" $ do
   describe "Events" $ do
     describe "nextActiveList" $ do
       it "cycles through all active lists" $ do
+        nextActiveList SandboxProfileList `shouldBe` AvailableList
         nextActiveList AvailableList `shouldBe` InstalledList
-        nextActiveList InstalledList `shouldBe` SandboxProfileList
-        nextActiveList SandboxProfileList `shouldBe` BackupList
+        nextActiveList InstalledList `shouldBe` BackupList
         nextActiveList BackupList `shouldBe` AvailableModList
         nextActiveList AvailableModList `shouldBe` ActiveModList
-        nextActiveList ActiveModList `shouldBe` AvailableList
+        nextActiveList ActiveModList `shouldBe` AvailableSoundpackList
+        nextActiveList AvailableSoundpackList `shouldBe` InstalledSoundpackList
+        nextActiveList InstalledSoundpackList `shouldBe` SandboxProfileList
 
     describe "toggleActiveList" $ do
       it "switches to the next active list in AppState" $ do
@@ -31,7 +33,7 @@ spec = describe "Lib" $ do
       it "cycles back to the first list from the last" $ do
         let st = initialAppState { appActiveList = ActiveModList }
         let st' = toggleActiveList st
-        appActiveList st' `shouldBe` AvailableList
+        appActiveList st' `shouldBe` AvailableSoundpackList
 
   describe "Events.App" $ do
     describe "handleAppEventPure" $ do

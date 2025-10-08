@@ -40,6 +40,7 @@ spec = describe "Integration Workflow" $ do
             , ", downloadThreads = 4"
             , ", maxBackupCount = 10"
             , ", logLevel = \"Info\""
+            , ", soundpackRepos = [] : List Text"
             , "}"
             ]
       liftIO $ TIO.writeFile dhallPath dhallContent
