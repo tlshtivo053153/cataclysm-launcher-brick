@@ -30,10 +30,13 @@ mockConfig = Config
   , sandboxDirectory = "/root/sandbox"
   , backupDirectory = "/root/backup"
   , downloadCacheDirectory = "/root/cache/downloads"
+  , soundpackCacheDirectory = "/root/cache/soundpacks"
+  , useSoundpackCache = True
   , maxBackupCount = 5
   , githubApiUrl = "http://test.api/releases"
   , downloadThreads = 4
   , logLevel = "Info"
+  , soundpackRepos = []
   }
 
 mockReleases :: [GH.Release]
@@ -77,12 +80,14 @@ createTestHandles = do
               hDoesFileExist = \fp -> Map.member fp <$> readIORef fsRef
             , hReadFile = \fp -> Data.Maybe.fromMaybe (error "file not found") . Map.lookup fp <$> readIORef fsRef
             , hWriteFile = \fp content -> modifyIORef' fsRef (Map.insert fp content)
+            , hWriteLazyByteString = \_ _ -> error "hWriteLazyByteString not implemented"
             , hGetCurrentTime = return mockTime
             , hFetchReleasesFromAPI = \_ _ -> do
                 writeIORef calledRef True
                 readIORef apiRef
             -- Unused functions for these tests
             , hDownloadAsset = \_ -> error "hDownloadAsset not implemented"
+            , hDownloadFile = \_ -> error "hDownloadFile not implemented"
             , hCreateDirectoryIfMissing = \_ _ -> error "hCreateDirectoryIfMissing not implemented"
             , hDoesDirectoryExist = \_ -> error "hDoesDirectoryExist not implemented"
             , hRemoveDirectoryRecursive = \_ -> error "hRemoveDirectoryRecursive not implemented"
@@ -98,6 +103,8 @@ createTestHandles = do
             , hGetSymbolicLinkTarget = \_ -> error "hGetSymbolicLinkTarget not implemented"
             , hRemoveFile = \_ -> error "hRemoveFile not implemented"
             , hFindFilesRecursively = \_ _ -> return []
+            , hExtractTarball = \_ _ -> error "hExtractTarball not implemented"
+            , hExtractZip = \_ _ -> error "hExtractZip not implemented"
             }
     return $ TestHandles fsRef apiRef calledRef handle
 

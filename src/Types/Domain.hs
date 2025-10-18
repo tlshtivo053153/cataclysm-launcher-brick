@@ -43,6 +43,8 @@ data Config = Config
     , sandboxDirectory      :: T.Text
     , backupDirectory       :: T.Text
     , downloadCacheDirectory :: T.Text
+    , soundpackCacheDirectory :: T.Text
+    , useSoundpackCache     :: Bool
     , maxBackupCount        :: Natural
     , githubApiUrl          :: T.Text
     , downloadThreads       :: Natural

@@ -3,7 +3,8 @@
 module Events.Soundpack (
     handleAvailableSoundpackEvents,
     handleInstalledSoundpackEvents,
-    refreshInstalledSoundpacksList
+    refreshInstalledSoundpacksList,
+    refreshInstalledSoundpacksList'
 ) where
 
 import Brick
@@ -23,15 +24,19 @@ import Types
 refreshInstalledSoundpacksList :: EventM Name AppState ()
 refreshInstalledSoundpacksList = do
     st <- get
+    let mprofile = snd <$> listSelectedElement (appSandboxProfiles st)
+    refreshInstalledSoundpacksList' mprofile
+
+refreshInstalledSoundpacksList' :: Maybe SandboxProfile -> EventM Name AppState ()
+refreshInstalledSoundpacksList' Nothing = return ()
+refreshInstalledSoundpacksList' (Just profile) = do
+    st <- get
     let chan = appEventChannel st
         handle = appHandle st
-    case listSelectedElement (appSandboxProfiles st) of
-        Nothing -> return ()
-        Just (_, profile) ->
-            liftIO $ void $ forkIO $ do
-                writeBChan chan (LogEvent ("Refreshing soundpacks for: " <> spName profile))
-                installed <- listInstalledSoundpacks handle (spDataDirectory profile)
-                writeBChan chan (InstalledSoundpacksListed installed)
+    liftIO $ void $ forkIO $ do
+        writeBChan chan (LogEvent ("Refreshing soundpacks for: " <> spName profile))
+        installed <- listInstalledSoundpacks handle (spDataDirectory profile)
+        writeBChan chan (InstalledSoundpacksListed installed)
 
 handleAvailableSoundpackEvents :: V.Event -> EventM Name AppState ()
 handleAvailableSoundpackEvents (V.EvKey V.KEnter []) = do
@@ -40,9 +45,9 @@ handleAvailableSoundpackEvents (V.EvKey V.KEnter []) = do
     case listSelectedElement (appAvailableSoundpacks st) of
         Nothing -> return ()
         Just (_, soundpackInfo) -> do
-            case listToMaybe (Data.Vector.toList (listElements (appSandboxProfiles st))) of
+            case snd <$> listSelectedElement (appSandboxProfiles st) of
                 Nothing ->
-                    liftIO $ writeBChan chan (LogMessage "Error: No sandbox profile available.")
+                    liftIO $ writeBChan chan (LogMessage "Error: No sandbox profile selected.")
                 Just profile ->
                     liftIO $ writeBChan chan (InstallSoundpack profile soundpackInfo)
 handleAvailableSoundpackEvents ev = handleListEvents ev AvailableSoundpackList

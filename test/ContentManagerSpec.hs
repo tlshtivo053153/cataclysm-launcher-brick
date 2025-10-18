@@ -1,61 +1,70 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module ContentManagerSpec (spec) where
 
 import Test.Hspec
+import Control.Monad.State.Strict
+import qualified Data.ByteString.Lazy as L
+import qualified Data.Text as T
 import System.FilePath ((</>))
-import Control.Monad.State
 
 import ContentManager
-import TestUtils (MockFsState(..), runMockFs)
+import Types
+import TestUtils
 
 spec :: Spec
-spec = describe "listAvailableContent" $ do
-    it "should list files from both sys and user repos" $ do
-        let initialState = MockFsState
-                { mfsContents =
-                    [ ("/sys-repo/file1.txt", "sys1")
-                    , ("/sys-repo/subdir/file2.txt", "sys2")
-                    , ("/user-repo/file3.txt", "user3")
-                    ]
-                , mfsLog = []
-                }
-        let expected =
-                [ Content "file1.txt" "/sys-repo/file1.txt"
-                , Content ("subdir" </> "file2.txt") "/sys-repo/subdir/file2.txt"
-                , Content "file3.txt" "/user-repo/file3.txt"
-                ]
-        let (result, _) = runMockFs (listAvailableContent "/sys-repo" "/user-repo") initialState
-        result `shouldMatchList` expected
+spec = describe "ContentManager" $ do
+    describe "downloadWithCache" $ do
+        it "should use the cached file if it exists" $ do
+            let url = "http://example.com/file.zip"
+            let cacheDir = "/cache"
+            let cacheFilePath = cacheDir </> "file.zip"
+            let initialState = TestState
+                    { tsFileContents = mempty
+                    , tsFileExistence = [(cacheFilePath, True)]
+                    , tsDownloadedAssets = []
+                    , tsCacheHits = 0
+                    , tsCacheMisses = 0
+                    }
+            
+            (result, finalState) <- runStateT (downloadWithCache mockHandle cacheDir url (modify (\s -> s { tsCacheHits = tsCacheHits s + 1 })) (return ())) initialState
 
-    it "should prefer user-repo files over sys-repo files on conflict" $ do
-        let initialState = MockFsState
-                { mfsContents =
-                    [ ("/sys-repo/file1.txt", "sys")
-                    , ("/user-repo/file1.txt", "user")
-                    ]
-                , mfsLog = []
-                }
-        let expected = [Content "file1.txt" "/user-repo/file1.txt"]
-        let (result, _) = runMockFs (listAvailableContent "/sys-repo" "/user-repo") initialState
-        result `shouldMatchList` expected
+            result `shouldBe` Right cacheFilePath
+            tsDownloadedAssets finalState `shouldBe` []
+            tsCacheHits finalState `shouldBe` 1
 
-    it "should return an empty list when both repos are empty" $ do
-        let initialState = MockFsState
-                { mfsContents = []
-                , mfsLog = []
-                }
-        let (result, _) = runMockFs (listAvailableContent "/sys-repo" "/user-repo") initialState
-        result `shouldBe` []
+        it "should download and cache the file if it does not exist" $ do
+            let url = "http://example.com/file.zip"
+            let cacheDir = "/cache"
+            let cacheFilePath = cacheDir </> "file.zip"
+            let fileContent = "file content" :: L.ByteString
+            let initialState = TestState
+                    { tsFileContents = mempty
+                    , tsFileExistence = [(cacheFilePath, False)]
+                    , tsDownloadedAssets = [(url, Right fileContent)]
+                    , tsCacheHits = 0
+                    , tsCacheMisses = 0
+                    }
 
-    it "should handle one empty repo" $ do
-        let initialState = MockFsState
-                { mfsContents =
-                    [ ("/sys-repo/file1.txt", "sys")
-                    ]
-                , mfsLog = []
-                }
-        let expected = [Content "file1.txt" "/sys-repo/file1.txt"]
-        let (result, _) = runMockFs (listAvailableContent "/sys-repo" "/user-repo") initialState
-        result `shouldMatchList` expected
+            (result, finalState) <- runStateT (downloadWithCache mockHandle cacheDir url (return ()) (modify (\s -> s { tsCacheMisses = tsCacheMisses s + 1 }))) initialState
+
+            result `shouldBe` Right cacheFilePath
+            tsFileContents finalState `shouldBe` [(cacheFilePath, fileContent)]
+            tsCacheMisses finalState `shouldBe` 1
+
+        it "should return an error if download fails" $ do
+            let url = "http://example.com/file.zip"
+            let cacheDir = "/cache"
+            let cacheFilePath = cacheDir </> "file.zip"
+            let initialState = TestState
+                    { tsFileContents = mempty
+                    , tsFileExistence = [(cacheFilePath, False)]
+                    , tsDownloadedAssets = [(url, Left (NetworkError "download failed"))]
+                    , tsCacheHits = 0
+                    , tsCacheMisses = 0
+                    }
+
+            (result, _) <- runStateT (downloadWithCache mockHandle cacheDir url (return ()) (return ())) initialState
+
+            result `shouldBe` Left (NetworkError "download failed")

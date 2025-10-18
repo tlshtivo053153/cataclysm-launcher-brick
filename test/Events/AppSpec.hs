@@ -3,8 +3,8 @@
 module Events.AppSpec (spec) where
 
 import Test.Hspec
-import qualified Data.Text as T
-import Brick.Widgets.List (list, listElements)
+import Brick.BChan (newBChan)
+import Brick.Widgets.List (listElements)
 import Data.Vector (fromList)
 
 import Events (nextActiveList)
@@ -27,25 +27,33 @@ spec = describe "Events.App" $ do
 
   describe "handleAppEventPure" $ do
     it "handles LogMessage" $ do
+      chan <- newBChan 10
+      let st = initialAppState dummyConfig undefined chan
       let event = LogMessage "Test log"
-          finalState = handleAppEventPure initialAppState event
+          finalState = handleAppEventPure st event
       appStatus finalState `shouldBe` "Test log"
 
     it "handles ErrorEvent" $ do
+      chan <- newBChan 10
+      let st = initialAppState dummyConfig undefined chan
       let event = ErrorEvent "Test error"
-          finalState = handleAppEventPure initialAppState event
+          finalState = handleAppEventPure st event
       appStatus finalState `shouldBe` "Error: Test error"
 
     it "handles InstallFinished (Left)" $ do
+      chan <- newBChan 10
+      let st = initialAppState dummyConfig undefined chan
       let errMsg = GeneralManagerError "Install failed"
           event = InstallFinished (Left errMsg)
-          finalState = handleAppEventPure initialAppState event
+          finalState = handleAppEventPure st event
       appStatus finalState `shouldBe` "Error: Install failed"
 
     it "handles BackupsListed (Right)" $ do
+      chan <- newBChan 10
+      let st = initialAppState dummyConfig undefined chan
       let backups = [BackupInfo "backup1" "ts1" "path1", BackupInfo "backup2" "ts2" "path2"]
           event = BackupsListed (Right backups)
-          finalState = handleAppEventPure initialAppState event
+          finalState = handleAppEventPure st event
           backupNames = fmap biName . listElements . appBackups $ finalState
       backupNames `shouldBe` fromList ["backup1", "backup2"]
 
@@ -59,3 +67,21 @@ spec = describe "Events.App" $ do
     it "converts various mod handler errors to text" $ do
       modHandlerErrorToText (GitCloneFailed "clone failed") `shouldBe` "Git clone failed: clone failed"
       modHandlerErrorToText (ModNotFound "SomeMod") `shouldBe` "Mod not found: SomeMod"
+
+dummyConfig :: Config
+dummyConfig = Config
+    { launcherRootDirectory = "/tmp/launcher"
+    , cacheDirectory = "/tmp/launcher/cache"
+    , sysRepoDirectory = "/tmp/launcher/sys-repo"
+    , userRepoDirectory = "/tmp/launcher/user-repo"
+    , sandboxDirectory = "/tmp/launcher/sandbox"
+    , backupDirectory = "/tmp/launcher/backups"
+    , downloadCacheDirectory = "/tmp/launcher/cache/downloads"
+    , soundpackCacheDirectory = "/tmp/launcher/cache/soundpacks"
+    , useSoundpackCache = True
+    , maxBackupCount = 10
+    , githubApiUrl = "http://test.com/api"
+    , downloadThreads = 1
+    , logLevel = "Info"
+    , soundpackRepos = []
+    }

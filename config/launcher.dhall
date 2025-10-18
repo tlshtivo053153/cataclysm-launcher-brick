@@ -13,6 +13,8 @@ in {
   , sandboxDirectory = launcherRoot ++ "/sandbox"
   , backupDirectory = launcherRoot ++ "/backups"
   , downloadCacheDirectory = launcherRoot ++ "/cache/downloads"
+  , soundpackCacheDirectory = launcherRoot ++ "/cache/soundpacks"
+  , useSoundpackCache = True
 
   -- その他の設定
   , maxBackupCount = 10

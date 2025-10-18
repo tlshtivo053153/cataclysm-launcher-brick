@@ -48,8 +48,11 @@ defaultConfig = Config
     , sandboxDirectory = "/tmp/sandbox"
     , backupDirectory = "/tmp/backups"
     , downloadCacheDirectory = "/tmp/cache/downloads"
+    , soundpackCacheDirectory = "/tmp/cache/soundpacks"
+    , useSoundpackCache = True
     , maxBackupCount = 5
     , githubApiUrl = "https://api.github.com"
     , downloadThreads = 4
     , logLevel = "Info"
+    , soundpackRepos = []
     }

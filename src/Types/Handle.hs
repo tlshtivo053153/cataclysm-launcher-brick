@@ -18,7 +18,9 @@ data Handle m = Handle
     { hDoesFileExist       :: FilePath -> m Bool
     , hReadFile            :: FilePath -> m B.ByteString
     , hWriteFile           :: FilePath -> B.ByteString -> m ()
+    , hWriteLazyByteString :: FilePath -> L.ByteString -> m ()
     , hDownloadAsset       :: T.Text -> m (Either ManagerError B.ByteString)
+    , hDownloadFile        :: T.Text -> m (Either ManagerError L.ByteString)
     , hCreateDirectoryIfMissing :: Bool -> FilePath -> m ()
     , hDoesDirectoryExist  :: FilePath -> m Bool
     , hRemoveDirectoryRecursive :: FilePath -> m ()
@@ -36,4 +38,6 @@ data Handle m = Handle
     , hGetSymbolicLinkTarget :: FilePath -> m FilePath
     , hRemoveFile :: FilePath -> m ()
     , hFindFilesRecursively :: FilePath -> [String] -> m [FilePath]
+    , hExtractTarball :: FilePath -> FilePath -> m (Either ManagerError ())
+    , hExtractZip :: FilePath -> B.ByteString -> m (Either ManagerError String)
     }

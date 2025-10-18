@@ -43,6 +43,9 @@ spec = describe "Integration Sandbox" $ do
             , downloadThreads = 1
             , maxBackupCount = 5
             , logLevel = "Info"
+            , soundpackCacheDirectory = T.pack $ tempDir </> "cache" </> "soundpacks"
+            , useSoundpackCache = True
+            , soundpackRepos = []
             }
 
       -- Create a dummy "installed" game executable

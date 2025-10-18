@@ -1,15 +1,20 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module ContentManager (
     Content(..),
-    listAvailableContent
+    listAvailableContent,
+    downloadWithCache
 ) where
 
 import Control.Monad (forM)
-import System.FilePath ((</>), makeRelative)
-import FileSystemUtils (MonadFileSystem(..))
+import Control.Monad.Catch (MonadCatch, SomeException, try)
+import qualified Data.Text as T
+import System.FilePath ((</>), makeRelative, takeFileName)
 import qualified Data.Map as Map
 import Data.List (foldl')
+
+import Types
 
 -- | Represents a piece of content with its name and path.
 data Content = Content
@@ -18,26 +23,26 @@ data Content = Content
     } deriving (Show, Eq, Ord)
 
 -- | Recursively lists all files in a directory.
-listAllFiles :: MonadFileSystem m => FilePath -> m [FilePath]
-listAllFiles baseDir = do
-    exists <- fsDoesDirectoryExist baseDir
+listAllFiles :: Monad m => Handle m -> FilePath -> m [FilePath]
+listAllFiles handle baseDir = do
+    exists <- hDoesDirectoryExist handle baseDir
     if not exists
     then return []
     else do
-        contents <- fsListDirectory baseDir
+        contents <- hListDirectory handle baseDir
         paths <- forM contents $ \item -> do
             let path = baseDir </> item
-            isDir <- fsDoesDirectoryExist path
+            isDir <- hDoesDirectoryExist handle path
             if isDir
-            then listAllFiles path
+            then listAllFiles handle path
             else return [path]
         return (concat paths)
 
 -- | Lists available content from sys-repo and user-repo, with user-repo taking precedence.
-listAvailableContent :: MonadFileSystem m => FilePath -> FilePath -> m [Content]
-listAvailableContent sysRepo userRepo = do
-    sysFiles <- listAllFiles sysRepo
-    userFiles <- listAllFiles userRepo
+listAvailableContent :: Monad m => Handle m -> FilePath -> FilePath -> m [Content]
+listAvailableContent handle sysRepo userRepo = do
+    sysFiles <- listAllFiles handle sysRepo
+    userFiles <- listAllFiles handle userRepo
 
     let sysContent = map (\p -> Content (makeRelative sysRepo p) p) sysFiles
     let userContent = map (\p -> Content (makeRelative userRepo p) p) userFiles
@@ -45,3 +50,33 @@ listAvailableContent sysRepo userRepo = do
     let contentMap = foldl' (\acc c -> Map.insert (contentName c) c acc) Map.empty (sysContent ++ userContent)
 
     return $ Map.elems contentMap
+
+-- | Downloads a file from a URL, using a cache if available.
+downloadWithCache :: MonadCatch m
+                  => Handle m
+                  -> FilePath      -- ^ Cache directory
+                  -> T.Text        -- ^ URL
+                  -> m ()          -- ^ Action to run on cache hit
+                  -> m ()          -- ^ Action to run on cache miss
+                  -> m (Either ManagerError FilePath) -- ^ Path to the cached file
+downloadWithCache handle cacheDir url onCacheHit onCacheMiss = do
+    let fileName = takeFileName (T.unpack url)
+    let cacheFilePath = cacheDir </> fileName
+
+    hCreateDirectoryIfMissing handle True cacheDir
+
+    cacheExists <- hDoesFileExist handle cacheFilePath
+    if cacheExists
+    then do
+        onCacheHit
+        return $ Right cacheFilePath
+    else do
+        onCacheMiss
+        result <- hDownloadFile handle url
+        case result of
+            Left e -> return $ Left e
+            Right responseBody -> do
+                writeResult <- try $ hWriteLazyByteString handle cacheFilePath responseBody
+                case writeResult of
+                    Left (e :: SomeException) -> return $ Left $ FileSystemError $ T.pack $ show e
+                    Right () -> return $ Right cacheFilePath

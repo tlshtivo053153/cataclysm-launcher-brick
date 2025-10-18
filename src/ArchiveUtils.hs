@@ -12,12 +12,13 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS.Char8
 import qualified Data.Text as T
 import Control.Exception (try, SomeException)
-import Control.Monad (when)
+import Control.Monad (when, forM_)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (runResourceT, MonadResource)
 import Data.List (foldl', isPrefixOf)
-import System.Directory (createDirectoryIfMissing, makeAbsolute)
+import System.Directory (createDirectoryIfMissing, makeAbsolute, listDirectory, copyFile, doesDirectoryExist)
 import System.FilePath ((</>), takeDirectory)
+import System.IO.Temp (withSystemTempDirectory)
 import System.Posix.Files (setFileMode, ownerExecuteMode, groupExecuteMode, otherExecuteMode, unionFileModes, getFileStatus, fileMode)
 import Data.Conduit (runConduit, (.|), ConduitM)
 import Data.Conduit.Binary (sourceFile, sinkFile)
@@ -56,10 +57,34 @@ extractTarball archivePath installDir = do
 
 extractZip :: FilePath -> B.ByteString -> IO (Either ManagerError String)
 extractZip installDir zipData = do
-    let archive = Zip.toArchive (LBS.fromStrict zipData)
-    Zip.extractFilesFromArchive [Zip.OptDestination installDir] archive
-    setPermissions installDir
-    return $ Right "Zip extraction complete (simplified)."
+    createDirectoryIfMissing True installDir
+    withSystemTempDirectory "zip-extract" $ \tempDir -> do
+        let archive = Zip.toArchive (LBS.fromStrict zipData)
+        -- 1. Extract to temporary directory
+        Zip.extractFilesFromArchive [Zip.OptDestination tempDir] archive
+
+        -- 2. Move contents from temp to installDir
+        contents <- listDirectory tempDir
+        forM_ contents $ \item -> do
+            let srcPath = tempDir </> item
+            let destPath = installDir </> item
+            copyDirectoryRecursive srcPath destPath
+
+        -- 3. Set permissions on executables if any
+        setPermissions installDir
+        return $ Right "Zip extraction complete."
+
+copyDirectoryRecursive :: FilePath -> FilePath -> IO ()
+copyDirectoryRecursive src dest = do
+    isDir <- doesDirectoryExist src
+    if isDir
+        then do
+            createDirectoryIfMissing True dest
+            contents <- listDirectory src
+            forM_ contents $ \item ->
+                copyDirectoryRecursive (src </> item) (dest </> item)
+        else
+            copyFile src dest
 
 setPermissions :: FilePath -> IO ()
 setPermissions installDir = do

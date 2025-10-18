@@ -14,7 +14,7 @@ import qualified Data.Text as T
 import Data.Vector (fromList)
 
 import Events.Mods (refreshActiveModsList, refreshAvailableModsList)
-import Events.Soundpack (refreshInstalledSoundpacksList)
+import Events.Soundpack (refreshInstalledSoundpacksList, refreshInstalledSoundpacksList')
 import GameManager (getInstalledVersions)
 import GitHubIntegration (generateSoundpackDownloadInfos)
 import SoundpackManager (installSoundpack, uninstallSoundpack)
@@ -31,8 +31,8 @@ handleAppEvent (InstallSoundpack profile soundpackInfo) = do
     let config = appConfig st
     let chan = appEventChannel st
     liftIO $ void $ forkIO $ do
-        result <- installSoundpack handle config profile soundpackInfo
-        writeBChan chan (SoundpackInstallFinished result)
+        result <- installSoundpack handle config chan profile soundpackInfo
+        writeBChan chan (SoundpackInstallFinished profile result)
 handleAppEvent (UninstallSoundpack profile installedSoundpack) = do
     st <- get
     let handle = appHandle st
@@ -41,6 +41,9 @@ handleAppEvent (UninstallSoundpack profile installedSoundpack) = do
     liftIO $ void $ forkIO $ do
         result <- uninstallSoundpack handle config profile installedSoundpack
         writeBChan chan (SoundpackUninstallFinished (fmap (const installedSoundpack) result))
+handleAppEvent event@(SoundpackInstallFinished profile (Right _)) = do
+    modify (`handleAppEventPure` event)
+    refreshInstalledSoundpacksList' (Just profile)
 handleAppEvent event@(InstallFinished (Right msg)) = do
     st <- get
     installedVec <- liftIO $ getInstalledVersions (appConfig st)
@@ -98,11 +101,11 @@ handleAppEventPure st (AvailableModsListed (mods, cache)) =
 handleAppEventPure st (ActiveModsListed mods) =
     let newList = list ActiveModListName (fromList mods) 1
     in st { appActiveMods = newList }
-handleAppEventPure st (SoundpackInstallFinished (Right installed)) =
+handleAppEventPure st (SoundpackInstallFinished _ (Right installed)) =
     let currentInstalled = listToList (appInstalledSoundpacks st)
         newList = list InstalledSoundpackListName (fromList (installed : currentInstalled)) 1
     in st { appInstalledSoundpacks = newList, appStatus = "Soundpack installed successfully." }
-handleAppEventPure st (SoundpackInstallFinished (Left err)) =
+handleAppEventPure st (SoundpackInstallFinished _ (Left err)) =
     st { appStatus = "Soundpack installation failed: " <> managerErrorToText err }
 handleAppEventPure st (SoundpackUninstallFinished (Right removed)) =
     let currentInstalled = filter (/= removed) $ listToList (appInstalledSoundpacks st)

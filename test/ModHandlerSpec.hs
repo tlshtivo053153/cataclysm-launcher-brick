@@ -56,6 +56,11 @@ testHandle = Handle
     , hDoesSymbolicLinkExist = \_ -> error "not implemented"
     , hGetSymbolicLinkTarget = \_ -> error "not implemented"
     , hRemoveFile = \_ -> error "not implemented"
+    , hWriteLazyByteString = \_ _ -> error "not implemented"
+    , hDownloadFile = \_ -> error "not implemented"
+    , hFindFilesRecursively = \_ _ -> error "not implemented"
+    , hExtractTarball = \_ _ -> error "not implemented"
+    , hExtractZip = \_ _ -> error "not implemented"
     }
 
 runTest :: TestM a -> TestState -> (a, TestState)

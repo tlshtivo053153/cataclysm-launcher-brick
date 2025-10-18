@@ -22,7 +22,7 @@ data UIEvent
   | FetchSoundpacks
   | InstallSoundpack SandboxProfile SoundpackInfo
   | UninstallSoundpack SandboxProfile InstalledSoundpack
-  | SoundpackInstallFinished (Either ManagerError InstalledSoundpack)
+  | SoundpackInstallFinished SandboxProfile (Either ManagerError InstalledSoundpack)
   | SoundpackUninstallFinished (Either ManagerError InstalledSoundpack)
   | InstalledSoundpacksListed [InstalledSoundpack]
   | ProfileSelectionChanged

@@ -54,6 +54,12 @@ spec = describe "Integration Download" $ do
               maxBackupCount = 5
             ,
               logLevel = "Info"
+            ,
+              soundpackCacheDirectory = T.pack $ tempDir </> "cache" </> "soundpacks"
+            ,
+              useSoundpackCache = True
+            ,
+              soundpackRepos = []
             }
 
       downloadCounter <- liftIO $ newIORef (0 :: Int)
@@ -62,9 +68,9 @@ spec = describe "Integration Download" $ do
 
       let testHandle = Handle.liveHandle
             {
-              hDownloadAsset = \_url -> do
+              hDownloadFile = \_url -> do
                 liftIO $ atomicModifyIORef' downloadCounter (\c -> (c+1, ()))
-                return $ Right dummyArchiveData
+                return $ Right $ B8.fromStrict dummyArchiveData
             ,
               hWriteBChan = \_ _ -> return () -- Ignore UI events
             }

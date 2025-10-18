@@ -1,23 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module GameManager.Install (
     downloadAndInstall,
-    getAssetData,
     extractArchive
 ) where
 
-import qualified Data.ByteString as B
 import qualified Data.Text as T
 import Control.Monad (when)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Catch (MonadCatch)
 import System.FilePath ((</>), takeFileName)
 import Brick.BChan (BChan)
 
-import ArchiveUtils
+import ContentManager (downloadWithCache)
 import Types
 
-downloadAndInstall :: MonadIO m => Handle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
+downloadAndInstall :: (MonadCatch m) => Handle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
 downloadAndInstall handle config eventChan gv = do
     let baseDir = T.unpack $ sysRepoDirectory config
         installDir = baseDir </> "game" </> T.unpack (gvVersionId gv)
@@ -27,10 +26,16 @@ downloadAndInstall handle config eventChan gv = do
     case setupResult of
         Left err -> return $ Left err
         Right () -> do
-            assetDataEither <- getAssetData handle eventChan cacheDir (gvUrl gv)
+            let url = gvUrl gv
+            let fileName = takeFileName (T.unpack url)
+            let onCacheHit = hWriteBChan handle eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
+            let onCacheMiss = hWriteBChan handle eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
+
+            assetDataEither <- downloadWithCache handle cacheDir url onCacheHit onCacheMiss
+            
             case assetDataEither of
                 Left err -> return $ Left err
-                Right cacheFilePath -> extractArchive installDir cacheFilePath (gvUrl gv)
+                Right cacheFilePath -> extractArchive handle installDir cacheFilePath (gvUrl gv)
 
 setupDirectories :: Monad m => Handle m -> FilePath -> FilePath -> m (Either ManagerError ())
 setupDirectories handle installDir cacheDir = do
@@ -40,31 +45,13 @@ setupDirectories handle installDir cacheDir = do
     hCreateDirectoryIfMissing handle True installDir
     return $ Right ()
 
-getAssetData :: Monad m => Handle m -> BChan UIEvent -> FilePath -> T.Text -> m (Either ManagerError FilePath)
-getAssetData handle eventChan cacheDir url = do
-    let fileName = takeFileName (T.unpack url)
-        cacheFilePath = cacheDir </> fileName
-    cacheExists <- hDoesFileExist handle cacheFilePath
-    if cacheExists
-        then do
-            hWriteBChan handle eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
-            return $ Right cacheFilePath
-        else do
-            hWriteBChan handle eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
-            downloadResult <- hDownloadAsset handle url
-            case downloadResult of
-                Left err -> return $ Left err
-                Right assetData -> do
-                    hWriteFile handle cacheFilePath assetData
-                    return $ Right cacheFilePath
-
-extractArchive :: MonadIO m => FilePath -> FilePath -> T.Text -> m (Either ManagerError String)
-extractArchive installDir archivePath urlText
+extractArchive :: Monad m => Handle m -> FilePath -> FilePath -> T.Text -> m (Either ManagerError String)
+extractArchive handle installDir archivePath urlText
     | ".zip" `T.isSuffixOf` urlText = do
-        assetData <- liftIO $ B.readFile archivePath
-        liftIO $ extractZip installDir assetData
+        assetData <- hReadFile handle archivePath
+        hExtractZip handle installDir assetData
     | ".tar.gz" `T.isSuffixOf` urlText = do
-        result <- liftIO $ extractTarball archivePath installDir
+        result <- hExtractTarball handle archivePath installDir
         case result of
             Right () -> return $ Right "Successfully extracted tarball."
             Left err -> return $ Left err

@@ -39,6 +39,9 @@ spec = around withTempSandboxDir $ do
         , githubApiUrl = ""
         , downloadThreads = 1
         , logLevel = "Debug"
+        , soundpackCacheDirectory = ""
+        , useSoundpackCache = True
+        , soundpackRepos = []
         }
 
   describe "SandboxController" $ do

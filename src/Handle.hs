@@ -19,7 +19,7 @@ import           System.Directory (createDirectoryIfMissing, doesDirectoryExist,
 import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
-import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, addRequestHeader)
+import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, addRequestHeader, getResponseStatusCode)
 import           Data.Aeson (encode)
 
 
@@ -27,6 +27,7 @@ import System.Process (readProcessWithExitCode, createProcess, callCommand)
 import System.Directory (doesFileExist, removeFile)
 import FileSystemUtils (findFilesRecursively)
 import qualified GitHubIntegration as GH
+import           ArchiveUtils (extractTarball, extractZip)
 
 import Types
 
@@ -39,12 +40,23 @@ liveHandle = Handle
     { hDoesFileExist = liftIO . doesFileExist
     , hReadFile = liftIO . B.readFile
     , hWriteFile = \fp content -> liftIO $ B.writeFile fp content
-        , hDownloadAsset = \url -> liftIO $ do
-            result <- GH.downloadAsset url
-            case result of
-                Left err -> return $ Left $ NetworkError $ T.pack err
-                Right bs -> return $ Right $ L.toStrict bs
-        , hCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
+    , hWriteLazyByteString = \fp content -> liftIO $ L.writeFile fp content
+    , hDownloadAsset = \url -> liftIO $ do
+        result <- GH.downloadAsset url
+        case result of
+            Left err -> return $ Left $ NetworkError $ T.pack err
+            Right bs -> return $ Right $ L.toStrict bs
+    , hDownloadFile = \url -> do
+        request' <- liftIO $ parseRequest (T.unpack url)
+        let request = setRequestHeader "User-agent" ["cataclysm-launcher-brick"] request'
+        eresponse <- try (httpLBS request)
+        return $ case eresponse of
+            Left (e :: SomeException) -> Left $ NetworkError (T.pack (show e))
+            Right response ->
+                if getResponseStatusCode response == 200
+                then Right $ getResponseBody response
+                else Left $ NetworkError $ T.pack $ "Failed to download asset: " ++ show (getResponseStatusCode response)
+    , hCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
         , hDoesDirectoryExist = liftIO . doesDirectoryExist
         , hRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
         , hWriteBChan = \chan event -> liftIO $ writeBChan chan event
@@ -65,4 +77,6 @@ liveHandle = Handle
         , hGetSymbolicLinkTarget = liftIO . readSymbolicLink
         , hRemoveFile = liftIO . removeFile
         , hFindFilesRecursively = \fp names -> liftIO $ findFilesRecursively fp names
+        , hExtractTarball = \archivePath installDir -> liftIO $ extractTarball archivePath installDir
+        , hExtractZip = \installDir zipData -> liftIO $ extractZip installDir zipData
         }

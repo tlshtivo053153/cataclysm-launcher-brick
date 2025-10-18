@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module SoundpackManager (
     installSoundpack,
@@ -8,15 +9,17 @@ module SoundpackManager (
 ) where
 
 import Control.Monad (filterM)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Catch (MonadCatch)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.Text as T
-import System.FilePath ((</>))
-import System.Directory (doesDirectoryExist) -- For use with filterM
+import System.FilePath ((</>), takeFileName)
+import Brick.BChan (BChan)
 
 import ArchiveUtils (extractZip)
+import ContentManager (downloadWithCache)
 import Types
 
-listInstalledSoundpacks :: Handle IO -> FilePath -> IO [InstalledSoundpack]
+listInstalledSoundpacks :: Monad m => Handle m -> FilePath -> m [InstalledSoundpack]
 listInstalledSoundpacks handle sandboxPath = do
     let soundDir = sandboxPath </> "sound"
     soundDirExists <- hDoesDirectoryExist handle soundDir
@@ -24,36 +27,54 @@ listInstalledSoundpacks handle sandboxPath = do
     then return []
     else do
         contents <- hListDirectory handle soundDir
-        -- Filter for items that are directories
-        dirs <- filterM (\item -> hDoesDirectoryExist handle (soundDir </> item)) contents
+        dirs <- filterM' (\item -> hDoesDirectoryExist handle (soundDir </> item)) contents
         return $ map toInstalledSoundpack dirs
   where
     toInstalledSoundpack :: FilePath -> InstalledSoundpack
     toInstalledSoundpack dirName =
-        -- Reconstruct the info based on the directory name (e.g., "repo-master")
         InstalledSoundpack
-            { ispName = T.pack (dirName <> ".zip") -- This is an assumption for display
+            { ispName = T.pack (dirName <> ".zip")
             , ispDirectoryName = dirName
             }
+    filterM' :: Monad m => (a -> m Bool) -> [a] -> m [a]
+    filterM' _ [] = return []
+    filterM' p (x:xs) = do
+        b <- p x
+        ys <- filterM' p xs
+        return (if b then x:ys else ys)
 
-installSoundpack :: Handle IO -> Config -> SandboxProfile -> SoundpackInfo -> IO (Either ManagerError InstalledSoundpack)
-installSoundpack handle _config profile soundpackInfo = do
+installSoundpack :: MonadCatch m => Handle m -> Config -> BChan UIEvent -> SandboxProfile -> SoundpackInfo -> m (Either ManagerError InstalledSoundpack)
+installSoundpack handle config eventChan profile soundpackInfo = do
     let downloadUrl = spiBrowserDownloadUrl soundpackInfo
     let sandboxPath = spDataDirectory profile
     let soundDir = sandboxPath </> "sound"
+    let cacheDir = T.unpack $ soundpackCacheDirectory config
+    let shouldUseCache = useSoundpackCache config
 
-    -- 1. Download the asset
-    downloadResult <- hDownloadAsset handle downloadUrl
-    case downloadResult of
+    zipDataResult <- if shouldUseCache
+        then do
+            let fileName = takeFileName (T.unpack downloadUrl)
+            let onCacheHit = hWriteBChan handle eventChan $ CacheHit ("Using cached soundpack: " <> T.pack fileName)
+            let onCacheMiss = hWriteBChan handle eventChan $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
+            
+            cachePathEither <- downloadWithCache handle cacheDir downloadUrl onCacheHit onCacheMiss
+            case cachePathEither of
+                Left err -> return $ Left err
+                Right path -> do
+                    content <- hReadFile handle path
+                    return $ Right content
+        else do
+            let fileName = takeFileName (T.unpack downloadUrl)
+            hWriteBChan handle eventChan $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
+            hDownloadAsset handle downloadUrl
+
+    case zipDataResult of
         Left err -> return $ Left err
         Right zipData -> do
-            -- 2. Extract the zip archive
-            extractResult <- extractZip soundDir zipData
+            extractResult <- hExtractZip handle soundDir zipData
             case extractResult of
                 Left err -> return $ Left err
                 Right _ -> do
-                    -- The downloaded zip is named "repo-master.zip".
-                    -- When extracted, it usually creates a directory named "repo-master".
                     let dirName = T.unpack (spiRepoName soundpackInfo) <> "-master"
                     let installed = InstalledSoundpack
                             { ispName = spiAssetName soundpackInfo
@@ -61,7 +82,7 @@ installSoundpack handle _config profile soundpackInfo = do
                             }
                     return $ Right installed
 
-uninstallSoundpack :: Handle IO -> Config -> SandboxProfile -> InstalledSoundpack -> IO (Either ManagerError ())
+uninstallSoundpack :: Monad m => Handle m -> Config -> SandboxProfile -> InstalledSoundpack -> m (Either ManagerError ())
 uninstallSoundpack handle _config profile installedSoundpack = do
     let sandboxPath = spDataDirectory profile
     let soundDir = sandboxPath </> "sound"
