@@ -60,6 +60,11 @@ library
       Soundpack.List
       Soundpack.Uninstall
   other-modules:
+      Soundpack.Utils.Config
+      Soundpack.Utils.Conversion
+      Soundpack.Utils.File
+      Soundpack.Utils.Path
+      Soundpack.Utils.Validation
       Paths_cataclysm_launcher_brick_gemini
   autogen-modules:
       Paths_cataclysm_launcher_brick_gemini

@@ -12,6 +12,9 @@ import System.FilePath ((</>), takeFileName)
 import Brick.BChan (BChan)
 
 import ContentManager (downloadWithCache)
+import Soundpack.Utils.Config (getCacheDirectory, isCacheEnabled)
+import Soundpack.Utils.Conversion (soundpackInfoToInstalledSoundpack)
+import Soundpack.Utils.Path (getSoundpackDirectory)
 import Types
 import Types.Domain (InstalledSoundpack, SandboxProfile, SoundpackInfo)
 import Types.Error (ManagerError(..), SoundpackError(..))
@@ -22,9 +25,9 @@ installSoundpack :: MonadCatch m => Handle m -> Config -> BChan UIEvent -> Sandb
 installSoundpack handle config eventChan profile soundpackInfo = do
     let downloadUrl = spiBrowserDownloadUrl soundpackInfo
     let sandboxPath = spDataDirectory profile
-    let soundDir = sandboxPath </> "sound"
-    let cacheDir = T.unpack $ soundpackCacheDirectory config
-    let shouldUseCache = useSoundpackCache config
+    let soundDir = getSoundpackDirectory sandboxPath
+    let cacheDir = getCacheDirectory config
+    let shouldUseCache = isCacheEnabled config
 
     zipDataResult <- if shouldUseCache
         then do
@@ -56,13 +59,8 @@ installSoundpack handle config eventChan profile soundpackInfo = do
                     let dirName = T.unpack (spiRepoName soundpackInfo) <> "-master"
                     -- Assuming installation implies activity for now
                     currentTime <- hGetCurrentTime handle
-                    let installed = InstalledSoundpack
-                            { ispName = spiAssetName soundpackInfo
-                            , ispDirectoryName = dirName
-                            , ispVersion = spiVersion soundpackInfo
-                            , ispInstalledAt = currentTime
-                            , ispSize = spiSize soundpackInfo
-                            , ispIsActive = True
+                    let installed = (soundpackInfoToInstalledSoundpack soundpackInfo dirName currentTime)
+                            { ispIsActive = True
                             , ispChecksum = spiChecksum soundpackInfo
                             }
                     return $ Right installed

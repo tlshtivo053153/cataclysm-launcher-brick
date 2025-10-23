@@ -1,37 +1,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Soundpack.List (
-    listInstalledSoundpacks
-) where
+{-# LANGUAGE OverloadedStrings #-}
 
-import Control.Monad (filterM)
-import qualified Data.Text as T
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
-import System.FilePath ((</>))
+module Soundpack.List
+  ( listInstalledSoundpacks,
+  )
+where
 
+import Soundpack.Utils.Conversion (directoryToInstalledSoundpack)
+import Soundpack.Utils.File (filterDirectories)
+import Soundpack.Utils.Path (getSoundpackDirectory)
 import Types
-import Types.Domain (InstalledSoundpack, SoundpackInfo)
+import Types.Domain (InstalledSoundpack)
 import Types.Handle
 
 listInstalledSoundpacks :: Monad m => Handle m -> FilePath -> m [InstalledSoundpack]
 listInstalledSoundpacks handle sandboxPath = do
-    let soundDir = sandboxPath </> "sound"
-    soundDirExists <- hDoesDirectoryExist handle soundDir
-    if not soundDirExists
+  let soundDir = getSoundpackDirectory sandboxPath
+  soundDirExists <- hDoesDirectoryExist handle soundDir
+  if not soundDirExists
     then return []
     else do
-        contents <- hListDirectory handle soundDir
-        dirs <- filterM (\item -> hDoesDirectoryExist handle (soundDir </> item)) contents
-        return $ map toInstalledSoundpack dirs
-  where
-    toInstalledSoundpack :: FilePath -> InstalledSoundpack
-    toInstalledSoundpack dirName =
-        InstalledSoundpack
-            { ispName = T.pack (dirName <> ".zip")
-            , ispDirectoryName = dirName
-            , ispVersion = "Unknown"
-            , ispInstalledAt = posixSecondsToUTCTime 0
-            , ispSize = 0
-            , ispIsActive = False
-            , ispChecksum = ""
-            }
+      contents <- hListDirectory handle soundDir
+      dirs <- filterDirectories handle soundDir contents
+      currentTime <- hGetCurrentTime handle
+      return $ map (`directoryToInstalledSoundpack` currentTime) dirs
