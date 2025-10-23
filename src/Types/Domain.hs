@@ -18,21 +18,14 @@ module Types.Domain (
     -- Soundpack-related types
     SoundpackInfo(..),
     InstalledSoundpack(..),
-    ManagerError(..)
+    SoundpackStatus(..),
+    SoundpackOperation(..)
 ) where
 
+import Data.Time.Clock (UTCTime)
 import Dhall
 import qualified Data.Text as T
-
--- Custom Error Type
-data ManagerError
-    = NetworkError T.Text
-    | FileSystemError T.Text
-    | ArchiveError T.Text
-    | LaunchError T.Text
-    | GeneralManagerError T.Text
-    | UnknownError T.Text
-    deriving (Show, Eq)
+import Types.Error (ManagerError)
 
 -- From Config.hs
 data Config = Config
@@ -116,13 +109,74 @@ data AvailableMod = AvailableMod
   } deriving (Show, Eq)
 
 data SoundpackInfo = SoundpackInfo
+
     { spiRepoName :: T.Text
+
     , spiAssetName :: T.Text
+
     , spiBrowserDownloadUrl :: T.Text
+
+    , spiVersion :: T.Text
+
+    , spiDescription :: T.Text
+
+    , spiAuthor :: T.Text
+
+    , spiSize :: Integer
+
+    , spiReleaseDate :: UTCTime
+
+    , spiChecksum :: T.Text
+
     } deriving (Show, Eq)
 
+
+
 data InstalledSoundpack = InstalledSoundpack
+
     { ispName :: T.Text
+
     , ispDirectoryName :: FilePath
+
+    , ispVersion :: T.Text
+
+    , ispInstalledAt :: UTCTime
+
+    , ispSize :: Integer
+
+    , ispIsActive :: Bool
+
+    , ispChecksum :: T.Text
+
     } deriving (Show, Eq)
+
+
+
+data SoundpackStatus
+
+    = NotInstalled
+
+    | Installed InstalledSoundpack
+
+    | UpdateAvailable SoundpackInfo InstalledSoundpack
+
+    deriving (Show, Eq)
+
+
+
+data SoundpackOperation
+
+    = Install SoundpackInfo
+
+    | Uninstall InstalledSoundpack
+
+    | Update InstalledSoundpack SoundpackInfo
+
+    | Activate InstalledSoundpack
+
+    | Deactivate InstalledSoundpack
+
+    deriving (Show, Eq)
+
+
 

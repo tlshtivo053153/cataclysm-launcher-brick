@@ -41,6 +41,7 @@ library
       SandboxController
       Types
       Types.Domain
+      Types.Error
       Types.UI
       Types.Handle
       Types.Event

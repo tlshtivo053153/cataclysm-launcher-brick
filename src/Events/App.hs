@@ -19,6 +19,7 @@ import GameManager (getInstalledVersions)
 import GitHubIntegration (generateSoundpackDownloadInfos)
 import SoundpackManager (installSoundpack, uninstallSoundpack)
 import Types
+import Types.Error (ManagerError(..))
 
 -- | Handles IO-related events and calls the pure event handler.
 handleAppEvent :: UIEvent -> EventM Name AppState ()
@@ -117,6 +118,7 @@ handleAppEventPure st (InstalledSoundpacksListed soundpacks) =
     let newList = list InstalledSoundpackListName (fromList soundpacks) 1
     in st { appInstalledSoundpacks = newList }
 handleAppEventPure st ProfileSelectionChanged = st -- This is handled in handleAppEvent, so we just return the state.
+handleAppEventPure st _ = st -- Ignore other IO-related events handled in handleAppEvent
 
 listToList :: Brick.Widgets.List.List n e -> [e]
 listToList = Data.Vector.toList . Brick.Widgets.List.listElements
@@ -129,6 +131,7 @@ managerErrorToText err = case err of
     LaunchError msg -> "Launch Error: " <> msg
     GeneralManagerError msg -> msg
     UnknownError msg -> "Unknown Error: " <> msg
+    SoundpackManagerError e -> "Soundpack Error: " <> T.pack (show e)
 
 modHandlerErrorToText :: ModHandlerError -> T.Text
 modHandlerErrorToText err = case err of

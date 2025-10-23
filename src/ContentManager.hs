@@ -15,6 +15,7 @@ import qualified Data.Map as Map
 import Data.List (foldl')
 
 import Types
+import Types.Error (ManagerError(..))
 
 -- | Represents a piece of content with its name and path.
 data Content = Content

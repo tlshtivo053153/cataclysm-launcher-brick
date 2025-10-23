@@ -8,16 +8,15 @@ module SoundpackManager (
     listInstalledSoundpacks
 ) where
 
-import Control.Monad (filterM)
 import Control.Monad.Catch (MonadCatch)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.Text as T
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import System.FilePath ((</>), takeFileName)
 import Brick.BChan (BChan)
 
-import ArchiveUtils (extractZip)
 import ContentManager (downloadWithCache)
 import Types
+import Types.Error (ManagerError(..), SoundpackError(..))
 
 listInstalledSoundpacks :: Monad m => Handle m -> FilePath -> m [InstalledSoundpack]
 listInstalledSoundpacks handle sandboxPath = do
@@ -35,6 +34,11 @@ listInstalledSoundpacks handle sandboxPath = do
         InstalledSoundpack
             { ispName = T.pack (dirName <> ".zip")
             , ispDirectoryName = dirName
+            , ispVersion = "Unknown"
+            , ispInstalledAt = posixSecondsToUTCTime 0
+            , ispSize = 0
+            , ispIsActive = False
+            , ispChecksum = ""
             }
     filterM' :: Monad m => (a -> m Bool) -> [a] -> m [a]
     filterM' _ [] = return []
@@ -59,26 +63,36 @@ installSoundpack handle config eventChan profile soundpackInfo = do
             
             cachePathEither <- downloadWithCache handle cacheDir downloadUrl onCacheHit onCacheMiss
             case cachePathEither of
-                Left err -> return $ Left err
+                Left err -> return $ Left $ SoundpackManagerError $ SoundpackDownloadFailed $ T.pack $ show err
                 Right path -> do
                     content <- hReadFile handle path
                     return $ Right content
         else do
             let fileName = takeFileName (T.unpack downloadUrl)
             hWriteBChan handle eventChan $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
-            hDownloadAsset handle downloadUrl
+            result <- hDownloadAsset handle downloadUrl
+            return $ case result of
+                Left err -> Left $ SoundpackManagerError $ SoundpackDownloadFailed $ T.pack $ show err
+                Right content -> Right content
 
     case zipDataResult of
         Left err -> return $ Left err
         Right zipData -> do
             extractResult <- hExtractZip handle soundDir zipData
             case extractResult of
-                Left err -> return $ Left err
+                Left err -> return $ Left $ SoundpackManagerError $ SoundpackExtractionFailed $ T.pack $ show err
                 Right _ -> do
                     let dirName = T.unpack (spiRepoName soundpackInfo) <> "-master"
+                    -- Assuming installation implies activity for now
+                    currentTime <- hGetCurrentTime handle
                     let installed = InstalledSoundpack
                             { ispName = spiAssetName soundpackInfo
                             , ispDirectoryName = dirName
+                            , ispVersion = spiVersion soundpackInfo
+                            , ispInstalledAt = currentTime
+                            , ispSize = spiSize soundpackInfo
+                            , ispIsActive = True
+                            , ispChecksum = spiChecksum soundpackInfo
                             }
                     return $ Right installed
 
@@ -96,4 +110,4 @@ uninstallSoundpack handle _config profile installedSoundpack = do
         return $ Right ()
     else do
         let errMsg = "Soundpack directory not found: " <> T.pack dirToRemove
-        return $ Left $ FileSystemError errMsg
+        return $ Left $ SoundpackManagerError $ SoundpackNotInstalled errMsg

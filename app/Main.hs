@@ -11,7 +11,6 @@ import Data.Maybe (listToMaybe)
 
 import Brick hiding (on)
 import Brick.BChan (newBChan, writeBChan)
-import Control.Concurrent (forkIO)
 import Brick.Widgets.List (list)
 
 import Config (loadConfig, loadModSources)
@@ -21,6 +20,7 @@ import ModHandler (listAvailableMods, listActiveMods)
 import SandboxController (listProfiles)
 import SoundpackManager (listInstalledSoundpacks)
 import Types
+import Types.Error (ManagerError(..))
 import UI (drawUI, theMap)
 import ModUtils (combineMods)
 import Handle (liveHandle)
@@ -44,6 +44,7 @@ managerErrorToText err = case err of
     LaunchError msg -> "Launch Error: " <> msg
     GeneralManagerError msg -> msg
     UnknownError msg -> "Unknown Error: " <> msg
+    SoundpackManagerError e -> "Soundpack Error: " <> T.pack (show e)
 
 -- Main
 main :: IO ()

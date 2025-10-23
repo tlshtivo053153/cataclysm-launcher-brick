@@ -27,6 +27,7 @@ import Data.Conduit.Zlib (ungzip)
 
 import FileSystemUtils
 import Types
+import Types.Error (ManagerError(..))
 
 extractTarball :: FilePath -> FilePath -> IO (Either ManagerError ())
 extractTarball archivePath installDir = do

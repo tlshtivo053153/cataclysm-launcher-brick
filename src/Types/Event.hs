@@ -4,6 +4,7 @@ module Types.Event (
 
 import qualified Data.Text as T
 import Types.Domain
+import Types.Error (ManagerError)
 
 data UIEvent
   = LogMessage T.Text

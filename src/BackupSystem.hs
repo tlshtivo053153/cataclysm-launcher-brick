@@ -14,6 +14,7 @@ import           Data.Text              (pack, unpack)
 import           Data.Time.Format       (defaultTimeLocale, formatTime)
 import           System.FilePath        ((</>), takeBaseName)
 import           Types
+import           Types.Error (ManagerError(..))
 
 -- | List all backups for a given sandbox profile.
 -- Creates the backup directory if it doesn't exist.

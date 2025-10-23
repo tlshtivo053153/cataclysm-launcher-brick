@@ -8,9 +8,7 @@ module Handle (
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import           Data.Time (UTCTime, getCurrentTime)
-import           Data.Time.Format       (defaultTimeLocale, formatTime)
+import           Data.Time (getCurrentTime)
 import           Control.Exception (SomeException)
 import           Control.Monad (void)
 import           Control.Monad.Catch (MonadCatch, try)
@@ -19,21 +17,16 @@ import           System.Directory (createDirectoryIfMissing, doesDirectoryExist,
 import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
-import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, addRequestHeader, getResponseStatusCode)
+import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, getResponseStatusCode)
 import           Data.Aeson (encode)
 
 
-import System.Process (readProcessWithExitCode, createProcess, callCommand)
-import System.Directory (doesFileExist, removeFile)
 import FileSystemUtils (findFilesRecursively)
 import qualified GitHubIntegration as GH
 import           ArchiveUtils (extractTarball, extractZip)
 
 import Types
-
--- | Formats time for the If-Modified-Since header.
-formatHttpTime :: UTCTime -> String
-formatHttpTime = formatTime defaultTimeLocale "%a, %d %b %Y %H:%M:%S GMT"
+import Types.Error (ManagerError(..))
 
 liveHandle :: (MonadIO m, MonadCatch m) => Handle m
 liveHandle = Handle

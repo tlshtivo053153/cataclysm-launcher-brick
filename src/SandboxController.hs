@@ -17,6 +17,7 @@ import Control.Exception (SomeException)
 import Brick.BChan (BChan)
 
 import Types.Domain
+import Types.Error (ManagerError(..))
 import Types.Event
 import Types.Handle
 

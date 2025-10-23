@@ -15,6 +15,7 @@ import Brick.BChan (BChan)
 
 import ContentManager (downloadWithCache)
 import Types
+import Types.Error (ManagerError(..))
 
 downloadAndInstall :: (MonadCatch m) => Handle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
 downloadAndInstall handle config eventChan gv = do

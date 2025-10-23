@@ -9,9 +9,7 @@ module Events.Soundpack (
 
 import Brick
 import Brick.BChan (writeBChan)
-import Brick.Widgets.List (listSelectedElement, listElements)
-import qualified Data.Vector
-import Data.Maybe (listToMaybe)
+import Brick.Widgets.List (listSelectedElement)
 import Control.Monad (void)
 import Control.Concurrent (forkIO)
 import Control.Monad.IO.Class (liftIO)
@@ -47,7 +45,7 @@ handleAvailableSoundpackEvents (V.EvKey V.KEnter []) = do
         Just (_, soundpackInfo) -> do
             case snd <$> listSelectedElement (appSandboxProfiles st) of
                 Nothing ->
-                    liftIO $ writeBChan chan (LogMessage "Error: No sandbox profile selected.")
+                    liftIO $ writeBChan chan (ErrorEvent "Cannot install soundpack: No sandbox profile selected.")
                 Just profile ->
                     liftIO $ writeBChan chan (InstallSoundpack profile soundpackInfo)
 handleAvailableSoundpackEvents ev = handleListEvents ev AvailableSoundpackList
@@ -61,7 +59,7 @@ handleInstalledSoundpackEvents (V.EvKey (V.KChar 'd') []) = do
         Just (_, installedSoundpack) -> do
             case listSelectedElement (appSandboxProfiles st) of
                 Nothing ->
-                    liftIO $ writeBChan chan (LogMessage "Error: No sandbox profile selected.")
+                    liftIO $ writeBChan chan (ErrorEvent "Cannot uninstall soundpack: No sandbox profile selected.")
                 Just (_, profile) ->
                     liftIO $ writeBChan chan (UninstallSoundpack profile installedSoundpack)
 handleInstalledSoundpackEvents ev = handleListEvents ev InstalledSoundpackList

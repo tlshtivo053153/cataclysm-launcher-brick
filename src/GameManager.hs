@@ -12,6 +12,7 @@ import System.FilePath ((</>), takeDirectory)
 
 import qualified GitHubIntegration as GH
 import Types
+import Types.Error (ManagerError(..))
 import GameManager.Install
 
 getGameVersions :: Handle IO -> Config -> IO (Either ManagerError [GameVersion])

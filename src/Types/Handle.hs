@@ -11,7 +11,7 @@ import Brick.BChan (BChan)
 import Data.Time (UTCTime)
 import System.Exit (ExitCode)
 import Types.Event (UIEvent)
-import Types.Domain (ManagerError)
+import Types.Error (ManagerError)
 
 -- Handle for abstracting IO operations
 data Handle m = Handle

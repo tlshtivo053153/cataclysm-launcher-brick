@@ -18,6 +18,7 @@ import qualified Data.ByteString.Lazy   as L
 import qualified Data.Text              as T
 import qualified Data.Text.Encoding     as T
 import           Data.Time.Clock        (UTCTime, addUTCTime)
+import           Data.Time.Clock.POSIX  (posixSecondsToUTCTime)
 import           Data.Time.Format       (defaultTimeLocale, formatTime)
 import           Network.HTTP.Simple    (addRequestHeader, getResponseBody,
                                          getResponseStatusCode, httpJSONEither,
@@ -41,6 +42,12 @@ repoUrlToSoundpackInfo url =
         { spiRepoName = repoName
         , spiAssetName = repoName <> "-master.zip"
         , spiBrowserDownloadUrl = downloadUrl
+        , spiVersion = "master"
+        , spiDescription = "Latest master branch"
+        , spiAuthor = repoName
+        , spiSize = 0
+        , spiReleaseDate = posixSecondsToUTCTime 0
+        , spiChecksum = ""
         }
 
 

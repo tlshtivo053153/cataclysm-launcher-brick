@@ -11,6 +11,7 @@ import qualified Graphics.Vty as V
 import Events.List (handleListEvents)
 import GameManager (launchGame)
 import Types
+import Types.Error (ManagerError(..))
 
 -- | Pure function to determine the IO action for launching a game.
 getLaunchAction :: AppState -> Maybe (IO (Either ManagerError ()))
@@ -42,3 +43,4 @@ managerErrorToText err = case err of
     LaunchError msg -> "Launch Error: " <> msg
     GeneralManagerError msg -> "Error: " <> msg
     UnknownError msg -> "Unknown Error: " <> msg
+    SoundpackManagerError e -> "Soundpack Error: " <> T.pack (show e)
