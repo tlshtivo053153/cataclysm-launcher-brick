@@ -55,6 +55,10 @@ library
       Events.Sandbox
       Events.Soundpack
       SoundpackManager
+      Soundpack.Common
+      Soundpack.Install
+      Soundpack.List
+      Soundpack.Uninstall
   other-modules:
       Paths_cataclysm_launcher_brick_gemini
   autogen-modules:
