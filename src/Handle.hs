@@ -14,6 +14,7 @@ import           Control.Monad (void)
 import           Control.Monad.Catch (MonadCatch, try)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, makeAbsolute, pathIsSymbolicLink, removeDirectoryRecursive, removeFile)
+import           System.IO.Temp (withSystemTempDirectory)
 import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
@@ -24,6 +25,7 @@ import           Data.Aeson (encode)
 import FileSystemUtils (findFilesRecursively)
 import qualified GitHubIntegration as GH
 import           ArchiveUtils (extractTarball, extractZip)
+import           Soundpack.Deps (FileSystemDeps(..))
 
 import Types
 import Types.Error (ManagerError(..))
@@ -71,5 +73,15 @@ liveHandle = Handle
         , hRemoveFile = liftIO . removeFile
         , hFindFilesRecursively = \fp names -> liftIO $ findFilesRecursively fp names
         , hExtractTarball = \archivePath installDir -> liftIO $ extractTarball archivePath installDir
-        , hExtractZip = \installDir zipData -> liftIO $ extractZip installDir zipData
+        , hExtractZip = \installDir zipData ->
+            let fsDeps = FileSystemDeps
+                  { fsdDoesFileExist = liftIO . doesFileExist
+                  , fsdReadFile = liftIO . B.readFile
+                  , fsdWriteFile = \fp content -> liftIO $ B.writeFile fp content
+                  , fsdCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
+                  , fsdDoesDirectoryExist = liftIO . doesDirectoryExist
+                  , fsdRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
+                  , fsdListDirectory = liftIO . listDirectory
+                  }
+            in liftIO $ extractZip fsDeps installDir zipData
         }

@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module ArchiveUtils (
     extractTarball,
@@ -14,25 +15,26 @@ import qualified Data.Text as T
 import Control.Exception (try, SomeException)
 import Control.Monad (when, forM_)
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Catch (MonadCatch)
 import Control.Monad.Trans.Resource (runResourceT, MonadResource)
-import Data.List (foldl', isPrefixOf)
-import System.Directory (createDirectoryIfMissing, makeAbsolute, listDirectory, copyFile, doesDirectoryExist)
+import Data.List (isPrefixOf)
 import System.FilePath ((</>), takeDirectory)
-import System.IO.Temp (withSystemTempDirectory)
-import System.Posix.Files (setFileMode, ownerExecuteMode, groupExecuteMode, otherExecuteMode, unionFileModes, getFileStatus, fileMode)
 import Data.Conduit (runConduit, (.|), ConduitM)
 import Data.Conduit.Binary (sourceFile, sinkFile)
 import qualified Data.Conduit.Tar as Tar
 import Data.Conduit.Zlib (ungzip)
+import System.Directory (createDirectoryIfMissing, makeAbsolute) -- For extractTarball
 
-import FileSystemUtils
+import Soundpack.Deps (FileSystemDeps(..))
 import Types
 import Types.Error (ManagerError(..))
 
+-- extractTarball remains unchanged for now as it's not used by soundpack installation
 extractTarball :: FilePath -> FilePath -> IO (Either ManagerError ())
 extractTarball archivePath installDir = do
     result <- try $ do
-        createDirectoryIfMissing True installDir
+        -- This still uses IO directly.
+        liftIO $ createDirectoryIfMissing True installDir
         runResourceT $ runConduit $
             sourceFile archivePath
             .| ungzip
@@ -56,44 +58,19 @@ extractTarball archivePath installDir = do
                 _ -> return () -- Ignore other file types
 
 
-extractZip :: FilePath -> B.ByteString -> IO (Either ManagerError String)
-extractZip installDir zipData = do
-    createDirectoryIfMissing True installDir
-    withSystemTempDirectory "zip-extract" $ \tempDir -> do
-        let archive = Zip.toArchive (LBS.fromStrict zipData)
-        -- 1. Extract to temporary directory
-        Zip.extractFilesFromArchive [Zip.OptDestination tempDir] archive
-
-        -- 2. Move contents from temp to installDir
-        contents <- listDirectory tempDir
-        forM_ contents $ \item -> do
-            let srcPath = tempDir </> item
-            let destPath = installDir </> item
-            copyDirectoryRecursive srcPath destPath
-
-        -- 3. Set permissions on executables if any
-        setPermissions installDir
-        return $ Right "Zip extraction complete."
-
-copyDirectoryRecursive :: FilePath -> FilePath -> IO ()
-copyDirectoryRecursive src dest = do
-    isDir <- doesDirectoryExist src
-    if isDir
-        then do
-            createDirectoryIfMissing True dest
-            contents <- listDirectory src
-            forM_ contents $ \item ->
-                copyDirectoryRecursive (src </> item) (dest </> item)
-        else
-            copyFile src dest
-
-setPermissions :: FilePath -> IO ()
-setPermissions installDir = do
-  let executables = ["cataclysm-launcher", "cataclysm-tiles"]
-  foundPaths <- findFilesRecursively installDir executables
-  mapM_ setExecutablePermission foundPaths
-  where
-    setExecutablePermission path = do
-      status <- getFileStatus path
-      let mode = fileMode status
-      setFileMode path (foldl' unionFileModes mode [ownerExecuteMode, groupExecuteMode, otherExecuteMode])
+extractZip :: MonadCatch m => FileSystemDeps m -> FilePath -> B.ByteString -> m (Either ManagerError String)
+extractZip fs installDir zipData = do
+    fsdCreateDirectoryIfMissing fs True installDir
+    let archive = Zip.toArchive (LBS.fromStrict zipData)
+    let entries = Zip.zEntries archive
+    
+    forM_ entries $ \entry -> do
+        let path = Zip.eRelativePath entry
+        let destPath = installDir </> path
+        -- Skip directory entries, which commonly end with a slash
+        when (not ("/" `T.isSuffixOf` T.pack path) && not ("\\" `T.isSuffixOf` T.pack path)) $ do
+            let content = Zip.fromEntry entry
+            fsdCreateDirectoryIfMissing fs True (takeDirectory destPath)
+            fsdWriteFile fs destPath (LBS.toStrict content)
+    
+    return $ Right "Zip extraction complete."

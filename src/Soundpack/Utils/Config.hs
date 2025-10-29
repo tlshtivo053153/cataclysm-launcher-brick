@@ -7,12 +7,12 @@ module Soundpack.Utils.Config
 where
 
 import qualified Data.Text as T
-import Types
+import Types.Domain (SoundpackConfig(..))
 
 -- | Check if the soundpack cache is enabled in the configuration.
-isCacheEnabled :: Config -> Bool
-isCacheEnabled = useSoundpackCache
+isCacheEnabled :: SoundpackConfig -> Bool
+isCacheEnabled = scUseSoundpackCache
 
 -- | Get the soundpack cache directory from the configuration.
-getCacheDirectory :: Config -> FilePath
-getCacheDirectory = T.unpack . soundpackCacheDirectory
+getCacheDirectory :: SoundpackConfig -> FilePath
+getCacheDirectory = T.unpack . scSoundpackCacheDirectory

@@ -1,66 +1,80 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts #-}
 
-module Soundpack.Install (
-    installSoundpack
-) where
+module Soundpack.Install
+  ( installSoundpack,
+  )
+where
 
+import ArchiveUtils (extractZip)
+import ContentManager (downloadWithCache)
 import Control.Monad.Catch (MonadCatch)
 import qualified Data.Text as T
-import System.FilePath ((</>), takeFileName)
-import Brick.BChan (BChan)
+import Soundpack.Core (generateInstalledSoundpack, processSoundpackInstall, ipDownloadUrl, ipSoundDir, ipCacheDir, ipUseCache, ipSoundpackInfo)
+import Soundpack.Deps (ConfigDeps (..), EventDeps (..), FileSystemDeps (..), NetworkDeps (..), SoundpackDeps (..), TimeDeps (..))
+import System.FilePath (takeFileName)
+import Types.Domain (InstalledSoundpack (..), SandboxProfile, SoundpackInfo (..))
+import Types.Error (ManagerError (..), SoundpackError (..))
+import Types.Event (UIEvent (..))
 
-import ContentManager (downloadWithCache)
-import Soundpack.Utils.Config (getCacheDirectory, isCacheEnabled)
-import Soundpack.Utils.Conversion (soundpackInfoToInstalledSoundpack)
-import Soundpack.Utils.Path (getSoundpackDirectory)
-import Types
-import Types.Domain (InstalledSoundpack, SandboxProfile, SoundpackInfo)
-import Types.Error (ManagerError(..), SoundpackError(..))
-import Types.Event
-import Types.Handle
+-- | Installs a soundpack using a dependency injection pattern.
+installSoundpack ::
+  MonadCatch m =>
+  SoundpackDeps m ->
+  SandboxProfile ->
+  SoundpackInfo ->
+  m (Either ManagerError InstalledSoundpack)
+installSoundpack deps profile soundpackInfo = do
+  soundpackConfig <- cdGetSoundpackConfig (spdConfig deps)
+  let installPlan = processSoundpackInstall soundpackInfo profile soundpackConfig
 
-installSoundpack :: MonadCatch m => Handle m -> Config -> BChan UIEvent -> SandboxProfile -> SoundpackInfo -> m (Either ManagerError InstalledSoundpack)
-installSoundpack handle config eventChan profile soundpackInfo = do
-    let downloadUrl = spiBrowserDownloadUrl soundpackInfo
-    let sandboxPath = spDataDirectory profile
-    let soundDir = getSoundpackDirectory sandboxPath
-    let cacheDir = getCacheDirectory config
-    let shouldUseCache = isCacheEnabled config
+  let fs = spdFileSystem deps
+  let net = spdNetwork deps
+  let events = spdEvents deps
+  let time = spdTime deps
 
-    zipDataResult <- if shouldUseCache
-        then do
-            let fileName = takeFileName (T.unpack downloadUrl)
-            let onCacheHit = hWriteBChan handle eventChan $ CacheHit ("Using cached soundpack: " <> T.pack fileName)
-            let onCacheMiss = hWriteBChan handle eventChan $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
-            
-            cachePathEither <- downloadWithCache handle cacheDir downloadUrl onCacheHit onCacheMiss
-            case cachePathEither of
-                Left err -> return $ Left $ SoundpackManagerError $ SoundpackDownloadFailed $ T.pack $ show err
-                Right path -> do
-                    content <- hReadFile handle path
-                    return $ Right content
-        else do
-            let fileName = takeFileName (T.unpack downloadUrl)
-            hWriteBChan handle eventChan $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
-            result <- hDownloadAsset handle downloadUrl
-            return $ case result of
-                Left err -> Left $ SoundpackManagerError $ SoundpackDownloadFailed $ T.pack $ show err
-                Right content -> Right content
+  let downloadUrl = ipDownloadUrl installPlan
+  let soundDir = ipSoundDir installPlan
+  let cacheDir = ipCacheDir installPlan
+  let shouldUseCache = ipUseCache installPlan
 
-    case zipDataResult of
-        Left err -> return $ Left err
-        Right zipData -> do
-            extractResult <- hExtractZip handle soundDir zipData
-            case extractResult of
-                Left err -> return $ Left $ SoundpackManagerError $ SoundpackExtractionFailed $ T.pack $ show err
-                Right _ -> do
-                    let dirName = T.unpack (spiRepoName soundpackInfo) <> "-master"
-                    -- Assuming installation implies activity for now
-                    currentTime <- hGetCurrentTime handle
-                    let installed = (soundpackInfoToInstalledSoundpack soundpackInfo dirName currentTime)
-                            { ispIsActive = True
-                            , ispChecksum = spiChecksum soundpackInfo
-                            }
-                    return $ Right installed
+  zipDataResult <-
+    if shouldUseCache
+      then do
+        let fileName = takeFileName (T.unpack downloadUrl)
+        let onCacheHit = edWriteEvent events $ CacheHit ("Using cached soundpack: " <> T.pack fileName)
+        let onCacheMiss = edWriteEvent events $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
+
+        cachePathEither <- downloadWithCache fs net cacheDir downloadUrl onCacheHit onCacheMiss
+        case cachePathEither of
+          Left err -> return $ Left err
+          Right path -> do
+            content <- fsdReadFile fs path
+            return $ Right content
+      else do
+        let fileName = takeFileName (T.unpack downloadUrl)
+        edWriteEvent events $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
+        result <- ndDownloadAsset net downloadUrl
+        return $ case result of
+          Left err -> Left $ SoundpackManagerError $ SoundpackDownloadFailed $ T.pack $ show err
+          Right content -> Right content
+
+  case zipDataResult of
+    Left err -> return $ Left err
+    Right zipData -> do
+      extractResult <- extractZip fs soundDir zipData
+      case extractResult of
+        Left err -> return $ Left $ SoundpackManagerError $ SoundpackExtractionFailed $ T.pack $ show err
+        Right _ -> do
+          -- NOTE: The directory name is assumed based on GitHub's zip format.
+          -- A more robust solution would be to inspect the zip archive contents.
+          let dirName = T.unpack (spiRepoName (ipSoundpackInfo installPlan)) <> "-master"
+          currentTime <- tdGetCurrentTime time
+          let installed = generateInstalledSoundpack (ipSoundpackInfo installPlan) dirName currentTime
+          let finalInstalled =
+                installed
+                  { ispIsActive = True, -- Assuming installation implies activity
+                    ispChecksum = spiChecksum (ipSoundpackInfo installPlan)
+                  }
+          return $ Right finalInstalled

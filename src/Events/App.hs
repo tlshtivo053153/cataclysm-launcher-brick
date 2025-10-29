@@ -12,11 +12,14 @@ import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.Vector (fromList)
+import qualified Data.ByteString.Lazy as LBS
 
+import Config (loadSoundpackConfig)
 import Events.Mods (refreshActiveModsList, refreshAvailableModsList)
 import Events.Soundpack (refreshInstalledSoundpacksList, refreshInstalledSoundpacksList')
 import GameManager (getInstalledVersions)
 import GitHubIntegration (generateSoundpackDownloadInfos)
+import Soundpack.Deps
 import SoundpackManager (installSoundpack, uninstallSoundpack)
 import Types
 import Types.Error (ManagerError(..))
@@ -29,10 +32,31 @@ handleAppEvent ProfileSelectionChanged = do
 handleAppEvent (InstallSoundpack profile soundpackInfo) = do
     st <- get
     let handle = appHandle st
-    let config = appConfig st
     let chan = appEventChannel st
     liftIO $ void $ forkIO $ do
-        result <- installSoundpack handle config chan profile soundpackInfo
+        -- Construct dependencies
+        let fsDeps = FileSystemDeps
+              { fsdDoesFileExist = hDoesFileExist handle
+              , fsdReadFile = hReadFile handle
+              , fsdWriteFile = \fp content -> hWriteLazyByteString handle fp (LBS.fromStrict content)
+              , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing handle
+              , fsdDoesDirectoryExist = hDoesDirectoryExist handle
+              , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive handle
+              , fsdListDirectory = hListDirectory handle
+              }
+        let netDeps = NetworkDeps
+              { ndDownloadAsset = hDownloadAsset handle
+              , ndDownloadFile = hDownloadFile handle
+              }
+        let timeDeps = TimeDeps { tdGetCurrentTime = hGetCurrentTime handle }
+        let eventDeps = EventDeps { edWriteEvent = writeBChan chan }
+        let configDeps = ConfigDeps
+              { cdGetConfig = return (appConfig st)
+              , cdGetSoundpackConfig = liftIO loadSoundpackConfig
+              }
+        let deps = SoundpackDeps fsDeps netDeps timeDeps eventDeps configDeps
+
+        result <- installSoundpack deps profile soundpackInfo
         writeBChan chan (SoundpackInstallFinished profile result)
 handleAppEvent (UninstallSoundpack profile installedSoundpack) = do
     st <- get

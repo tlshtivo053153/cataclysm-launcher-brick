@@ -13,7 +13,9 @@ import qualified Data.Text as T
 import System.FilePath ((</>), makeRelative, takeFileName)
 import qualified Data.Map as Map
 import Data.List (foldl')
+import qualified Data.ByteString.Lazy as LBS
 
+import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..))
 import Types
 import Types.Error (ManagerError(..))
 
@@ -54,30 +56,31 @@ listAvailableContent handle sysRepo userRepo = do
 
 -- | Downloads a file from a URL, using a cache if available.
 downloadWithCache :: MonadCatch m
-                  => Handle m
+                  => FileSystemDeps m
+                  -> NetworkDeps m
                   -> FilePath      -- ^ Cache directory
                   -> T.Text        -- ^ URL
                   -> m ()          -- ^ Action to run on cache hit
                   -> m ()          -- ^ Action to run on cache miss
                   -> m (Either ManagerError FilePath) -- ^ Path to the cached file
-downloadWithCache handle cacheDir url onCacheHit onCacheMiss = do
+downloadWithCache fs net cacheDir url onCacheHit onCacheMiss = do
     let fileName = takeFileName (T.unpack url)
     let cacheFilePath = cacheDir </> fileName
 
-    hCreateDirectoryIfMissing handle True cacheDir
+    fsdCreateDirectoryIfMissing fs True cacheDir
 
-    cacheExists <- hDoesFileExist handle cacheFilePath
+    cacheExists <- fsdDoesFileExist fs cacheFilePath
     if cacheExists
     then do
         onCacheHit
         return $ Right cacheFilePath
     else do
         onCacheMiss
-        result <- hDownloadFile handle url
+        result <- ndDownloadFile net url
         case result of
             Left e -> return $ Left e
             Right responseBody -> do
-                writeResult <- try $ hWriteLazyByteString handle cacheFilePath responseBody
+                writeResult <- try $ fsdWriteFile fs cacheFilePath (LBS.toStrict responseBody)
                 case writeResult of
                     Left (e :: SomeException) -> return $ Left $ FileSystemError $ T.pack $ show e
                     Right () -> return $ Right cacheFilePath

@@ -21,9 +21,11 @@ directoryToInstalledSoundpack dirName installTime =
       ispDirectoryName = dirName,
       ispVersion = "N/A",
       ispInstalledAt = installTime,
-      ispSize = 0, -- Placeholder, actual size calculation needed
+      ispSize = 0,
       ispIsActive = False,
-      ispChecksum = ""
+      ispChecksum = "",
+      ispObsolete = False,
+      ispModNames = []
     }
 
 -- | Convert a SoundpackInfo to an InstalledSoundpack record.
@@ -34,7 +36,11 @@ soundpackInfoToInstalledSoundpack soundpackInfo dirName installTime =
       ispDirectoryName = dirName,
       ispVersion = spiVersion soundpackInfo,
       ispInstalledAt = installTime,
-      ispSize = spiSize soundpackInfo
+      ispSize = spiSize soundpackInfo,
+      ispIsActive = False, -- Default to inactive
+      ispChecksum = spiChecksum soundpackInfo,
+      ispObsolete = False, -- Default to not obsolete
+      ispModNames = [] -- Default to empty list
     }
 
 -- | Format a size in bytes into a human-readable string.

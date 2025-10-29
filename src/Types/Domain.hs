@@ -19,7 +19,8 @@ module Types.Domain (
     SoundpackInfo(..),
     InstalledSoundpack(..),
     SoundpackStatus(..),
-    SoundpackOperation(..)
+    SoundpackOperation(..),
+    SoundpackConfig(..)
 ) where
 
 import Data.Time.Clock (UTCTime)
@@ -46,6 +47,13 @@ data Config = Config
     } deriving (Generic, Show)
 
 instance FromDhall Config
+
+data SoundpackConfig = SoundpackConfig
+    { scSoundpackCacheDirectory :: T.Text
+    , scUseSoundpackCache     :: Bool
+    } deriving (Generic, Show)
+
+instance FromDhall SoundpackConfig
 
 data GameVersion = GameVersion
     { gvVersionId   :: T.Text
@@ -147,6 +155,10 @@ data InstalledSoundpack = InstalledSoundpack
     , ispIsActive :: Bool
 
     , ispChecksum :: T.Text
+
+    , ispObsolete :: Bool
+
+    , ispModNames :: [T.Text]
 
     } deriving (Show, Eq)
 

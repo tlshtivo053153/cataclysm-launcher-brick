@@ -8,12 +8,14 @@ module GameManager.Install (
 ) where
 
 import qualified Data.Text as T
+import qualified Data.ByteString.Lazy as LBS
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch)
 import System.FilePath ((</>), takeFileName)
 import Brick.BChan (BChan)
 
 import ContentManager (downloadWithCache)
+import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..))
 import Types
 import Types.Error (ManagerError(..))
 
@@ -32,7 +34,21 @@ downloadAndInstall handle config eventChan gv = do
             let onCacheHit = hWriteBChan handle eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
             let onCacheMiss = hWriteBChan handle eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
 
-            assetDataEither <- downloadWithCache handle cacheDir url onCacheHit onCacheMiss
+            let fsDeps = FileSystemDeps
+                  { fsdDoesFileExist = hDoesFileExist handle
+                  , fsdReadFile = hReadFile handle
+                  , fsdWriteFile = \fp content -> hWriteLazyByteString handle fp (LBS.fromStrict content)
+                  , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing handle
+                  , fsdDoesDirectoryExist = hDoesDirectoryExist handle
+                  , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive handle
+                  , fsdListDirectory = hListDirectory handle
+                  }
+            let netDeps = NetworkDeps
+                  { ndDownloadAsset = hDownloadAsset handle
+                  , ndDownloadFile = hDownloadFile handle
+                  }
+
+            assetDataEither <- downloadWithCache fsDeps netDeps cacheDir url onCacheHit onCacheMiss
             
             case assetDataEither of
                 Left err -> return $ Left err

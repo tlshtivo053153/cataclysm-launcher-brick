@@ -64,6 +64,9 @@ library
       Soundpack.List
       Soundpack.Uninstall
   other-modules:
+      Soundpack.Core
+      Soundpack.Deps
+      Soundpack.Interface
       Soundpack.Utils.Config
       Soundpack.Utils.Conversion
       Soundpack.Utils.File
