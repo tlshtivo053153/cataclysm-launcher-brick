@@ -1,5 +1,20 @@
 {-# LANGUAGE DeriveGeneric     #-}
 
+{-|
+Module      : Types.Domain
+Description : Defines core domain types for the Cataclysm Launcher application.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module centralizes the data type definitions that represent the core
+domain entities and configurations within the Cataclysm Launcher application.
+It includes types for application configuration, game versions, sandbox profiles,
+backup information, mod management, and soundpack management. These types are
+used throughout the application to ensure type safety and consistency.
+-}
 module Types.Domain (
     -- Config-related types
     Config(..),
@@ -28,7 +43,7 @@ import Dhall
 import qualified Data.Text as T
 import Types.Error (ManagerError)
 
--- From Config.hs
+-- | Global application configuration.
 data Config = Config
     { launcherRootDirectory :: T.Text
     , cacheDirectory        :: T.Text
@@ -48,6 +63,7 @@ data Config = Config
 
 instance FromDhall Config
 
+-- | Configuration specific to soundpack management.
 data SoundpackConfig = SoundpackConfig
     { scSoundpackCacheDirectory :: T.Text
     , scUseSoundpackCache     :: Bool
@@ -55,6 +71,7 @@ data SoundpackConfig = SoundpackConfig
 
 instance FromDhall SoundpackConfig
 
+-- | Represents a specific version of the game.
 data GameVersion = GameVersion
     { gvVersionId   :: T.Text
     , gvVersion     :: T.Text
@@ -62,20 +79,24 @@ data GameVersion = GameVersion
     , gvReleaseType :: ReleaseType
     } deriving (Generic, Show, Eq)
 
+-- | Defines the release type of a game version.
 data ReleaseType = Development | Stable deriving (Generic, Show, Eq)
 
 instance FromDhall ReleaseType
 
+-- | Represents an installed version of the game.
 data InstalledVersion = InstalledVersion
     { ivVersion :: T.Text
     , ivPath    :: FilePath
     } deriving (Show, Eq)
 
+-- | Defines a sandbox profile for game installations.
 data SandboxProfile = SandboxProfile
     { spName          :: T.Text
     , spDataDirectory :: FilePath
     } deriving (Show, Eq)
 
+-- | Information about a game backup.
 data BackupInfo = BackupInfo
     { biName      :: T.Text
     , biTimestamp :: T.Text
@@ -83,25 +104,30 @@ data BackupInfo = BackupInfo
     } deriving (Show, Eq)
 
 -- Mod-related types
+-- | Represents the source of a mod (e.g., a Git repository URL).
 newtype ModSource = ModSource T.Text deriving (Show, Eq)
 
+-- | Information about an installed mod.
 data ModInfo = ModInfo
   { miName :: T.Text
   , miSource :: ModSource
   , miInstallPath :: FilePath
   } deriving (Show, Eq)
 
+-- | Errors that can occur during mod handling.
 data ModHandlerError
   = GitCloneFailed T.Text
   | SymlinkCreationFailed FilePath T.Text
   | ModNotFound T.Text
   deriving (Show, Eq)
 
+-- | Defines the distribution type of a mod (e.g., GitHub release, TarGz archive).
 data ModDistributionType = GitHub | TarGz
   deriving (Generic, Show, Eq)
 
 instance FromDhall ModDistributionType
 
+-- | Detailed information about a mod's source.
 data ModSourceInfo = ModSourceInfo
   { msiName :: T.Text
   , msiRepositoryName :: T.Text
@@ -111,11 +137,13 @@ data ModSourceInfo = ModSourceInfo
 
 instance FromDhall ModSourceInfo
 
+-- | Represents a mod that is available for installation.
 data AvailableMod = AvailableMod
   { amSource      :: ModSourceInfo
   , amIsInstalled :: Bool
   } deriving (Show, Eq)
 
+-- | Detailed information about an available soundpack.
 data SoundpackInfo = SoundpackInfo
 
     { spiRepoName :: T.Text
@@ -140,6 +168,7 @@ data SoundpackInfo = SoundpackInfo
 
 
 
+-- | Information about an installed soundpack.
 data InstalledSoundpack = InstalledSoundpack
 
     { ispName :: T.Text
@@ -164,6 +193,7 @@ data InstalledSoundpack = InstalledSoundpack
 
 
 
+-- | Represents the current status of a soundpack.
 data SoundpackStatus
 
     = NotInstalled
@@ -176,6 +206,7 @@ data SoundpackStatus
 
 
 
+-- | Represents a soundpack operation to be performed.
 data SoundpackOperation
 
     = Install SoundpackInfo
@@ -189,6 +220,3 @@ data SoundpackOperation
     | Deactivate InstalledSoundpack
 
     deriving (Show, Eq)
-
-
-

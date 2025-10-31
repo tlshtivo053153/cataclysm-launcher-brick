@@ -2,6 +2,21 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-|
+Module      : Soundpack.Deps
+Description : Defines the dependency injection structure for soundpack operations.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module provides the data types for dependency injection, following the
+Handle pattern (or record-of-functions pattern). By abstracting side-effectful
+operations (like file I/O, network requests, etc.) into records of functions,
+the core application logic can remain pure and testable. Each `...Deps` record
+groups related dependencies.
+-}
 module Soundpack.Deps where
 
 import qualified Data.ByteString as B
@@ -12,59 +27,63 @@ import Types.Domain (Config, SoundpackConfig)
 import Types.Error (ManagerError)
 import Types.Event (UIEvent)
 
--- | A record of functions that provide dependencies for soundpack operations.
--- This is used to inject dependencies into the soundpack logic, allowing for
--- easier testing and mocking.
+-- | A comprehensive record of all dependencies required for soundpack operations.
+-- This top-level handle aggregates more specific dependency groups.
 data SoundpackDeps m = SoundpackDeps
-  { spdFileSystem :: FileSystemDeps m,
+  { -- | File system related dependencies.
+    spdFileSystem :: FileSystemDeps m,
+    -- | Network related dependencies.
     spdNetwork :: NetworkDeps m,
+    -- | Time related dependencies.
     spdTime :: TimeDeps m,
+    -- | Event reporting dependencies.
     spdEvents :: EventDeps m,
+    -- | Configuration access dependencies.
     spdConfig :: ConfigDeps m
   }
 
--- | Dependencies for file system operations.
+-- | A record of functions abstracting file system operations.
 data FileSystemDeps m = FileSystemDeps
-  { -- | Check if a file exists.
+  { -- | Checks if a file exists at the given path.
     fsdDoesFileExist :: FilePath -> m Bool,
-    -- | Read a file's contents.
+    -- | Reads the entire contents of a file as a strict 'ByteString'.
     fsdReadFile :: FilePath -> m B.ByteString,
-    -- | Write a file's contents.
+    -- | Writes a strict 'ByteString' to a file.
     fsdWriteFile :: FilePath -> B.ByteString -> m (),
-    -- | Create a directory if it is missing.
+    -- | Creates a directory and its parents if they are missing.
     fsdCreateDirectoryIfMissing :: Bool -> FilePath -> m (),
-    -- | Check if a directory exists.
+    -- | Checks if a directory exists at the given path.
     fsdDoesDirectoryExist :: FilePath -> m Bool,
-    -- | Recursively remove a directory.
+    -- | Recursively removes a directory and its contents.
     fsdRemoveDirectoryRecursive :: FilePath -> m (),
-    -- | List the contents of a directory.
+    -- | Lists the contents of a directory.
     fsdListDirectory :: FilePath -> m [FilePath]
   }
 
--- | Dependencies for network operations.
+-- | A record of functions abstracting network operations.
 data NetworkDeps m = NetworkDeps
-  { -- | Download an asset.
+  { -- | Downloads a remote asset as a strict 'ByteString'.
     ndDownloadAsset :: T.Text -> m (Either ManagerError B.ByteString),
-    -- | Download a file.
+    -- | Downloads a remote file as a lazy 'L.ByteString'.
     ndDownloadFile :: T.Text -> m (Either ManagerError L.ByteString)
   }
 
--- | Dependencies for time-related operations.
+-- | A record of functions abstracting time-related operations.
 data TimeDeps m = TimeDeps
-  { -- | Get the current time.
+  { -- | Gets the current UTC time.
     tdGetCurrentTime :: m UTCTime
   }
 
--- | Dependencies for event-related operations.
+-- | A record of functions abstracting event reporting.
 data EventDeps m = EventDeps
-  { -- | Write a UI event to the event channel.
+  { -- | Writes a 'UIEvent' to the application's event channel.
     edWriteEvent :: UIEvent -> m ()
   }
 
--- | Dependencies for configuration-related operations.
+-- | A record of functions abstracting access to configuration.
 data ConfigDeps m = ConfigDeps
-  { -- | Get the main application configuration.
+  { -- | Gets the main application 'Config'.
     cdGetConfig :: m Config,
-    -- | Get the soundpack-specific configuration.
+    -- | Gets the 'SoundpackConfig' section of the configuration.
     cdGetSoundpackConfig :: m SoundpackConfig
   }

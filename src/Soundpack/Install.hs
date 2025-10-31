@@ -2,6 +2,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-|
+Module      : Soundpack.Install
+Description : Provides functionality for installing soundpacks.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module contains the core logic for installing a soundpack. It handles
+downloading (with optional caching), extraction, and metadata generation for
+a newly installed soundpack. It is designed to be used with a dependency
+injection pattern to facilitate testing and maintainability.
+-}
 module Soundpack.Install
   ( installSoundpack,
   )
@@ -18,7 +32,32 @@ import Types.Domain (InstalledSoundpack (..), SandboxProfile, SoundpackInfo (..)
 import Types.Error (ManagerError (..), SoundpackError (..))
 import Types.Event (UIEvent (..))
 
--- | Installs a soundpack using a dependency injection pattern.
+-- | Installs a soundpack into a given sandbox profile.
+--
+-- This function orchestrates the entire installation process:
+-- 1. Generates an installation plan based on the soundpack info and configuration.
+-- 2. Downloads the soundpack archive, utilizing a cache if enabled.
+-- 3. Extracts the archive into the target soundpack directory.
+-- 4. Generates metadata for the 'InstalledSoundpack'.
+--
+-- === Parameters
+--
+-- * @deps@: A record of dependencies ('SoundpackDeps') required for the operations,
+--           such as file system access, network requests, and event reporting.
+-- * @profile@: The 'SandboxProfile' into which the soundpack will be installed.
+-- * @soundpackInfo@: The 'SoundpackInfo' of the soundpack to be installed.
+--
+-- === Returns
+--
+-- An 'Either' containing:
+-- * 'Right InstalledSoundpack': On success, returns the metadata of the newly installed soundpack.
+-- * 'Left ManagerError': On failure, returns an error detailing what went wrong.
+--
+-- === Error Conditions
+--
+-- * 'SoundpackDownloadFailed': If the download from the source URL fails.
+-- * 'SoundpackExtractionFailed': If the downloaded archive cannot be extracted.
+-- * Other 'ManagerError' subtypes from dependencies (e.g., file system errors).
 installSoundpack ::
   MonadCatch m =>
   SoundpackDeps m ->
