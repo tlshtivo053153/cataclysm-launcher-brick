@@ -32,7 +32,7 @@ spec = describe "Events.Installed" $ do
       let stWithVersions = (initialAppState dummyConfig undefined chan)
             { appInstalledVersions = list InstalledListName (V.fromList [iv]) 1
             }
-      let st = stWithVersions { appInstalledVersions = (appInstalledVersions stWithVersions) & listSelectedL .~ Nothing }
+      let st = stWithVersions { appInstalledVersions = appInstalledVersions stWithVersions & listSelectedL .~ Nothing }
       isNothing (getLaunchAction st) `shouldBe` True
 
     it "returns Nothing when installed list is empty" $ do
@@ -59,7 +59,7 @@ spec = describe "Events.Installed" $ do
                 }
       let st = stWithVersions
                 { appInstalledVersions = listMoveTo 0 (appInstalledVersions stWithVersions)
-                , appSandboxProfiles = (appSandboxProfiles stWithVersions) & listSelectedL .~ Nothing
+                , appSandboxProfiles = appSandboxProfiles stWithVersions & listSelectedL .~ Nothing
                 }
       isJust (getLaunchAction st) `shouldBe` True
 

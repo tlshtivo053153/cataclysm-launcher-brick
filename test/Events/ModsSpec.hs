@@ -54,7 +54,7 @@ spec = describe "Events.Mods" $ do
             , appSandboxProfiles = list SandboxProfileListName (V.fromList [profile1]) 1
             , appInstalledModsCache = [modInfo1]
             }
-      let st' = st { appAvailableMods = (appAvailableMods st) & listSelectedL .~ Nothing }
+      let st' = st { appAvailableMods = appAvailableMods st & listSelectedL .~ Nothing }
       isNothing (getInstallModAction st') `shouldBe` True
 
   describe "getEnableModAction" $ do
@@ -91,7 +91,7 @@ spec = describe "Events.Mods" $ do
             , appInstalledModsCache = [modInfo1]
             }
       let st' = st { appAvailableMods = listMoveTo 0 (appAvailableMods st)
-                   , appSandboxProfiles = (appSandboxProfiles st) & listSelectedL .~ Nothing }
+                   , appSandboxProfiles = appSandboxProfiles st & listSelectedL .~ Nothing }
       isNothing (getEnableModAction st') `shouldBe` True
 
   describe "getDisableModAction" $ do
@@ -115,7 +115,7 @@ spec = describe "Events.Mods" $ do
             , appSandboxProfiles = list SandboxProfileListName (V.fromList [profile1]) 1
             , appInstalledModsCache = [modInfo1]
             }
-      let st' = st { appActiveMods = (appActiveMods st) & listSelectedL .~ Nothing
+      let st' = st { appActiveMods = appActiveMods st & listSelectedL .~ Nothing
                    , appSandboxProfiles = listMoveTo 0 (appSandboxProfiles st) }
       isNothing (getDisableModAction st') `shouldBe` True
 
@@ -128,7 +128,7 @@ spec = describe "Events.Mods" $ do
             , appInstalledModsCache = [modInfo1]
             }
       let st' = st { appActiveMods = listMoveTo 0 (appActiveMods st)
-                   , appSandboxProfiles = (appSandboxProfiles st) & listSelectedL .~ Nothing }
+                   , appSandboxProfiles = appSandboxProfiles st & listSelectedL .~ Nothing }
       isNothing (getDisableModAction st') `shouldBe` True
 
 dummyConfig :: Config

@@ -42,5 +42,5 @@ import Types
 -- An 'EventM' action that updates the application state or dispatches new events.
 handleInstalledSoundpackEvents :: V.Event -> EventM Name AppState ()
 handleInstalledSoundpackEvents (V.EvKey (V.KChar 'd') []) =
-    withSelectedItems appInstalledSoundpacks "Cannot uninstall soundpack" (\isp p -> UninstallSoundpack p isp)
+    withSelectedItems appInstalledSoundpacks "Cannot uninstall soundpack" (flip UninstallSoundpack)
 handleInstalledSoundpackEvents ev = handleListEvents ev InstalledSoundpackList

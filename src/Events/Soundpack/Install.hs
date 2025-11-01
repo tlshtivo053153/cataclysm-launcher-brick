@@ -42,5 +42,5 @@ import Types
 -- An 'EventM' action that updates the application state or dispatches new events.
 handleAvailableSoundpackEvents :: V.Event -> EventM Name AppState ()
 handleAvailableSoundpackEvents (V.EvKey V.KEnter []) =
-    withSelectedItems appAvailableSoundpacks "Cannot install soundpack" (\si p -> InstallSoundpack p si)
+    withSelectedItems appAvailableSoundpacks "Cannot install soundpack" (flip InstallSoundpack)
 handleAvailableSoundpackEvents ev = handleListEvents ev AvailableSoundpackList

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 {-|
 Module      : Soundpack.Utils.Config
 Description : Utility functions for accessing soundpack configuration.

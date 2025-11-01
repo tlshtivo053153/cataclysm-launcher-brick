@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 {-|
 Module      : Soundpack.List
 Description : Provides functionality for listing installed soundpacks.

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 {-|
 Module      : Soundpack.Uninstall
 Description : Provides functionality for uninstalling soundpacks.

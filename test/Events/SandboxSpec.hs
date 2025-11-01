@@ -45,7 +45,7 @@ spec = describe "Events.Sandbox" $ do
       let stWithProfile = (initialAppState dummyConfig undefined chan)
             { appSandboxProfiles = list SandboxProfileListName (Vec.fromList [profile1]) 1
             }
-      let st = stWithProfile { appSandboxProfiles = (appSandboxProfiles stWithProfile) & listSelectedL .~ Nothing }
+      let st = stWithProfile { appSandboxProfiles = appSandboxProfiles stWithProfile & listSelectedL .~ Nothing }
       isNothing (shouldBackupProfile st) `shouldBe` True
 
     it "returns Nothing if profile list is empty" $ do

@@ -69,13 +69,13 @@ data NetworkDeps m = NetworkDeps
   }
 
 -- | A record of functions abstracting time-related operations.
-data TimeDeps m = TimeDeps
+newtype TimeDeps m = TimeDeps
   { -- | Gets the current UTC time.
     tdGetCurrentTime :: m UTCTime
   }
 
 -- | A record of functions abstracting event reporting.
-data EventDeps m = EventDeps
+newtype EventDeps m = EventDeps
   { -- | Writes a 'UIEvent' to the application's event channel.
     edWriteEvent :: UIEvent -> m ()
   }

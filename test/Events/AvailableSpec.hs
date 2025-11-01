@@ -25,7 +25,7 @@ spec = describe "Events.Available" $ do
     it "returns Nothing when no item is selected" $ do
       chan <- newBChan 10
       let stWithVersions = initialAppState dummyConfig undefined chan
-      let st = stWithVersions { appAvailableVersions = (appAvailableVersions stWithVersions) & listSelectedL .~ Nothing }
+      let st = stWithVersions { appAvailableVersions = appAvailableVersions stWithVersions & listSelectedL .~ Nothing }
       isNothing (getDownloadAction st) `shouldBe` True
 
     it "returns Nothing when available list is empty" $ do

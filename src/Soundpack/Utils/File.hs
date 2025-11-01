@@ -41,8 +41,8 @@ import Types.Error (ManagerError (..))
 --
 -- A monadic action that yields a list of directory names.
 filterDirectories :: Monad m => Handle m -> FilePath -> [FilePath] -> m [FilePath]
-filterDirectories handle baseDir items =
-  filterM (\item -> hDoesDirectoryExist handle (baseDir </> item)) items
+filterDirectories handle baseDir =
+  filterM (\item -> hDoesDirectoryExist handle (baseDir </> item))
 
 -- | Ensures that a given directory path exists, creating it and any necessary
 -- parent directories if they do not already exist.

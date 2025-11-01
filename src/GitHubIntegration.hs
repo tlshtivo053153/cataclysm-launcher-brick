@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -13,17 +11,18 @@ module GitHubIntegration (
 import           Control.Exception          (SomeException, try)
 import           Control.Monad.IO.Class     (MonadIO)
 import           Data.Aeson                 (eitherDecode, encode)
-import           Data.Bifunctor         (bimap)
-import qualified Data.ByteString.Lazy   as L
-import qualified Data.Text              as T
-import qualified Data.Text.Encoding     as T
-import           Data.Time.Clock        (UTCTime, addUTCTime)
-import           Data.Time.Clock.POSIX  (posixSecondsToUTCTime)
-import           Data.Time.Format       (defaultTimeLocale, formatTime)
-import           Network.HTTP.Simple    (addRequestHeader, getResponseBody,
-                                         getResponseStatusCode, httpJSONEither,
-                                         httpLBS, parseRequest, setRequestHeader)
-import           System.FilePath        ((</>))
+import           Data.Bifunctor             (bimap, first)
+import qualified Data.ByteString.Lazy       as L
+import qualified Data.Text                  as T
+import qualified Data.Text.Encoding         as T
+import           Data.Time.Clock            (UTCTime, addUTCTime)
+import           Data.Time.Clock.POSIX      (posixSecondsToUTCTime)
+import           Data.Time.Format           (defaultTimeLocale, formatTime)
+import           Network.HTTP.Simple        (addRequestHeader, getResponseBody,
+                                             getResponseStatusCode, httpJSONEither,
+                                             httpLBS, parseRequest,
+                                             setRequestHeader)
+import           System.FilePath            ((</>))
 
 import           GitHubIntegration.Internal
 import           Types
@@ -90,7 +89,7 @@ fetchReleasesFromAPI url msince = do
             Nothing -> setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
             Just since -> addRequestHeader "If-Modified-Since" (T.encodeUtf8 $ T.pack $ formatHttpTime since) $ setRequestHeader "User-Agent" ["cataclysm-launcher-brick"] request'
     response <- httpJSONEither request
-    return $ bimap show id $ getResponseBody response
+    return $ first show $ getResponseBody response
 
 downloadAsset :: T.Text -> IO (Either String L.ByteString)
 downloadAsset url = do
