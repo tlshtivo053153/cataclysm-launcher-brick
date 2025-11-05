@@ -41,7 +41,6 @@ module Types.Domain (
 import Data.Time.Clock (UTCTime)
 import Dhall
 import qualified Data.Text as T
-import Types.Error (ManagerError)
 
 -- | Global application configuration.
 data Config = Config

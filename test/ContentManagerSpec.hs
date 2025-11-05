@@ -10,11 +10,45 @@ import qualified Data.Text as T
 import System.FilePath ((</>))
 
 import ContentManager
+import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..))
 import Types
+import Types.Error
 import TestUtils
 
 spec :: Spec
 spec = describe "ContentManager" $ do
+    let mockFsDeps :: FileSystemDeps (StateT TestState IO)
+        mockFsDeps = FileSystemDeps
+            { fsdDoesFileExist = \fp -> do
+                st <- get
+                return $ lookup fp (tsFileExistence st) == Just True
+            , fsdReadFile = \fp -> do
+                st <- get
+                case lookup fp (tsFileContents st) of
+                    Just content -> return $ L.toStrict content
+                    Nothing -> error $ "File not found in mock: " ++ fp
+            , fsdWriteFile = \fp content -> do
+                modify $ \st -> st { tsFileContents = (fp, L.fromStrict content) : tsFileContents st }
+            , fsdCreateDirectoryIfMissing = \_ _ -> return ()
+            , fsdDoesDirectoryExist = \_ -> return True
+            , fsdRemoveDirectoryRecursive = \_ -> return ()
+            , fsdListDirectory = \_ -> return []
+            }
+    let mockNetDeps :: NetworkDeps (StateT TestState IO)
+        mockNetDeps = NetworkDeps
+            { ndDownloadAsset = \url -> do
+                st <- get
+                case lookup url (tsDownloadedAssets st) of
+                    Just (Right bs) -> return $ Right $ L.toStrict bs
+                    Just (Left err) -> return $ Left err
+                    Nothing -> return $ Left $ NetworkError $ "Asset not found for url: " <> url
+            , ndDownloadFile = \url -> do
+                st <- get
+                case lookup url (tsDownloadedAssets st) of
+                    Just result -> return result
+                    Nothing -> return $ Left $ NetworkError $ "Asset not found for url: " <> url
+            }
+
     describe "downloadWithCache" $ do
         it "should use the cached file if it exists" $ do
             let url = "http://example.com/file.zip"
@@ -28,7 +62,7 @@ spec = describe "ContentManager" $ do
                     , tsCacheMisses = 0
                     }
             
-            (result, finalState) <- runStateT (downloadWithCache mockHandle cacheDir url (modify (\s -> s { tsCacheHits = tsCacheHits s + 1 })) (return ())) initialState
+            (result, finalState) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (modify (\s -> s { tsCacheHits = tsCacheHits s + 1 })) (return ())) initialState
 
             result `shouldBe` Right cacheFilePath
             tsDownloadedAssets finalState `shouldBe` []
@@ -47,7 +81,7 @@ spec = describe "ContentManager" $ do
                     , tsCacheMisses = 0
                     }
 
-            (result, finalState) <- runStateT (downloadWithCache mockHandle cacheDir url (return ()) (modify (\s -> s { tsCacheMisses = tsCacheMisses s + 1 }))) initialState
+            (result, finalState) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (return ()) (modify (\s -> s { tsCacheMisses = tsCacheMisses s + 1 }))) initialState
 
             result `shouldBe` Right cacheFilePath
             tsFileContents finalState `shouldBe` [(cacheFilePath, fileContent)]
@@ -65,6 +99,6 @@ spec = describe "ContentManager" $ do
                     , tsCacheMisses = 0
                     }
 
-            (result, _) <- runStateT (downloadWithCache mockHandle cacheDir url (return ()) (return ())) initialState
+            (result, _) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (return ()) (return ())) initialState
 
             result `shouldBe` Left (NetworkError "download failed")

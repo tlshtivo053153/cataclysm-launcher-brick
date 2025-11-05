@@ -101,6 +101,7 @@ library:
   - Soundpack.Install
   - Soundpack.List
   - Soundpack.Uninstall
+  - Soundpack.Deps
 
 executables:
   cataclysm-launcher-brick-gemini-exe:
@@ -149,6 +150,7 @@ tests:
     - ModHandlerSpec
     - ModUtilsSpec
     - SandboxControllerSpec
+    - SoundpackManagerSpec
     - TestUtils
     - Events.AppSpec
     - Events.AvailableSpec

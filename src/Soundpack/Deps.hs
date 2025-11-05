@@ -17,7 +17,14 @@ operations (like file I/O, network requests, etc.) into records of functions,
 the core application logic can remain pure and testable. Each `...Deps` record
 groups related dependencies.
 -}
-module Soundpack.Deps where
+module Soundpack.Deps (
+    SoundpackDeps(..),
+    FileSystemDeps(..),
+    NetworkDeps(..),
+    TimeDeps(..),
+    EventDeps(..),
+    ConfigDeps(..)
+) where
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L

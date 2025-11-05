@@ -20,7 +20,6 @@ module Soundpack.Utils.Validation
 where
 
 import qualified Data.Text as T
-import Types
 import Types.Error (ManagerError (..), SoundpackError (..))
 
 -- | Validates a soundpack name based on predefined rules.

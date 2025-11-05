@@ -63,9 +63,9 @@ library
       Soundpack.Install
       Soundpack.List
       Soundpack.Uninstall
+      Soundpack.Deps
   other-modules:
       Soundpack.Core
-      Soundpack.Deps
       Soundpack.Interface
       Soundpack.Utils.Config
       Soundpack.Utils.Conversion
@@ -163,6 +163,7 @@ test-suite cataclysm-launcher-brick-gemini-test
       ModHandlerSpec
       ModUtilsSpec
       SandboxControllerSpec
+      SoundpackManagerSpec
       TestUtils
       Events.AppSpec
       Events.AvailableSpec

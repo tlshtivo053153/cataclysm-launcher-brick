@@ -26,7 +26,6 @@ import Data.Conduit.Zlib (ungzip)
 import System.Directory (createDirectoryIfMissing, makeAbsolute) -- For extractTarball
 
 import Soundpack.Deps (FileSystemDeps(..))
-import Types
 import Types.Error (ManagerError(..))
 
 -- extractTarball remains unchanged for now as it's not used by soundpack installation

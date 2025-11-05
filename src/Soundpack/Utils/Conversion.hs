@@ -94,9 +94,9 @@ soundpackInfoToInstalledSoundpack soundpackInfo dirName installTime =
 formatSoundpackSize :: Integer -> T.Text
 formatSoundpackSize size
   | size < 1024 = T.pack (show size) <> " B"
-  | size < 1024 ^ 2 = T.pack (show (size `div` 1024)) <> " KB"
-  | size < 1024 ^ 3 = T.pack (show (size `div` (1024 ^ 2))) <> " MB"
-  | otherwise = T.pack (show (size `div` (1024 ^ 3))) <> " GB"
+  | size < 1024 ^ (2 :: Integer) = T.pack (show (size `div` 1024)) <> " KB"
+  | size < 1024 ^ (3 :: Integer) = T.pack (show (size `div` (1024 ^ (2 :: Integer)))) <> " MB"
+  | otherwise = T.pack (show (size `div` (1024 ^ (3 :: Integer)))) <> " GB"
 
 -- | Formats a 'UTCTime' into a standard date and time string (YYYY-MM-DD HH:MM).
 --

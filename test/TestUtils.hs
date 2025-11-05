@@ -15,6 +15,7 @@ import System.Exit (ExitCode(..))
 import Control.Monad.State.Strict
 
 import Types
+import Types.Error (ManagerError)
 
 data TestState = TestState
     { tsFileContents :: [(FilePath, L.ByteString)]

@@ -10,8 +10,8 @@ module GitHubIntegration (
 
 import           Control.Exception          (SomeException, try)
 import           Control.Monad.IO.Class     (MonadIO)
-import           Data.Aeson                 (eitherDecode, encode)
-import           Data.Bifunctor             (bimap, first)
+import           Data.Aeson                 (eitherDecode)
+import           Data.Bifunctor             (first)
 import qualified Data.ByteString.Lazy       as L
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T

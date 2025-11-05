@@ -15,7 +15,7 @@ allows for multiple implementations (e.g., a real one operating in 'IO' and
 a mock one for testing) and decouples the application logic from the concrete
 implementation details.
 -}
-module Soundpack.Interface where
+module Soundpack.Interface (SoundpackOperations(..)) where
 
 import Control.Monad.Catch (MonadCatch)
 import qualified Data.ByteString as B

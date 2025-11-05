@@ -10,6 +10,7 @@ import Data.Vector (fromList)
 import Events (nextActiveList)
 import Events.App (handleAppEventPure, managerErrorToText, modHandlerErrorToText)
 import Types
+import Types.Error
 import TestUtils (initialAppState)
 
 spec :: Spec

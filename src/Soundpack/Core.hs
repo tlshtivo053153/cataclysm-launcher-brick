@@ -14,7 +14,13 @@ It defines the data types that represent operational "plans" and includes
 pure functions for creating these plans and transforming data. By separating
 this logic from side-effectful code, it becomes easier to test and reason about.
 -}
-module Soundpack.Core where
+module Soundpack.Core (
+    InstallPlan(..),
+    ExtractionPlan(..),
+    processSoundpackInstall,
+    processSoundpackExtraction,
+    generateInstalledSoundpack
+) where
 
 import qualified Data.ByteString as B
 import Data.Time (UTCTime)

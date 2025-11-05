@@ -20,8 +20,6 @@ import Soundpack.Utils.Conversion (directoryToInstalledSoundpack)
 import Soundpack.Utils.File (filterDirectories)
 import Soundpack.Utils.Path (getSoundpackDirectory)
 import Types
-import Types.Domain (InstalledSoundpack)
-import Types.Handle
 
 -- | Lists all installed soundpacks in a given sandbox directory.
 --

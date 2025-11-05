@@ -21,10 +21,8 @@ import System.FilePath ((</>))
 
 import Soundpack.Utils.File (safeRemoveDirectory)
 import Soundpack.Utils.Path (getSoundpackDirectory)
-import Types
-import Types.Domain (InstalledSoundpack, SandboxProfile)
-import Types.Error (ManagerError (..), SoundpackError (..))
-import Types.Handle
+import Types (Config (..), Handle (..), InstalledSoundpack (..), SandboxProfile (..))
+import Types.Error (ManagerError (..))
 
 -- | Uninstalls a soundpack from a given sandbox profile.
 --
