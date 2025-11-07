@@ -12,6 +12,7 @@ import Data.Time (UTCTime)
 import System.Exit (ExitCode)
 import Types.Event (UIEvent)
 import Types.Error (ManagerError)
+import Soundpack.Deps (FileSystemDeps)
 
 -- Handle for abstracting IO operations
 data Handle m = Handle
@@ -39,5 +40,5 @@ data Handle m = Handle
     , hRemoveFile :: FilePath -> m ()
     , hFindFilesRecursively :: FilePath -> [String] -> m [FilePath]
     , hExtractTarball :: FilePath -> FilePath -> m (Either ManagerError ())
-    , hExtractZip :: FilePath -> B.ByteString -> m (Either ManagerError String)
+    , hExtractZip :: FileSystemDeps m -> FilePath -> B.ByteString -> m (Either ManagerError String)
     }

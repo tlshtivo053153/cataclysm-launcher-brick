@@ -21,12 +21,11 @@ module Soundpack.Install
   )
 where
 
-import ArchiveUtils (extractZip)
 import ContentManager (downloadWithCache)
 import Control.Monad.Catch (MonadCatch)
 import qualified Data.Text as T
 import Soundpack.Core (generateInstalledSoundpack, processSoundpackInstall, ipDownloadUrl, ipSoundDir, ipCacheDir, ipUseCache, ipSoundpackInfo)
-import Soundpack.Deps (ConfigDeps (..), EventDeps (..), FileSystemDeps (..), NetworkDeps (..), SoundpackDeps (..), TimeDeps (..))
+import Soundpack.Deps (ArchiveDeps(..), ConfigDeps (..), EventDeps (..), FileSystemDeps (..), NetworkDeps (..), SoundpackDeps (..), TimeDeps (..))
 import System.FilePath (takeFileName)
 import Types.Domain (InstalledSoundpack (..), SandboxProfile, SoundpackInfo (..))
 import Types.Error (ManagerError (..), SoundpackError (..))
@@ -72,6 +71,7 @@ installSoundpack deps profile soundpackInfo = do
   let net = spdNetwork deps
   let events = spdEvents deps
   let time = spdTime deps
+  let archive = spdArchive deps
 
   let downloadUrl = ipDownloadUrl installPlan
   let soundDir = ipSoundDir installPlan
@@ -102,9 +102,9 @@ installSoundpack deps profile soundpackInfo = do
   case zipDataResult of
     Left err -> return $ Left err
     Right zipData -> do
-      extractResult <- extractZip fs soundDir zipData
+      extractResult <- adExtractZip archive soundDir zipData
       case extractResult of
-        Left err -> return $ Left $ SoundpackManagerError $ SoundpackExtractionFailed $ T.pack $ show err
+        Left err -> return $ Left $ SoundpackManagerError $ SoundpackExtractionFailed $ T.pack err
         Right _ -> do
           -- NOTE: The directory name is assumed based on GitHub's zip format.
           -- A more robust solution would be to inspect the zip archive contents.

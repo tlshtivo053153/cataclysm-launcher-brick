@@ -75,6 +75,10 @@ spec = describe "installSoundpack" $ do
             spdTime =
               TimeDeps
                 { tdGetCurrentTime = liftIO getCurrentTime
+                },
+            spdArchive =
+              ArchiveDeps
+                { adExtractZip = \_ _ -> return $ Right ()
                 }
           }
 

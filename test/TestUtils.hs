@@ -68,7 +68,7 @@ mockHandle = Handle
     , hRemoveFile = \_ -> return ()
     , hFindFilesRecursively = \_ names -> return $ map ("/mock/path/to/" ++) names
     , hExtractTarball = \_ _ -> return $ Right ()
-    , hExtractZip = \_ _ -> return $ Right "zip extracted"
+    , hExtractZip = \_ _ _ -> return $ Right "zip extracted"
     }
 
 initialAppState :: Config -> Handle IO -> BChan UIEvent -> AppState

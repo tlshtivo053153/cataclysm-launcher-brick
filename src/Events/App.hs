@@ -54,7 +54,14 @@ handleAppEvent (InstallSoundpack profile soundpackInfo) = do
               { cdGetConfig = return (appConfig st)
               , cdGetSoundpackConfig = liftIO loadSoundpackConfig
               }
-        let deps = SoundpackDeps fsDeps netDeps timeDeps eventDeps configDeps
+        let archiveDeps = ArchiveDeps
+              { adExtractZip = \installDir zipData -> do
+                  result <- hExtractZip handle fsDeps installDir zipData
+                  return $ case result of
+                    Left err -> Left (show err)
+                    Right _ -> Right ()
+              }
+        let deps = SoundpackDeps fsDeps netDeps timeDeps eventDeps configDeps archiveDeps
 
         result <- installSoundpack deps profile soundpackInfo
         writeBChan chan (SoundpackInstallFinished profile result)

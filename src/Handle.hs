@@ -29,7 +29,7 @@ import           Soundpack.Deps (FileSystemDeps(..))
 import Types
 import Types.Error (ManagerError(..))
 
-liveHandle :: (MonadIO m, MonadCatch m) => Handle m
+liveHandle :: Handle IO
 liveHandle = Handle
     { hDoesFileExist = liftIO . doesFileExist
     , hReadFile = liftIO . B.readFile
@@ -72,15 +72,5 @@ liveHandle = Handle
         , hRemoveFile = liftIO . removeFile
         , hFindFilesRecursively = \fp names -> liftIO $ findFilesRecursively fp names
         , hExtractTarball = \archivePath installDir -> liftIO $ extractTarball archivePath installDir
-        , hExtractZip = \installDir zipData ->
-            let fsDeps = FileSystemDeps
-                  { fsdDoesFileExist = liftIO . doesFileExist
-                  , fsdReadFile = liftIO . B.readFile
-                  , fsdWriteFile = \fp content -> liftIO $ B.writeFile fp content
-                  , fsdCreateDirectoryIfMissing = \b fp -> liftIO $ createDirectoryIfMissing b fp
-                  , fsdDoesDirectoryExist = liftIO . doesDirectoryExist
-                  , fsdRemoveDirectoryRecursive = liftIO . removeDirectoryRecursive
-                  , fsdListDirectory = liftIO . listDirectory
-                  }
-            in liftIO $ extractZip fsDeps installDir zipData
+        , hExtractZip = \fsDeps installDir zipData -> liftIO $ extractZip fsDeps installDir zipData
         }

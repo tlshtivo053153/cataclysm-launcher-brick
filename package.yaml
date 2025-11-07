@@ -102,6 +102,13 @@ library:
   - Soundpack.List
   - Soundpack.Uninstall
   - Soundpack.Deps
+  - Soundpack.Core
+  - Soundpack.Interface
+  - Soundpack.Utils.Config
+  - Soundpack.Utils.Conversion
+  - Soundpack.Utils.File
+  - Soundpack.Utils.Path
+  - Soundpack.Utils.Validation
 
 executables:
   cataclysm-launcher-brick-gemini-exe:
@@ -169,3 +176,5 @@ tests:
     - Integration.WorkflowSpec
     - Integration.DownloadSpec
     - Integration.SandboxSpec
+    - Soundpack.CoreSpec
+    - Soundpack.InstallSpec

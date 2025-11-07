@@ -64,7 +64,6 @@ library
       Soundpack.List
       Soundpack.Uninstall
       Soundpack.Deps
-  other-modules:
       Soundpack.Core
       Soundpack.Interface
       Soundpack.Utils.Config
@@ -72,6 +71,7 @@ library
       Soundpack.Utils.File
       Soundpack.Utils.Path
       Soundpack.Utils.Validation
+  other-modules:
       Paths_cataclysm_launcher_brick_gemini
   autogen-modules:
       Paths_cataclysm_launcher_brick_gemini
@@ -182,6 +182,8 @@ test-suite cataclysm-launcher-brick-gemini-test
       Integration.WorkflowSpec
       Integration.DownloadSpec
       Integration.SandboxSpec
+      Soundpack.CoreSpec
+      Soundpack.InstallSpec
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N

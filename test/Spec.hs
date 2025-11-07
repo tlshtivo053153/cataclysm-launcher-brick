@@ -13,6 +13,8 @@ import qualified ModHandlerSpec
 import qualified ModUtilsSpec
 import qualified SandboxControllerSpec
 import qualified SoundpackManagerSpec
+import qualified Soundpack.CoreSpec
+import qualified Soundpack.InstallSpec
 
 import qualified Events.AppSpec
 import qualified Events.AvailableSpec
@@ -45,6 +47,8 @@ spec = do
   describe "ModUtils" ModUtilsSpec.spec
   describe "SandboxController" SandboxControllerSpec.spec
   describe "SoundpackManager" SoundpackManagerSpec.spec
+  describe "Soundpack.Core" Soundpack.CoreSpec.spec
+  describe "Soundpack.Install" Soundpack.InstallSpec.spec
   describe "Events.App" Events.AppSpec.spec
   describe "Events.Available" Events.AvailableSpec.spec
   describe "Events.Installed" Events.InstalledSpec.spec

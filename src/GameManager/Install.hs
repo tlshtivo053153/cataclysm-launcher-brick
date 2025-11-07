@@ -65,8 +65,17 @@ setupDirectories handle installDir cacheDir = do
 extractArchive :: Monad m => Handle m -> FilePath -> FilePath -> T.Text -> m (Either ManagerError String)
 extractArchive handle installDir archivePath urlText
     | ".zip" `T.isSuffixOf` urlText = do
+        let fsDeps = FileSystemDeps
+              { fsdDoesFileExist = hDoesFileExist handle
+              , fsdReadFile = hReadFile handle
+              , fsdWriteFile = \fp content -> hWriteLazyByteString handle fp (LBS.fromStrict content)
+              , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing handle
+              , fsdDoesDirectoryExist = hDoesDirectoryExist handle
+              , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive handle
+              , fsdListDirectory = hListDirectory handle
+              }
         assetData <- hReadFile handle archivePath
-        hExtractZip handle installDir assetData
+        hExtractZip handle fsDeps installDir assetData
     | ".tar.gz" `T.isSuffixOf` urlText = do
         result <- hExtractTarball handle archivePath installDir
         case result of

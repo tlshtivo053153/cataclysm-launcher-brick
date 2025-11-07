@@ -23,7 +23,8 @@ module Soundpack.Deps (
     NetworkDeps(..),
     TimeDeps(..),
     EventDeps(..),
-    ConfigDeps(..)
+    ConfigDeps(..),
+    ArchiveDeps(..)
 ) where
 
 import qualified Data.ByteString as B
@@ -46,7 +47,9 @@ data SoundpackDeps m = SoundpackDeps
     -- | Event reporting dependencies.
     spdEvents :: EventDeps m,
     -- | Configuration access dependencies.
-    spdConfig :: ConfigDeps m
+    spdConfig :: ConfigDeps m,
+    -- | Archive related dependencies.
+    spdArchive :: ArchiveDeps m
   }
 
 -- | A record of functions abstracting file system operations.
@@ -93,4 +96,10 @@ data ConfigDeps m = ConfigDeps
     cdGetConfig :: m Config,
     -- | Gets the 'SoundpackConfig' section of the configuration.
     cdGetSoundpackConfig :: m SoundpackConfig
+  }
+
+-- | A record of functions abstracting archive operations.
+data ArchiveDeps m = ArchiveDeps
+  { -- | Extracts a zip archive from a source path to a destination directory.
+    adExtractZip :: FilePath -> B.ByteString -> m (Either String ())
   }
