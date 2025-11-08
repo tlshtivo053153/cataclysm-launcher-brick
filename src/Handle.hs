@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -11,8 +12,8 @@ import qualified Data.Text as T
 import           Data.Time (getCurrentTime)
 import           Control.Exception (SomeException)
 import           Control.Monad (void)
-import           Control.Monad.Catch (MonadCatch, try)
-import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.Catch (try)
+import           Control.Monad.IO.Class (liftIO)
 import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, makeAbsolute, pathIsSymbolicLink, removeDirectoryRecursive, removeFile)
 import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)

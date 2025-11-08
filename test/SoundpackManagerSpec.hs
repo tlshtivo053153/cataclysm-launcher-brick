@@ -5,7 +5,7 @@ module SoundpackManagerSpec (spec) where
 
 import Brick.BChan (BChan, newBChan, writeBChan)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State.Strict (StateT, runStateT, lift)
+import Control.Monad.State.Strict (StateT, runStateT)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import Data.Time (getCurrentTime)
@@ -16,7 +16,6 @@ import Test.Hspec
 import TestUtils (TestState (..), mockHandle)
 import Types (Handle (..))
 import Types.Domain
-import Types.Error
 import Types.Event
 
 spec :: Spec
@@ -65,7 +64,7 @@ spec = describe "installSoundpack" $ do
                 },
             spdEvents =
               EventDeps
-                { edWriteEvent = \event -> liftIO $ writeBChan eventChan event
+                { edWriteEvent = liftIO . writeBChan eventChan
                 },
             spdConfig =
               ConfigDeps

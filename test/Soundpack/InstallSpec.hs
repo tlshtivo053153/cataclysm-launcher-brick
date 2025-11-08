@@ -3,15 +3,11 @@ module Soundpack.InstallSpec (spec) where
 
 import Test.Hspec
 import Soundpack.Install
-import Soundpack.Core
 import Soundpack.Deps
 import Types.Domain
 import Types.Error
 import Types.Event
-import Control.Monad.IO.Class (liftIO)
 import Control.Concurrent.Chan
-import Data.IORef
-import qualified Data.Text as T
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LBS
 import Data.Time.Clock (UTCTime(..))
@@ -105,9 +101,7 @@ createMockDeps mockTime mockSndConfig downloadResult extractResult cacheExists =
   return (eventChan, deps)
 
 flushEvents :: Chan a -> IO [a]
-flushEvents chan = do
-    contents <- getChanContents chan
-    return contents
+flushEvents = getChanContents
 
 -- A helper to check if a list contains all elements of another list
 shouldContainElements :: (Show a, Eq a) => [a] -> [a] -> Expectation

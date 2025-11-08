@@ -99,7 +99,7 @@ data ConfigDeps m = ConfigDeps
   }
 
 -- | A record of functions abstracting archive operations.
-data ArchiveDeps m = ArchiveDeps
+newtype ArchiveDeps m = ArchiveDeps
   { -- | Extracts a zip archive from a source path to a destination directory.
     adExtractZip :: FilePath -> B.ByteString -> m (Either String ())
   }

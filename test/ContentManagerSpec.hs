@@ -6,12 +6,10 @@ module ContentManagerSpec (spec) where
 import Test.Hspec
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Lazy as L
-import qualified Data.Text as T
 import System.FilePath ((</>))
 
 import ContentManager
 import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..))
-import Types
 import Types.Error
 import TestUtils
 
