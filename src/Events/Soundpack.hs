@@ -1,9 +1,9 @@
 module Events.Soundpack (
-    module Events.Soundpack.Install,
-    module Events.Soundpack.Uninstall,
-    module Events.Soundpack.List
+    module Events.Soundpack.InstallHandler,
+    module Events.Soundpack.UninstallHandler,
+    module Events.Soundpack.ListHandler
 ) where
 
-import Events.Soundpack.Install
-import Events.Soundpack.Uninstall
-import Events.Soundpack.List
+import Events.Soundpack.InstallHandler
+import Events.Soundpack.UninstallHandler
+import Events.Soundpack.ListHandler

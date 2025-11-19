@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {-|
-Module      : Events.Soundpack.Uninstall
+Module      : Events.Soundpack.UninstallHandler
 Description : Event handlers for uninstalling soundpacks.
 Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
 License     : MIT
@@ -14,7 +14,7 @@ uninstalling soundpacks. It processes user input (e.g., pressing 'd')
 from the list of installed soundpacks and dispatches appropriate events
 to initiate the uninstallation process.
 -}
-module Events.Soundpack.Uninstall (
+module Events.Soundpack.UninstallHandler (
     handleInstalledSoundpackEvents
 ) where
 
@@ -22,7 +22,7 @@ import Brick (EventM)
 import qualified Graphics.Vty as V
 
 import Events.List (handleListEvents)
-import Events.Soundpack.Common (withSelectedItems)
+import Events.Soundpack.CommonHandler (withSelectedItems)
 import Types
 
 -- | Handles events originating from the installed soundpacks list, primarily

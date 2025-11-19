@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {-|
-Module      : Events.Soundpack.Common
+Module      : Events.Soundpack.CommonHandler
 Description : Common utility functions for soundpack event handling.
 Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
 License     : MIT
@@ -14,7 +14,7 @@ soundpack-related event handlers. These utilities aim to reduce boilerplate
 and ensure consistent handling of common patterns, such as checking for
 selected items in lists and dispatching events.
 -}
-module Events.Soundpack.Common (
+module Events.Soundpack.CommonHandler (
     withSelectedItems
 ) where
 

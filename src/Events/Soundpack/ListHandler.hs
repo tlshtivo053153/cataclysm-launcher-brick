@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {-|
-Module      : Events.Soundpack.List
+Module      : Events.Soundpack.ListHandler
 Description : Event handlers for refreshing the list of installed soundpacks.
 Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
 License     : MIT
@@ -13,7 +13,7 @@ This module provides event handlers responsible for refreshing the list of
 installed soundpacks displayed in the UI. It typically involves asynchronous
 operations to scan the file system and update the application state withoutlocking the UI thread.
 -}
-module Events.Soundpack.List (
+module Events.Soundpack.ListHandler (
     refreshInstalledSoundpacksList,
     refreshInstalledSoundpacksList'
 ) where

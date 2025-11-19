@@ -92,10 +92,10 @@ library:
   - Events.Mods
   - Events.Sandbox
   - Events.Soundpack
-  - Events.Soundpack.Common
-  - Events.Soundpack.Install
-  - Events.Soundpack.List
-  - Events.Soundpack.Uninstall
+  - Events.Soundpack.CommonHandler
+  - Events.Soundpack.InstallHandler
+  - Events.Soundpack.ListHandler
+  - Events.Soundpack.UninstallHandler
   - SoundpackManager
   - Soundpack.Common
   - Soundpack.Install

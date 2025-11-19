@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {-|
-Module      : Events.Soundpack.Install
+Module      : Events.Soundpack.InstallHandler
 Description : Event handlers for installing soundpacks.
 Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
 License     : MIT
@@ -14,7 +14,7 @@ installing soundpacks. It processes user input (e.g., pressing Enter)
 from the list of available soundpacks and dispatches appropriate events
 to initiate the installation process.
 -}
-module Events.Soundpack.Install (
+module Events.Soundpack.InstallHandler (
     handleAvailableSoundpackEvents
 ) where
 
@@ -22,7 +22,7 @@ import Brick (EventM)
 import qualified Graphics.Vty as V
 
 import Events.List (handleListEvents)
-import Events.Soundpack.Common (withSelectedItems)
+import Events.Soundpack.CommonHandler (withSelectedItems)
 import Types
 
 -- | Handles events originating from the available soundpacks list, primarily
