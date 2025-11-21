@@ -23,13 +23,13 @@ import Control.Exception (try, SomeException)
 import Control.Monad (forM, filterM)
 
 -- | Clones a mod from a GitHub repository into the sys-repo/mods directory.
-installModFromGitHub :: (Monad m) => Handle m -> FilePath -> T.Text -> ModSource -> m (Either ModHandlerError ModInfo)
+installModFromGitHub :: (Monad m) => AppHandle m -> FilePath -> T.Text -> ModSource -> m (Either ModHandlerError ModInfo)
 installModFromGitHub handle sysRepoPath repoName (ModSource url) = do
     let modName = repoName
     let installDir = sysRepoPath </> "mods"
     let modInstallPath = installDir </> unpack modName
-    hCreateDirectoryIfMissing handle True installDir
-    (exitCode, _, stderr) <- hReadProcessWithExitCode handle "git" ["clone", "--depth", "1", unpack url, modInstallPath] ""
+    hCreateDirectoryIfMissing (appFileSystemHandle handle) True installDir
+    (exitCode, _, stderr) <- hReadProcessWithExitCode (appProcessHandle handle) "git" ["clone", "--depth", "1", unpack url, modInstallPath] ""
     case exitCode of
         ExitSuccess -> do
             let modInfo = ModInfo

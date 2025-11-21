@@ -17,16 +17,30 @@ import Types
 -- Handle has fields that are functions, which don't have NFData instances.
 -- We create a custom instance that just evaluates each field to WHNF
 -- to check that it's not `undefined`. This is sufficient for the wiring check.
-instance NFData (Handle IO) where
+instance NFData (AppHandle IO) where
   rnf handle =
-    hDoesFileExist handle `seq`
-    hReadFile handle `seq`
-    hWriteFile handle `seq`
-    hDownloadAsset handle `seq`
-    hCreateDirectoryIfMissing handle `seq`
-    hDoesDirectoryExist handle `seq`
-    hRemoveDirectoryRecursive handle `seq`
-    hWriteBChan handle `seq`
+    let fs = appFileSystemHandle handle
+        http = appHttpHandle handle
+        proc = appProcessHandle handle
+        time = appTimeHandle handle
+        async = appAsyncHandle handle
+        archive = appArchiveHandle handle
+    in
+    hDoesFileExist fs `seq`
+    hReadFile fs `seq`
+    hWriteFile fs `seq`
+    hDownloadAsset http `seq`
+    hCreateDirectoryIfMissing fs `seq`
+    hDoesDirectoryExist fs `seq`
+    hRemoveDirectoryRecursive fs `seq`
+    hWriteBChan async `seq`
+    hCallCommand proc `seq`
+    hReadProcessWithExitCode proc `seq`
+    hCreateProcess proc `seq`
+    hLaunchGame proc `seq`
+    hGetCurrentTime time `seq`
+    hExtractTarball archive `seq`
+    hExtractZip archive `seq`
     ()
 
 spec :: Spec
@@ -34,8 +48,8 @@ spec = describe "Handle.liveHandle" $ do
   it "constructs a live handle without runtime errors" $ do
     -- The goal is to ensure that creating liveHandle and evaluating its fields
     -- to WHNF doesn't cause a crash (e.g., from an `undefined` field).
-    -- We must give `liveHandle` a concrete type for the test. `Handle IO` is appropriate.
-    let handle = liveHandle :: Handle IO
+    -- We must give `liveHandle` a concrete type for the test. `AppHandle IO` is appropriate.
+    let handle = liveHandle :: AppHandle IO
 
     -- `force` uses our custom NFData instance to evaluate each field.
     -- `evaluate` then ensures this computation is run within the IO monad
@@ -44,14 +58,14 @@ spec = describe "Handle.liveHandle" $ do
 
   it "allows individual fields to be evaluated without crashing" $ do
     -- This test is slightly redundant but serves as a more explicit check.
-    let handle = liveHandle :: Handle IO
+    let handle = liveHandle :: AppHandle IO
     chan <- newBChan 10
 
-    evaluate (hDoesFileExist handle `seq` ()) `shouldReturn` ()
-    evaluate (hReadFile handle `seq` ()) `shouldReturn` ()
-    evaluate (hWriteFile handle `seq` ()) `shouldReturn` ()
-    evaluate (hDownloadAsset handle `seq` ()) `shouldReturn` ()
-    evaluate (hCreateDirectoryIfMissing handle `seq` ()) `shouldReturn` ()
-    evaluate (hDoesDirectoryExist handle `seq` ()) `shouldReturn` ()
-    evaluate (hRemoveDirectoryRecursive handle `seq` ()) `shouldReturn` ()
-    evaluate (hWriteBChan handle chan (LogMessage "test") `seq` ()) `shouldReturn` ()
+    evaluate (hDoesFileExist (appFileSystemHandle handle) `seq` ()) `shouldReturn` ()
+    evaluate (hReadFile (appFileSystemHandle handle) `seq` ()) `shouldReturn` ()
+    evaluate (hWriteFile (appFileSystemHandle handle) `seq` ()) `shouldReturn` ()
+    evaluate (hDownloadAsset (appHttpHandle handle) `seq` ()) `shouldReturn` ()
+    evaluate (hCreateDirectoryIfMissing (appFileSystemHandle handle) `seq` ()) `shouldReturn` ()
+    evaluate (hDoesDirectoryExist (appFileSystemHandle handle) `seq` ()) `shouldReturn` ()
+    evaluate (hRemoveDirectoryRecursive (appFileSystemHandle handle) `seq` ()) `shouldReturn` ()
+    evaluate (hWriteBChan (appAsyncHandle handle) chan (LogMessage "test") `seq` ()) `shouldReturn` ()

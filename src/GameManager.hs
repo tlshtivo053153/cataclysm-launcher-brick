@@ -15,7 +15,7 @@ import Types
 import Types.Error (ManagerError(..))
 import GameManager.Install
 
-getGameVersions :: Handle IO -> Config -> IO (Either ManagerError [GameVersion])
+getGameVersions :: AppHandle IO -> Config -> IO (Either ManagerError [GameVersion])
 getGameVersions handle config = do
     result <- GH.fetchGameVersions handle config
     return $ case result of
@@ -30,12 +30,12 @@ getInstalledVersions config = do
     dirs <- listDirectory absGameDir
     return $ map (\d -> InstalledVersion (T.pack d) (absGameDir </> d)) dirs
 
-launchGame :: (MonadIO m) => Handle m -> Config -> InstalledVersion -> Maybe SandboxProfile -> m (Either ManagerError ())
+launchGame :: (MonadIO m) => AppHandle m -> Config -> InstalledVersion -> Maybe SandboxProfile -> m (Either ManagerError ())
 launchGame handle _ iv mProfile = do
     let installDir = ivPath iv
         executableName = "cataclysm-launcher"
     
-    foundPaths <- hFindFilesRecursively handle installDir [executableName]
+    foundPaths <- hFindFilesRecursively (appFileSystemHandle handle) installDir [executableName]
 
     case foundPaths of
         [executablePath] -> do
@@ -43,7 +43,7 @@ launchGame handle _ iv mProfile = do
                 args = case mProfile of
                     Just profile -> ["--userdir", spDataDirectory profile]
                     Nothing      -> []
-            hCreateProcess handle executablePath args (Just workDir)
+            hCreateProcess (appProcessHandle handle) executablePath args (Just workDir)
             return $ Right ()
         [] ->
             return $ Left $ LaunchError $ T.pack ("Executable '" <> executableName <> "' not found in " <> installDir)

@@ -82,6 +82,12 @@ library:
   - Types.Error
   - Types.UI
   - Types.Handle
+  - Types.Handles.FileSystem
+  - Types.Handles.Http
+  - Types.Handles.Process
+  - Types.Handles.Time
+  - Types.Handles.Async
+  - Types.Handles.Archive
   - Types.Event
   - Events
   - Events.App

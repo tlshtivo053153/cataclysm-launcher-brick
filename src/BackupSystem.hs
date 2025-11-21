@@ -18,15 +18,15 @@ import           Types.Error (ManagerError(..))
 
 -- | List all backups for a given sandbox profile.
 -- Creates the backup directory if it doesn't exist.
-listBackups :: (MonadIO m, MonadCatch m) => Handle m -> Config -> SandboxProfile -> m (Either ManagerError [BackupInfo])
+listBackups :: (MonadIO m, MonadCatch m) => AppHandle m -> Config -> SandboxProfile -> m (Either ManagerError [BackupInfo])
 listBackups handle config profile = do
     let profileName = unpack (spName profile)
     let backupBaseDir = unpack (backupDirectory config)
     let backupDir = backupBaseDir </> profileName
     
-    hCreateDirectoryIfMissing handle True backupDir
+    hCreateDirectoryIfMissing (appFileSystemHandle handle) True backupDir
     
-    result <- try (hListDirectory handle backupDir)
+    result <- try (hListDirectory (appFileSystemHandle handle) backupDir)
     case result of
         Left (e :: SomeException) -> return $ Left $ FileSystemError $ pack $ "Failed to list backups in " ++ backupDir ++ ": " ++ show e
         Right names -> do
@@ -35,9 +35,9 @@ listBackups handle config profile = do
             let backupInfos = map toBackupInfo tarFiles
             return $ Right backupInfos
   where
-    isTarFile :: MonadIO m => Handle m -> FilePath -> m Bool
+    isTarFile :: MonadIO m => AppHandle m -> FilePath -> m Bool
     isTarFile h path = do
-        isFile <- hDoesFileExist h path
+        isFile <- hDoesFileExist (appFileSystemHandle h) path
         return $ isFile && ".tar" `isSuffixOf` path
 
     toBackupInfo :: FilePath -> BackupInfo
@@ -51,20 +51,20 @@ listBackups handle config profile = do
 
 -- | Create a new backup for a given sandbox profile.
 -- The backup is an uncompressed tar archive of the 'save' directory.
-createBackup :: (MonadIO m, MonadCatch m) => Handle m -> Config -> SandboxProfile -> m (Either ManagerError ())
+createBackup :: (MonadIO m, MonadCatch m) => AppHandle m -> Config -> SandboxProfile -> m (Either ManagerError ())
 createBackup handle config profile = do
     let saveDir = spDataDirectory profile </> "save"
     let profileName = unpack (spName profile)
     let backupBaseDir = unpack (backupDirectory config)
     let backupDir = backupBaseDir </> profileName
     
-    saveDirExists <- hDoesDirectoryExist handle saveDir
+    saveDirExists <- hDoesDirectoryExist (appFileSystemHandle handle) saveDir
     if not saveDirExists
     then return $ Left $ FileSystemError $ "Save directory not found for backup: " <> pack saveDir
     else do
-        hCreateDirectoryIfMissing handle True backupDir
+        hCreateDirectoryIfMissing (appFileSystemHandle handle) True backupDir
         
-        currentTime <- hGetCurrentTime handle
+        currentTime <- hGetCurrentTime (appTimeHandle handle)
         let timestamp = formatTime defaultTimeLocale "%Y-%m-%d_%H-%M-%S" currentTime
         let backupFileName = timestamp ++ ".tar"
         let backupFilePath = backupDir </> backupFileName
@@ -81,7 +81,7 @@ createBackup handle config profile = do
                 , "save"
                 ]
         
-        result <- try (hCallCommand handle command)
+        result <- try (hCallCommand (appProcessHandle handle) command)
         case result of
             Left (e :: SomeException) -> return $ Left $ ArchiveError $ pack $ "tar command failed: " ++ show e
             Right _ -> return $ Right ()

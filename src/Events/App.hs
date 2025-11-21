@@ -36,19 +36,19 @@ handleAppEvent (InstallSoundpack profile soundpackInfo) = do
     liftIO $ void $ forkIO $ do
         -- Construct dependencies
         let fsDeps = FileSystemDeps
-              { fsdDoesFileExist = hDoesFileExist handle
-              , fsdReadFile = hReadFile handle
-              , fsdWriteFile = \fp content -> hWriteLazyByteString handle fp (LBS.fromStrict content)
-              , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing handle
-              , fsdDoesDirectoryExist = hDoesDirectoryExist handle
-              , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive handle
-              , fsdListDirectory = hListDirectory handle
+              { fsdDoesFileExist = hDoesFileExist (appFileSystemHandle handle)
+              , fsdReadFile = hReadFile (appFileSystemHandle handle)
+              , fsdWriteFile = \fp content -> hWriteLazyByteString (appFileSystemHandle handle) fp (LBS.fromStrict content)
+              , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing (appFileSystemHandle handle)
+              , fsdDoesDirectoryExist = hDoesDirectoryExist (appFileSystemHandle handle)
+              , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive (appFileSystemHandle handle)
+              , fsdListDirectory = hListDirectory (appFileSystemHandle handle)
               }
         let netDeps = NetworkDeps
-              { ndDownloadAsset = hDownloadAsset handle
-              , ndDownloadFile = hDownloadFile handle
+              { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
+              , ndDownloadFile = hDownloadFile (appHttpHandle handle)
               }
-        let timeDeps = TimeDeps { tdGetCurrentTime = hGetCurrentTime handle }
+        let timeDeps = TimeDeps { tdGetCurrentTime = hGetCurrentTime (appTimeHandle handle) }
         let eventDeps = EventDeps { edWriteEvent = writeBChan chan }
         let configDeps = ConfigDeps
               { cdGetConfig = return (appConfig st)
@@ -56,7 +56,7 @@ handleAppEvent (InstallSoundpack profile soundpackInfo) = do
               }
         let archiveDeps = ArchiveDeps
               { adExtractZip = \installDir zipData -> do
-                  result <- hExtractZip handle fsDeps installDir zipData
+                  result <- hExtractZip (appArchiveHandle handle) (appFileSystemHandle handle) installDir zipData
                   return $ case result of
                     Left err -> Left (show err)
                     Right _ -> Right ()

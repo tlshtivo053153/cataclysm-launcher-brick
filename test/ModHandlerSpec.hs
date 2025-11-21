@@ -31,36 +31,47 @@ initialState :: TestState
 initialState = TestState [] [] ExitSuccess ""
 
 -- Test Handle using StateT
-testHandle :: Handle TestM
-testHandle = Handle
-    { hCreateDirectoryIfMissing = \_ path -> modify $ \s -> s { tsCreatedDirs = path : tsCreatedDirs s }
-    , hReadProcessWithExitCode = \cmd args input -> do
-        modify $ \s -> s { tsProcessLog = (cmd, args, input) : tsProcessLog s }
-        (,,) <$> gets tsProcessExitCode <*> pure "" <*> gets tsProcessStderr
-    -- Unused functions for this test, can be left as error
-    , hDoesFileExist = \_ -> error "not implemented"
-    , hReadFile = \_ -> error "not implemented"
-    , hWriteFile = \_ _ -> error "not implemented"
-    , hDownloadAsset = \_ -> error "not implemented"
-    , hDoesDirectoryExist = \_ -> error "not implemented"
-    , hRemoveDirectoryRecursive = \_ -> error "not implemented"
-    , hWriteBChan = \_ _ -> error "not implemented"
-    , hListDirectory = \_ -> error "not implemented"
-    , hMakeAbsolute = return
-    , hGetCurrentTime = error "not implemented"
-    , hCallCommand = \_ -> error "not implemented"
-    , hFetchReleasesFromAPI = \_ _ -> error "not implemented"
-    , hCreateProcess = \_ _ _ -> error "not implemented"
-    , hLaunchGame = \_ _ -> error "not implemented"
-    , hCreateSymbolicLink = \_ _ -> error "not implemented"
-    , hDoesSymbolicLinkExist = \_ -> error "not implemented"
-    , hGetSymbolicLinkTarget = \_ -> error "not implemented"
-    , hRemoveFile = \_ -> error "not implemented"
-    , hWriteLazyByteString = \_ _ -> error "not implemented"
-    , hDownloadFile = \_ -> error "not implemented"
-    , hFindFilesRecursively = \_ _ -> error "not implemented"
-    , hExtractTarball = \_ _ -> error "not implemented"
-    , hExtractZip = \_ _ -> error "not implemented"
+testHandle :: AppHandle TestM
+testHandle = AppHandle
+    { appFileSystemHandle = FileSystemHandle
+        { hCreateDirectoryIfMissing = \_ path -> modify $ \s -> s { tsCreatedDirs = path : tsCreatedDirs s }
+        , hMakeAbsolute = return
+        , hDoesFileExist = \_ -> error "not implemented"
+        , hReadFile = \_ -> error "not implemented"
+        , hWriteFile = \_ _ -> error "not implemented"
+        , hDoesDirectoryExist = \_ -> error "not implemented"
+        , hRemoveDirectoryRecursive = \_ -> error "not implemented"
+        , hListDirectory = \_ -> error "not implemented"
+        , hRemoveFile = \_ -> error "not implemented"
+        , hCreateSymbolicLink = \_ _ -> error "not implemented"
+        , hDoesSymbolicLinkExist = \_ -> error "not implemented"
+        , hGetSymbolicLinkTarget = \_ -> error "not implemented"
+        , hWriteLazyByteString = \_ _ -> error "not implemented"
+        , hFindFilesRecursively = \_ _ -> error "not implemented"
+        }
+    , appProcessHandle = ProcessHandle
+        { hReadProcessWithExitCode = \cmd args input -> do
+            modify $ \s -> s { tsProcessLog = (cmd, args, input) : tsProcessLog s }
+            (,,) <$> gets tsProcessExitCode <*> pure "" <*> gets tsProcessStderr
+        , hCallCommand = \_ -> error "not implemented"
+        , hCreateProcess = \_ _ _ -> error "not implemented"
+        , hLaunchGame = \_ _ -> error "not implemented"
+        }
+    , appHttpHandle = HttpHandle
+        { hDownloadAsset = \_ -> error "not implemented"
+        , hDownloadFile = \_ -> error "not implemented"
+        , hFetchReleasesFromAPI = \_ _ -> error "not implemented"
+        }
+    , appTimeHandle = TimeHandle
+        { hGetCurrentTime = error "not implemented"
+        }
+    , appAsyncHandle = AsyncHandle
+        { hWriteBChan = \_ _ -> error "not implemented"
+        }
+    , appArchiveHandle = ArchiveHandle
+        { hExtractTarball = \_ _ -> error "not implemented"
+        , hExtractZip = \_ _ -> error "not implemented"
+        }
     }
 
 runTest :: TestM a -> TestState -> (a, TestState)

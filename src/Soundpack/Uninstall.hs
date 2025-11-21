@@ -21,7 +21,7 @@ import System.FilePath ((</>))
 
 import Soundpack.Utils.File (safeRemoveDirectory)
 import Soundpack.Utils.Path (getSoundpackDirectory)
-import Types (Config (..), Handle (..), InstalledSoundpack (..), SandboxProfile (..))
+import Types (Config (..), AppHandle (..), InstalledSoundpack (..), SandboxProfile (..))
 import Types.Error (ManagerError (..))
 
 -- | Uninstalls a soundpack from a given sandbox profile.
@@ -43,7 +43,7 @@ import Types.Error (ManagerError (..))
 -- * 'Right ()': On successful removal.
 -- * 'Left ManagerError': On failure, typically a 'FileSystemError' if the
 --                        directory cannot be removed.
-uninstallSoundpack :: MonadCatch m => Handle m -> Config -> SandboxProfile -> InstalledSoundpack -> m (Either ManagerError ())
+uninstallSoundpack :: MonadCatch m => AppHandle m -> Config -> SandboxProfile -> InstalledSoundpack -> m (Either ManagerError ())
 uninstallSoundpack handle _config profile installedSoundpack = do
     let sandboxPath = spDataDirectory profile
     let soundDir = getSoundpackDirectory sandboxPath

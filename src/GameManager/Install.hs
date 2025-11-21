@@ -19,7 +19,7 @@ import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..))
 import Types
 import Types.Error (ManagerError(..))
 
-downloadAndInstall :: (MonadCatch m) => Handle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
+downloadAndInstall :: (MonadCatch m) => AppHandle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
 downloadAndInstall handle config eventChan gv = do
     let baseDir = T.unpack $ sysRepoDirectory config
         installDir = baseDir </> "game" </> T.unpack (gvVersionId gv)
@@ -31,21 +31,21 @@ downloadAndInstall handle config eventChan gv = do
         Right () -> do
             let url = gvUrl gv
             let fileName = takeFileName (T.unpack url)
-            let onCacheHit = hWriteBChan handle eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
-            let onCacheMiss = hWriteBChan handle eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
+            let onCacheHit = hWriteBChan (appAsyncHandle handle) eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
+            let onCacheMiss = hWriteBChan (appAsyncHandle handle) eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
 
             let fsDeps = FileSystemDeps
-                  { fsdDoesFileExist = hDoesFileExist handle
-                  , fsdReadFile = hReadFile handle
-                  , fsdWriteFile = \fp content -> hWriteLazyByteString handle fp (LBS.fromStrict content)
-                  , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing handle
-                  , fsdDoesDirectoryExist = hDoesDirectoryExist handle
-                  , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive handle
-                  , fsdListDirectory = hListDirectory handle
+                  { fsdDoesFileExist = hDoesFileExist (appFileSystemHandle handle)
+                  , fsdReadFile = hReadFile (appFileSystemHandle handle)
+                  , fsdWriteFile = \fp content -> hWriteLazyByteString (appFileSystemHandle handle) fp (LBS.fromStrict content)
+                  , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing (appFileSystemHandle handle)
+                  , fsdDoesDirectoryExist = hDoesDirectoryExist (appFileSystemHandle handle)
+                  , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive (appFileSystemHandle handle)
+                  , fsdListDirectory = hListDirectory (appFileSystemHandle handle)
                   }
             let netDeps = NetworkDeps
-                  { ndDownloadAsset = hDownloadAsset handle
-                  , ndDownloadFile = hDownloadFile handle
+                  { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
+                  , ndDownloadFile = hDownloadFile (appHttpHandle handle)
                   }
 
             assetDataEither <- downloadWithCache fsDeps netDeps cacheDir url onCacheHit onCacheMiss
@@ -54,30 +54,22 @@ downloadAndInstall handle config eventChan gv = do
                 Left err -> return $ Left err
                 Right cacheFilePath -> extractArchive handle installDir cacheFilePath (gvUrl gv)
 
-setupDirectories :: Monad m => Handle m -> FilePath -> FilePath -> m (Either ManagerError ())
+setupDirectories :: Monad m => AppHandle m -> FilePath -> FilePath -> m (Either ManagerError ())
 setupDirectories handle installDir cacheDir = do
-    hCreateDirectoryIfMissing handle True cacheDir
-    dirExists <- hDoesDirectoryExist handle installDir
-    when dirExists $ hRemoveDirectoryRecursive handle installDir
-    hCreateDirectoryIfMissing handle True installDir
+    hCreateDirectoryIfMissing (appFileSystemHandle handle) True cacheDir
+    dirExists <- hDoesDirectoryExist (appFileSystemHandle handle) installDir
+    when dirExists $ hRemoveDirectoryRecursive (appFileSystemHandle handle) installDir
+    hCreateDirectoryIfMissing (appFileSystemHandle handle) True installDir
     return $ Right ()
 
-extractArchive :: Monad m => Handle m -> FilePath -> FilePath -> T.Text -> m (Either ManagerError String)
+extractArchive :: Monad m => AppHandle m -> FilePath -> FilePath -> T.Text -> m (Either ManagerError String)
 extractArchive handle installDir archivePath urlText
     | ".zip" `T.isSuffixOf` urlText = do
-        let fsDeps = FileSystemDeps
-              { fsdDoesFileExist = hDoesFileExist handle
-              , fsdReadFile = hReadFile handle
-              , fsdWriteFile = \fp content -> hWriteLazyByteString handle fp (LBS.fromStrict content)
-              , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing handle
-              , fsdDoesDirectoryExist = hDoesDirectoryExist handle
-              , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive handle
-              , fsdListDirectory = hListDirectory handle
-              }
-        assetData <- hReadFile handle archivePath
-        hExtractZip handle fsDeps installDir assetData
+        
+        assetData <- hReadFile (appFileSystemHandle handle) archivePath
+        hExtractZip (appArchiveHandle handle) (appFileSystemHandle handle) installDir assetData
     | ".tar.gz" `T.isSuffixOf` urlText = do
-        result <- hExtractTarball handle archivePath installDir
+        result <- hExtractTarball (appArchiveHandle handle) archivePath installDir
         case result of
             Right () -> return $ Right "Successfully extracted tarball."
             Left err -> return $ Left err

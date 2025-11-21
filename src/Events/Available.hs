@@ -21,7 +21,7 @@ getDownloadAction st =
           h = appHandle st
           cfg = appConfig st
       result <- GM.downloadAndInstall h cfg chan gv
-      hWriteBChan h chan $ InstallFinished result
+      hWriteBChan (appAsyncHandle h) chan $ InstallFinished result
 
 -- | Event handler for the available versions list.
 handleAvailableEvents :: V.Event -> EventM Name AppState ()

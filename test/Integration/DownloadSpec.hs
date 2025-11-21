@@ -67,12 +67,14 @@ spec = describe "Integration Download" $ do
       eventChan <- newBChan 10
 
       let testHandle = Handle.liveHandle
-            {
-              hDownloadFile = \_url -> do
-                liftIO $ atomicModifyIORef' downloadCounter (\c -> (c+1, ()))
-                return $ Right $ B8.fromStrict dummyArchiveData
-            ,
-              hWriteBChan = \_ _ -> return () -- Ignore UI events
+            { appHttpHandle = (appHttpHandle Handle.liveHandle)
+                { hDownloadFile = \_url -> do
+                    liftIO $ atomicModifyIORef' downloadCounter (\c -> (c+1, ()))
+                    return $ Right $ B8.fromStrict dummyArchiveData
+                }
+            , appAsyncHandle = (appAsyncHandle Handle.liveHandle)
+                { hWriteBChan = \_ _ -> return () -- Ignore UI events
+                }
             }
 
       -- 2. First Install: should download, cache, and extract

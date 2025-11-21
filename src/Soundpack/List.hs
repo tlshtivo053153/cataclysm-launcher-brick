@@ -37,14 +37,14 @@ import Types
 -- === Returns
 --
 -- A monadic action that results in a list of 'InstalledSoundpack' records.
-listInstalledSoundpacks :: Monad m => Handle m -> FilePath -> m [InstalledSoundpack]
+listInstalledSoundpacks :: Monad m => AppHandle m -> FilePath -> m [InstalledSoundpack]
 listInstalledSoundpacks handle sandboxPath = do
   let soundDir = getSoundpackDirectory sandboxPath
-  soundDirExists <- hDoesDirectoryExist handle soundDir
+  soundDirExists <- hDoesDirectoryExist (appFileSystemHandle handle) soundDir
   if not soundDirExists
     then return []
     else do
-      contents <- hListDirectory handle soundDir
+      contents <- hListDirectory (appFileSystemHandle handle) soundDir
       dirs <- filterDirectories handle soundDir contents
-      currentTime <- hGetCurrentTime handle
+      currentTime <- hGetCurrentTime (appTimeHandle handle)
       return $ map (`directoryToInstalledSoundpack` currentTime) dirs

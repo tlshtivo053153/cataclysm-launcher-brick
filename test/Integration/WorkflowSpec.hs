@@ -59,13 +59,15 @@ spec = describe "Integration Workflow" $ do
           apiCalledRef <- liftIO $ newIORef (0 :: Int)
           let mockApiResponse = L8.pack "[{\"tag_name\":\"0.G\",\"name\":\"Version 1.0\",\"prerelease\":false,\"published_at\":\"2025-01-01T00:00:00Z\",\"assets\":[{\"browser_download_url\":\"http://example.com/v1.0-linux-with-graphics-and-sounds-x64.tar.gz\"}]}]"
           let testHandle = Handle.liveHandle
-                { hFetchReleasesFromAPI = \_ _ -> do
-                    modifyIORef' apiCalledRef (+1)
-                    return $ Right mockApiResponse
+                { appHttpHandle = (appHttpHandle Handle.liveHandle)
+                  { hFetchReleasesFromAPI = \_ _ -> do
+                      modifyIORef' apiCalledRef (+1)
+                      return $ Right mockApiResponse
+                  }
                 }
           
           -- CRITICAL STEP: Ensure the cache directory exists before calling the function under test.
-          liftIO $ hCreateDirectoryIfMissing testHandle True (T.unpack $ cacheDirectory config)
+          liftIO $ hCreateDirectoryIfMissing (appFileSystemHandle testHandle) True (T.unpack $ cacheDirectory config)
 
           -- 4. First fetch: should call API and create cache
           eitherVersions1 <- liftIO $ fetchGameVersions testHandle config

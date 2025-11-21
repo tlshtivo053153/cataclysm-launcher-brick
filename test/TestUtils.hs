@@ -25,53 +25,65 @@ data TestState = TestState
     , tsCacheMisses :: Int
     }
 
-mockHandle :: Handle (StateT TestState IO)
-mockHandle = Handle
-    { hDoesFileExist = \fp -> do
-        st <- get
-        return $ lookup fp (tsFileExistence st) == Just True
-    , hReadFile = \fp -> do
-        st <- get
-        case lookup fp (tsFileContents st) of
-            Just content -> return $ L.toStrict content
-            Nothing -> error $ "File not found in mock: " ++ fp
-    , hWriteFile = \fp content -> do
-        modify $ \st -> st { tsFileContents = (fp, L.fromStrict content) : tsFileContents st }
-    , hWriteLazyByteString = \fp content -> do
-        modify $ \st -> st { tsFileContents = (fp, content) : tsFileContents st }
-    , hDownloadAsset = \url -> do
-        st <- get
-        case lookup url (tsDownloadedAssets st) of
-            Just (Right bs) -> return $ Right $ L.toStrict bs
-            Just (Left err) -> return $ Left err
-            Nothing -> error $ "Asset not found for url: " ++ T.unpack url
-    , hDownloadFile = \url -> do
-        st <- get
-        case lookup url (tsDownloadedAssets st) of
-            Just result -> return result
-            Nothing -> error $ "Asset not found for url: " ++ T.unpack url
-    , hCreateDirectoryIfMissing = \_ _ -> return ()
-    , hDoesDirectoryExist = \_ -> return True
-    , hRemoveDirectoryRecursive = \_ -> return ()
-    , hWriteBChan = \_ _ -> return ()
-    , hListDirectory = \_ -> return []
-    , hMakeAbsolute = return
-    , hGetCurrentTime = liftIO getCurrentTime
-    , hCallCommand = \_ -> return ()
-    , hFetchReleasesFromAPI = \_ _ -> return $ Left "mocked API error"
-    , hReadProcessWithExitCode = \_ _ _ -> return (ExitSuccess, "", "")
-    , hCreateProcess = \_ _ _ -> return ()
-    , hLaunchGame = \_ _ -> return ()
-    , hCreateSymbolicLink = \_ _ -> return ()
-    , hDoesSymbolicLinkExist = \_ -> return False
-    , hGetSymbolicLinkTarget = \_ -> return ""
-    , hRemoveFile = \_ -> return ()
-    , hFindFilesRecursively = \_ names -> return $ map ("/mock/path/to/" ++) names
-    , hExtractTarball = \_ _ -> return $ Right ()
-    , hExtractZip = \_ _ _ -> return $ Right "zip extracted"
+mockHandle :: AppHandle (StateT TestState IO)
+mockHandle = AppHandle
+    { appFileSystemHandle = FileSystemHandle
+        { hDoesFileExist = \fp -> do
+            st <- get
+            return $ lookup fp (tsFileExistence st) == Just True
+        , hReadFile = \fp -> do
+            st <- get
+            case lookup fp (tsFileContents st) of
+                Just content -> return $ L.toStrict content
+                Nothing -> error $ "File not found in mock: " ++ fp
+        , hWriteFile = \fp content -> do
+            modify $ \st -> st { tsFileContents = (fp, L.fromStrict content) : tsFileContents st }
+        , hWriteLazyByteString = \fp content -> do
+            modify $ \st -> st { tsFileContents = (fp, content) : tsFileContents st }
+        , hCreateDirectoryIfMissing = \_ _ -> return ()
+        , hDoesDirectoryExist = \_ -> return True
+        , hRemoveDirectoryRecursive = \_ -> return ()
+        , hListDirectory = \_ -> return []
+        , hMakeAbsolute = return
+        , hRemoveFile = \_ -> return ()
+        , hFindFilesRecursively = \_ names -> return $ map ("/mock/path/to/" ++) names
+        , hCreateSymbolicLink = \_ _ -> return ()
+        , hDoesSymbolicLinkExist = \_ -> return False
+        , hGetSymbolicLinkTarget = \_ -> return ""
+        }
+    , appHttpHandle = HttpHandle
+        { hDownloadAsset = \url -> do
+            st <- get
+            case lookup url (tsDownloadedAssets st) of
+                Just (Right bs) -> return $ Right $ L.toStrict bs
+                Just (Left err) -> return $ Left err
+                Nothing -> error $ "Asset not found for url: " ++ T.unpack url
+        , hDownloadFile = \url -> do
+            st <- get
+            case lookup url (tsDownloadedAssets st) of
+                Just result -> return result
+                Nothing -> error $ "Asset not found for url: " ++ T.unpack url
+        , hFetchReleasesFromAPI = \_ _ -> return $ Left "mocked API error"
+        }
+    , appProcessHandle = ProcessHandle
+        { hCallCommand = \_ -> return ()
+        , hReadProcessWithExitCode = \_ _ _ -> return (ExitSuccess, "", "")
+        , hCreateProcess = \_ _ _ -> return ()
+        , hLaunchGame = \_ _ -> return ()
+        }
+    , appTimeHandle = TimeHandle
+        { hGetCurrentTime = liftIO getCurrentTime
+        }
+    , appAsyncHandle = AsyncHandle
+        { hWriteBChan = \_ _ -> return ()
+        }
+    , appArchiveHandle = ArchiveHandle
+        { hExtractTarball = \_ _ -> return $ Right ()
+        , hExtractZip = \_ _ _ -> return $ Right "zip extracted"
+        }
     }
 
-initialAppState :: Config -> Handle IO -> BChan UIEvent -> AppState
+initialAppState :: Config -> AppHandle IO -> BChan UIEvent -> AppState
 initialAppState config handle chan =
   let
     gv1 = GameVersion "id1" "v1.0" "url1" Development

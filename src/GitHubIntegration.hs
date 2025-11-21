@@ -58,26 +58,26 @@ formatHttpTime :: UTCTime -> String
 formatHttpTime = formatTime defaultTimeLocale "%a, %d %b %Y %H:%M:%S GMT"
 
 -- | Fetches game versions from GitHub releases.
-fetchGameVersions :: (MonadIO m) => Handle m -> Config -> m (Either String [GameVersion])
+fetchGameVersions :: (MonadIO m) => AppHandle m -> Config -> m (Either String [GameVersion])
 fetchGameVersions handle config = do
     let cachePath = T.unpack (cacheDirectory config) </> "github_releases.json"
-    cacheExists <- hDoesFileExist handle cachePath
+    cacheExists <- hDoesFileExist (appFileSystemHandle handle) cachePath
     if cacheExists
         then do
-            cachedData <- hReadFile handle cachePath
+            cachedData <- hReadFile (appFileSystemHandle handle) cachePath
             case eitherDecode (L.fromStrict cachedData) of
                 Right releases -> return $ Right $ processReleases releases
                 Left err       -> return $ Left ("Failed to parse cached releases: " ++ err)
         else do
-            now <- hGetCurrentTime handle
+            now <- hGetCurrentTime (appTimeHandle handle)
             let thirtyMinutesAgo = addUTCTime (-1800) now
             let url = T.unpack $ githubApiUrl config
-            responseResult <- hFetchReleasesFromAPI handle url (Just thirtyMinutesAgo)
+            responseResult <- hFetchReleasesFromAPI (appHttpHandle handle) url (Just thirtyMinutesAgo)
 
             case responseResult of
                 Left err -> return $ Left err
                 Right body -> do
-                    hWriteFile handle cachePath (L.toStrict body)
+                    hWriteFile (appFileSystemHandle handle) cachePath (L.toStrict body)
                     case eitherDecode body of
                         Right releases -> return $ Right $ processReleases releases
                         Left err'      -> return $ Left ("Failed to decode releases: " ++ err')

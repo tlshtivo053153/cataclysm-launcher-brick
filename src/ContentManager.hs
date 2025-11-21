@@ -26,23 +26,23 @@ data Content = Content
     } deriving (Show, Eq, Ord)
 
 -- | Recursively lists all files in a directory.
-listAllFiles :: Monad m => Handle m -> FilePath -> m [FilePath]
+listAllFiles :: Monad m => AppHandle m -> FilePath -> m [FilePath]
 listAllFiles handle baseDir = do
-    exists <- hDoesDirectoryExist handle baseDir
+    exists <- hDoesDirectoryExist (appFileSystemHandle handle) baseDir
     if not exists
     then return []
     else do
-        contents <- hListDirectory handle baseDir
+        contents <- hListDirectory (appFileSystemHandle handle) baseDir
         paths <- forM contents $ \item -> do
             let path = baseDir </> item
-            isDir <- hDoesDirectoryExist handle path
+            isDir <- hDoesDirectoryExist (appFileSystemHandle handle) path
             if isDir
             then listAllFiles handle path
             else return [path]
         return (concat paths)
 
 -- | Lists available content from sys-repo and user-repo, with user-repo taking precedence.
-listAvailableContent :: Monad m => Handle m -> FilePath -> FilePath -> m [Content]
+listAvailableContent :: Monad m => AppHandle m -> FilePath -> FilePath -> m [Content]
 listAvailableContent handle sysRepo userRepo = do
     sysFiles <- listAllFiles handle sysRepo
     userFiles <- listAllFiles handle userRepo

@@ -14,9 +14,9 @@ import Soundpack.Install (installSoundpack)
 import System.FilePath ((</>))
 import Test.Hspec
 import TestUtils (TestState (..), mockHandle)
-import Types (Handle (..))
 import Types.Domain
 import Types.Event
+import Types.Handle
 
 spec :: Spec
 spec = describe "installSoundpack" $ do
@@ -46,21 +46,25 @@ spec = describe "installSoundpack" $ do
 
   let mockSoundpackDeps :: BChan UIEvent -> SoundpackDeps (StateT TestState IO)
       mockSoundpackDeps eventChan =
+        let fs = appFileSystemHandle mockHandle
+            http = appHttpHandle mockHandle
+            archive = appArchiveHandle mockHandle
+        in
         SoundpackDeps
           { spdFileSystem =
               FileSystemDeps
-                { fsdDoesFileExist = hDoesFileExist mockHandle,
-                  fsdReadFile = hReadFile mockHandle,
-                  fsdWriteFile = hWriteFile mockHandle,
-                  fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing mockHandle,
-                  fsdDoesDirectoryExist = hDoesDirectoryExist mockHandle,
-                  fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive mockHandle,
-                  fsdListDirectory = hListDirectory mockHandle
+                { fsdDoesFileExist = hDoesFileExist fs,
+                  fsdReadFile = hReadFile fs,
+                  fsdWriteFile = hWriteFile fs,
+                  fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing fs,
+                  fsdDoesDirectoryExist = hDoesDirectoryExist fs,
+                  fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive fs,
+                  fsdListDirectory = hListDirectory fs
                 },
             spdNetwork =
               NetworkDeps
-                { ndDownloadAsset = hDownloadAsset mockHandle,
-                  ndDownloadFile = hDownloadFile mockHandle
+                { ndDownloadAsset = hDownloadAsset http,
+                  ndDownloadFile = hDownloadFile http
                 },
             spdEvents =
               EventDeps

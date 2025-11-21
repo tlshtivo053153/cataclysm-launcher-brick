@@ -66,7 +66,7 @@ data TestHandles = TestHandles
       thFileSystem :: IORef (Map.Map FilePath B.ByteString)
     , thApiContent :: IORef (Either String L.ByteString)
     , thApiCalled  :: IORef Bool
-    , thHandle     :: Handle IO
+    , thHandle     :: AppHandle IO
     }
 
 -- Helper to create a fresh set of handles for each test
@@ -75,36 +75,46 @@ createTestHandles = do
     fsRef <- newIORef Map.empty
     apiRef <- newIORef (Right "")
     calledRef <- newIORef False
-    let handle = Handle
-            {
-              hDoesFileExist = \fp -> Map.member fp <$> readIORef fsRef
-            , hReadFile = \fp -> Data.Maybe.fromMaybe (error "file not found") . Map.lookup fp <$> readIORef fsRef
-            , hWriteFile = \fp content -> modifyIORef' fsRef (Map.insert fp content)
-            , hWriteLazyByteString = \_ _ -> error "hWriteLazyByteString not implemented"
-            , hGetCurrentTime = return mockTime
-            , hFetchReleasesFromAPI = \_ _ -> do
-                writeIORef calledRef True
-                readIORef apiRef
-            -- Unused functions for these tests
-            , hDownloadAsset = \_ -> error "hDownloadAsset not implemented"
-            , hDownloadFile = \_ -> error "hDownloadFile not implemented"
-            , hCreateDirectoryIfMissing = \_ _ -> error "hCreateDirectoryIfMissing not implemented"
-            , hDoesDirectoryExist = \_ -> error "hDoesDirectoryExist not implemented"
-            , hRemoveDirectoryRecursive = \_ -> error "hRemoveDirectoryRecursive not implemented"
-            , hWriteBChan = \_ _ -> error "hWriteBChan not implemented"
-            , hListDirectory = \_ -> error "hListDirectory not implemented"
-            , hMakeAbsolute = \_ -> error "hMakeAbsolute not implemented"
-            , hCallCommand = \_ -> error "hCallCommand not implemented"
-            , hReadProcessWithExitCode = \_ _ _ -> error "hReadProcessWithExitCode not implemented"
-            , hCreateProcess = \_ _ _ -> error "hCreateProcess not implemented"
-            , hLaunchGame = \_ _ -> error "hLaunchGame not implemented"
-            , hCreateSymbolicLink = \_ _ -> error "hCreateSymbolicLink not implemented"
-            , hDoesSymbolicLinkExist = \_ -> error "hDoesSymbolicLinkExist not implemented"
-            , hGetSymbolicLinkTarget = \_ -> error "hGetSymbolicLinkTarget not implemented"
-            , hRemoveFile = \_ -> error "hRemoveFile not implemented"
-            , hFindFilesRecursively = \_ _ -> return []
-            , hExtractTarball = \_ _ -> error "hExtractTarball not implemented"
-            , hExtractZip = \_ _ -> error "hExtractZip not implemented"
+    let handle = AppHandle
+            { appFileSystemHandle = FileSystemHandle
+                { hDoesFileExist = \fp -> Map.member fp <$> readIORef fsRef
+                , hReadFile = \fp -> Data.Maybe.fromMaybe (error "file not found") . Map.lookup fp <$> readIORef fsRef
+                , hWriteFile = \fp content -> modifyIORef' fsRef (Map.insert fp content)
+                , hWriteLazyByteString = \_ _ -> error "hWriteLazyByteString not implemented"
+                , hCreateDirectoryIfMissing = \_ _ -> error "hCreateDirectoryIfMissing not implemented"
+                , hDoesDirectoryExist = \_ -> error "hDoesDirectoryExist not implemented"
+                , hRemoveDirectoryRecursive = \_ -> error "hRemoveDirectoryRecursive not implemented"
+                , hListDirectory = \_ -> error "hListDirectory not implemented"
+                , hMakeAbsolute = \_ -> error "hMakeAbsolute not implemented"
+                , hRemoveFile = \_ -> error "hRemoveFile not implemented"
+                , hFindFilesRecursively = \_ _ -> return []
+                , hCreateSymbolicLink = \_ _ -> error "hCreateSymbolicLink not implemented"
+                , hDoesSymbolicLinkExist = \_ -> error "hDoesSymbolicLinkExist not implemented"
+                , hGetSymbolicLinkTarget = \_ -> error "hGetSymbolicLinkTarget not implemented"
+                }
+            , appHttpHandle = HttpHandle
+                { hDownloadAsset = \_ -> error "hDownloadAsset not implemented"
+                , hDownloadFile = \_ -> error "hDownloadFile not implemented"
+                , hFetchReleasesFromAPI = \_ _ -> do
+                    writeIORef calledRef True
+                    readIORef apiRef
+                }
+            , appProcessHandle = ProcessHandle
+                { hCallCommand = \_ -> error "hCallCommand not implemented"
+                , hReadProcessWithExitCode = \_ _ _ -> error "hReadProcessWithExitCode not implemented"
+                , hCreateProcess = \_ _ _ -> error "hCreateProcess not implemented"
+                , hLaunchGame = \_ _ -> error "hLaunchGame not implemented"
+                }
+            , appTimeHandle = TimeHandle
+                { hGetCurrentTime = return mockTime
+                }
+            , appAsyncHandle = AsyncHandle
+                { hWriteBChan = \_ _ -> error "hWriteBChan not implemented"
+                }
+            , appArchiveHandle = ArchiveHandle
+                { hExtractTarball = \_ _ -> error "hExtractTarball not implemented"
+                , hExtractZip = \_ _ -> error "hExtractZip not implemented"
+                }
             }
     return $ TestHandles fsRef apiRef calledRef handle
 

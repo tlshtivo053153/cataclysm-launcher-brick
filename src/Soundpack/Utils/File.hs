@@ -40,9 +40,9 @@ import Types.Error (ManagerError (..))
 -- === Returns
 --
 -- A monadic action that yields a list of directory names.
-filterDirectories :: Monad m => Handle m -> FilePath -> [FilePath] -> m [FilePath]
+filterDirectories :: Monad m => AppHandle m -> FilePath -> [FilePath] -> m [FilePath]
 filterDirectories handle baseDir =
-  filterM (\item -> hDoesDirectoryExist handle (baseDir </> item))
+  filterM (\item -> hDoesDirectoryExist (appFileSystemHandle handle) (baseDir </> item))
 
 -- | Ensures that a given directory path exists, creating it and any necessary
 -- parent directories if they do not already exist.
@@ -55,13 +55,13 @@ filterDirectories handle baseDir =
 -- === Returns
 --
 -- An 'Either' indicating success ('Right ()') or a 'ManagerError' if creation fails.
-ensureDirectoryExists :: Monad m => Handle m -> FilePath -> m (Either ManagerError ())
+ensureDirectoryExists :: Monad m => AppHandle m -> FilePath -> m (Either ManagerError ())
 ensureDirectoryExists handle path = do
-  exists <- hDoesDirectoryExist handle path
+  exists <- hDoesDirectoryExist (appFileSystemHandle handle) path
   if exists
     then return $ Right ()
     else do
-      hCreateDirectoryIfMissing handle True path
+      hCreateDirectoryIfMissing (appFileSystemHandle handle) True path
       return $ Right ()
 
 -- | Safely removes a directory and its contents recursively if it exists.
@@ -76,11 +76,11 @@ ensureDirectoryExists handle path = do
 --
 -- An 'Either' indicating success ('Right ()') or a 'ManagerError' if removal fails
 -- or the directory does not exist.
-safeRemoveDirectory :: Monad m => Handle m -> FilePath -> m (Either ManagerError ())
+safeRemoveDirectory :: Monad m => AppHandle m -> FilePath -> m (Either ManagerError ())
 safeRemoveDirectory handle path = do
-  exists <- hDoesDirectoryExist handle path
+  exists <- hDoesDirectoryExist (appFileSystemHandle handle) path
   if exists
     then do
-      hRemoveDirectoryRecursive handle path
+      hRemoveDirectoryRecursive (appFileSystemHandle handle) path
       return $ Right ()
     else return $ Left $ FileSystemError $ "Directory not found: " <> T.pack path

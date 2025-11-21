@@ -27,7 +27,7 @@ data AppState = AppState
     , appAvailableSoundpacks :: List Name SoundpackInfo
     , appInstalledSoundpacks :: List Name InstalledSoundpack
     , appConfig            :: Config
-    , appHandle            :: Handle IO
+    , appHandle            :: AppHandle IO
     , appStatus            :: T.Text
     , appActiveList        :: ActiveList
     , appEventChannel      :: BChan UIEvent
