@@ -27,7 +27,7 @@ import qualified Data.Text as T
 import Soundpack.Core (generateInstalledSoundpack, processSoundpackInstall, ipDownloadUrl, ipSoundDir, ipCacheDir, ipUseCache, ipSoundpackInfo)
 import Soundpack.Deps (ArchiveDeps(..), ConfigDeps (..), EventDeps (..), FileSystemDeps (..), NetworkDeps (..), SoundpackDeps (..), TimeDeps (..))
 import System.FilePath (takeFileName)
-import Types.Domain (InstalledSoundpack (..), SandboxProfile, SoundpackInfo (..))
+import Types.Domain (Config (..), InstalledSoundpack (..), SandboxProfile, SoundpackInfo (..))
 import Types.Error (ManagerError (..), SoundpackError (..))
 import Types.Event (UIEvent (..))
 
@@ -64,8 +64,10 @@ installSoundpack ::
   SoundpackInfo ->
   m (Either ManagerError InstalledSoundpack)
 installSoundpack deps profile soundpackInfo = do
-  soundpackConfig <- cdGetSoundpackConfig (spdConfig deps)
-  let installPlan = processSoundpackInstall soundpackInfo profile soundpackConfig
+  config <- cdGetConfig (spdConfig deps)
+  let pathsCfg = paths config
+      featuresCfg = features config
+  let installPlan = processSoundpackInstall soundpackInfo profile pathsCfg featuresCfg
 
   let fs = spdFileSystem deps
   let net = spdNetwork deps

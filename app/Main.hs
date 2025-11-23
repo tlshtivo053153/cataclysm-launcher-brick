@@ -52,11 +52,11 @@ main = do
     chan <- newBChan 10
     config <- loadConfig
     putStrLn "Fetching game versions..."
-    versionsE <- getGameVersions liveHandle config
-    installed <- getInstalledVersions config
-    profilesE <- listProfiles liveHandle config
+    versionsE <- getGameVersions liveHandle (paths config) (api config)
+    installed <- getInstalledVersions (paths config)
+    profilesE <- listProfiles liveHandle (paths config)
     modSources <- loadModSources
-    installedMods <- listAvailableMods (T.unpack $ sysRepoDirectory config) (T.unpack $ userRepoDirectory config)
+    installedMods <- listAvailableMods (T.unpack $ sysRepo (paths config)) (T.unpack $ userRepo (paths config))
     
     case (versionsE, profilesE) of
         (Left err, _) -> putStrLn $ "Error fetching versions: " ++ T.unpack (managerErrorToText err)

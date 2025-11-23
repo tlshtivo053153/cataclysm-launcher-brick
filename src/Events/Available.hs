@@ -20,7 +20,7 @@ getDownloadAction st =
       let chan = appEventChannel st
           h = appHandle st
           cfg = appConfig st
-      result <- GM.downloadAndInstall h cfg chan gv
+      result <- GM.downloadAndInstall h (paths cfg) chan gv
       hWriteBChan (appAsyncHandle h) chan $ InstallFinished result
 
 -- | Event handler for the available versions list.

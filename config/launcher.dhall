@@ -1,25 +1,40 @@
--- config/launcher.dhall の推奨される内容
--- 各ディレクトリパスは launcherRootDirectory を基準に自動生成されるため、
--- ユーザーは基本的にこのルートディレクトリのみを意識すれば良い。
+-- config/launcher.dhall
+-- This file defines the application's configuration using a nested structure.
 let home = env:HOME ? "."
 let launcherRoot = home ++ "/.cataclysm-launcher-brick"
 
 in {
-  -- 主要なディレクトリパス。必要に応じて個別に上書き可能。
-  , launcherRootDirectory = launcherRoot
-  , cacheDirectory = launcherRoot ++ "/cache"
-  , sysRepoDirectory = launcherRoot ++ "/sys-repo"
-  , userRepoDirectory = launcherRoot ++ "/user-repo"
-  , sandboxDirectory = launcherRoot ++ "/sandbox"
-  , backupDirectory = launcherRoot ++ "/backups"
-  , downloadCacheDirectory = launcherRoot ++ "/cache/downloads"
-  , soundpackCacheDirectory = launcherRoot ++ "/cache/soundpacks"
-  , useSoundpackCache = True
+  -- Directory and file paths
+  , paths = {
+    , launcherRoot = launcherRoot
+    , cache = launcherRoot ++ "/cache"
+    , sysRepo = launcherRoot ++ "/sys-repo"
+    , userRepo = launcherRoot ++ "/user-repo"
+    , sandbox = launcherRoot ++ "/sandbox"
+    , backup = launcherRoot ++ "/backups"
+    , downloadCache = launcherRoot ++ "/cache/downloads"
+    , soundpackCache = launcherRoot ++ "/cache/soundpacks"
+    }
 
-  -- その他の設定
-  , maxBackupCount = 10
-  , githubApiUrl = "https://api.github.com/repos/CleverRaven/Cataclysm-DDA/releases"
-  , downloadThreads = 4
-  , logLevel = "Info"
-  , soundpackRepos = [ "https://github.com/Kenan2000/Otopack-Mods-Updates" ]
+  -- External API settings
+  , api = {
+    , githubUrl = "https://api.github.com/repos/CleverRaven/Cataclysm-DDA/releases"
+    }
+
+  -- Feature flags and behavior settings
+  , features = {
+    , useSoundpackCache = True
+    , downloadThreads = 4
+    , maxBackupCount = 10
+    }
+
+  -- Logging configuration
+  , logging = {
+    , level = "Info"
+    }
+
+  -- Soundpack repository URLs
+  , soundpackRepos = {
+    , repositories = [ "https://github.com/Kenan2000/Otopack-Mods-Updates" ]
+    }
 }

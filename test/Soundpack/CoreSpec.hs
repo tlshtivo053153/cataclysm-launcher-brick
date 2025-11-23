@@ -26,23 +26,34 @@ spec = describe "Soundpack.Core" $ do
         { spName = "default"
         , spDataDirectory = "/tmp/sandbox/default"
         }
-  let soundpackConfig = SoundpackConfig
-        { scUseSoundpackCache = True
-        , scSoundpackCacheDirectory = "/tmp/cache"
+  let pathsConfig = PathsConfig
+        { launcherRoot = "/tmp"
+        , cache = "/tmp/cache"
+        , sysRepo = "/tmp/sys-repo"
+        , userRepo = "/tmp/user-repo"
+        , sandbox = "/tmp/sandbox"
+        , backup = "/tmp/backup"
+        , downloadCache = "/tmp/cache/downloads"
+        , soundpackCache = "/tmp/cache/soundpacks"
+        }
+  let featuresConfig = FeaturesConfig
+        { useSoundpackCache = True
+        , downloadThreads = 1
+        , maxBackupCount = 5
         }
 
   describe "processSoundpackInstall" $ do
     it "creates an install plan with cache enabled" $ do
-      let plan = processSoundpackInstall soundpackInfo profile soundpackConfig
+      let plan = processSoundpackInstall soundpackInfo profile pathsConfig featuresConfig
       ipDownloadUrl plan `shouldBe` "http://example.com/download"
       ipSoundDir plan `shouldBe` "/tmp/sandbox/default/sound"
-      ipCacheDir plan `shouldBe` "/tmp/cache"
+      ipCacheDir plan `shouldBe` "/tmp/cache/soundpacks"
       ipUseCache plan `shouldBe` True
       ipSoundpackInfo plan `shouldBe` soundpackInfo
 
     it "creates an install plan with cache disabled" $ do
-      let configNoCache = soundpackConfig { scUseSoundpackCache = False }
-      let plan = processSoundpackInstall soundpackInfo profile configNoCache
+      let featuresConfigNoCache = featuresConfig { useSoundpackCache = False }
+      let plan = processSoundpackInstall soundpackInfo profile pathsConfig featuresConfigNoCache
       ipUseCache plan `shouldBe` False
 
   describe "processSoundpackExtraction" $ do

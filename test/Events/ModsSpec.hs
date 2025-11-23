@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-
 module Events.ModsSpec (spec) where
 
 import Test.Hspec
@@ -16,6 +15,7 @@ import Types
 spec :: Spec
 spec = describe "Events.Mods" $ do
   let
+    dummyConfig = testConfig "/tmp/launcher"
     modSource1 = ModSourceInfo "Mod A" "repo/a" "https://github.com/user/repo1" GitHub
     modSource2 = ModSourceInfo "Mod B" "repo/b" "https://github.com/user/repo2" GitHub
     availableMod1 = AvailableMod modSource1 True -- Installed
@@ -130,21 +130,3 @@ spec = describe "Events.Mods" $ do
       let st' = st { appActiveMods = listMoveTo 0 (appActiveMods st)
                    , appSandboxProfiles = appSandboxProfiles st & listSelectedL .~ Nothing }
       isNothing (getDisableModAction st') `shouldBe` True
-
-dummyConfig :: Config
-dummyConfig = Config
-    { launcherRootDirectory = "/tmp/launcher"
-    , cacheDirectory = "/tmp/launcher/cache"
-    , sysRepoDirectory = "/tmp/launcher/sys-repo"
-    , userRepoDirectory = "/tmp/launcher/user-repo"
-    , sandboxDirectory = "/tmp/launcher/sandbox"
-    , backupDirectory = "/tmp/launcher/backups"
-    , downloadCacheDirectory = "/tmp/launcher/cache/downloads"
-    , soundpackCacheDirectory = "/tmp/launcher/cache/soundpacks"
-    , useSoundpackCache = True
-    , maxBackupCount = 10
-    , githubApiUrl = "http://test.com/api"
-    , downloadThreads = 1
-    , logLevel = "Info"
-    , soundpackRepos = []
-    }

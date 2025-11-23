@@ -13,6 +13,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.IORef
 import Brick.BChan (newBChan)
 
+import TestUtils (testConfig)
 import SandboxController (createAndLaunchSandbox)
 import qualified Handle
 import Types
@@ -22,31 +23,15 @@ spec = describe "Integration Sandbox" $ do
   it "should create a sandbox and prepare for game launch" $ do
     withSystemTempDirectory "integration-test-sandbox" $ \tempDir -> do
       -- 1. Setup
-      let sysRepoDir = tempDir </> "sys-repo"
-          sandboxRootDir = tempDir </> "sandbox"
+      let cfg = testConfig tempDir
+          sysRepoDir = T.unpack $ sysRepo (paths cfg)
+          sandboxRootDir = T.unpack $ sandbox (paths cfg)
           gameId = "test-game-id"
           gameDir = sysRepoDir </> gameId
           gameExecutableName = "cataclysm-tiles"
           gameExecutablePath = gameDir </> gameExecutableName
           sandboxName = "test-sandbox"
           expectedSandboxPath = sandboxRootDir </> sandboxName
-
-      let config = Config
-            { launcherRootDirectory = T.pack tempDir
-            , cacheDirectory = T.pack $ tempDir </> "cache"
-            , sysRepoDirectory = T.pack sysRepoDir
-            , userRepoDirectory = T.pack $ tempDir </> "user-repo"
-            , sandboxDirectory = T.pack sandboxRootDir
-            , backupDirectory = T.pack $ tempDir </> "backup"
-            , downloadCacheDirectory = T.pack $ tempDir </> "download-cache"
-            , githubApiUrl = ""
-            , downloadThreads = 1
-            , maxBackupCount = 5
-            , logLevel = "Info"
-            , soundpackCacheDirectory = T.pack $ tempDir </> "cache" </> "soundpacks"
-            , useSoundpackCache = True
-            , soundpackRepos = []
-            }
 
       -- Create a dummy "installed" game executable
       liftIO $ createDirectoryIfMissing True gameDir
@@ -69,7 +54,7 @@ spec = describe "Integration Sandbox" $ do
             }
 
       -- 2. Execute
-      result <- liftIO $ createAndLaunchSandbox config testHandle eventChan (T.pack gameId) (T.pack sandboxName)
+      result <- liftIO $ createAndLaunchSandbox (paths cfg) testHandle eventChan (T.pack gameId) (T.pack sandboxName)
 
       -- 3. Verify
       case result of

@@ -9,12 +9,13 @@ import Brick.BChan (newBChan)
 import Lens.Micro ((&), (.~))
 
 import Events.Installed (getLaunchAction)
-import TestUtils
+import TestUtils (initialAppState, testConfig)
 import Types
 
 spec :: Spec
 spec = describe "Events.Installed" $ do
   let
+    dummyConfig = testConfig "/tmp/launcher"
     iv = InstalledVersion "v1.0" "/path/to/v1"
     sp = SandboxProfile "default" "/sandbox/default"
 
@@ -62,21 +63,3 @@ spec = describe "Events.Installed" $ do
                 , appSandboxProfiles = appSandboxProfiles stWithVersions & listSelectedL .~ Nothing
                 }
       isJust (getLaunchAction st) `shouldBe` True
-
-dummyConfig :: Config
-dummyConfig = Config
-    { launcherRootDirectory = "/tmp/launcher"
-    , cacheDirectory = "/tmp/launcher/cache"
-    , sysRepoDirectory = "/tmp/launcher/sys-repo"
-    , userRepoDirectory = "/tmp/launcher/user-repo"
-    , sandboxDirectory = "/tmp/launcher/sandbox"
-    , backupDirectory = "/tmp/launcher/backups"
-    , downloadCacheDirectory = "/tmp/launcher/cache/downloads"
-    , soundpackCacheDirectory = "/tmp/launcher/cache/soundpacks"
-    , useSoundpackCache = True
-    , maxBackupCount = 10
-    , githubApiUrl = "http://test.com/api"
-    , downloadThreads = 1
-    , logLevel = "Info"
-    , soundpackRepos = []
-    }

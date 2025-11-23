@@ -15,23 +15,23 @@ import Types
 import Types.Error (ManagerError(..))
 import GameManager.Install
 
-getGameVersions :: AppHandle IO -> Config -> IO (Either ManagerError [GameVersion])
-getGameVersions handle config = do
-    result <- GH.fetchGameVersions handle config
+getGameVersions :: AppHandle IO -> PathsConfig -> ApiConfig -> IO (Either ManagerError [GameVersion])
+getGameVersions handle pathsConfig apiConfig = do
+    result <- GH.fetchGameVersions handle pathsConfig apiConfig
     return $ case result of
         Left err -> Left $ NetworkError (T.pack err)
         Right versions -> Right versions
 
-getInstalledVersions :: Config -> IO [InstalledVersion]
-getInstalledVersions config = do
-    let gameDir = T.unpack (sysRepoDirectory config) </> "game"
+getInstalledVersions :: PathsConfig -> IO [InstalledVersion]
+getInstalledVersions pathsConfig = do
+    let gameDir = T.unpack (sysRepo pathsConfig) </> "game"
     createDirectoryIfMissing True gameDir
     absGameDir <- makeAbsolute gameDir
     dirs <- listDirectory absGameDir
     return $ map (\d -> InstalledVersion (T.pack d) (absGameDir </> d)) dirs
 
-launchGame :: (MonadIO m) => AppHandle m -> Config -> InstalledVersion -> Maybe SandboxProfile -> m (Either ManagerError ())
-launchGame handle _ iv mProfile = do
+launchGame :: (MonadIO m) => AppHandle m -> InstalledVersion -> Maybe SandboxProfile -> m (Either ManagerError ())
+launchGame handle iv mProfile = do
     let installDir = ivPath iv
         executableName = "cataclysm-launcher"
     

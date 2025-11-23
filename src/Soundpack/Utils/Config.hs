@@ -8,9 +8,8 @@ Stability   : experimental
 Portability : POSIX
 
 This module provides helper functions to extract specific pieces of information
-from the 'SoundpackConfig' data type, such as cache enablement status and
-the cache directory path. These functions encapsulate configuration access
-logic, promoting cleaner code in other modules.
+related to soundpacks from the main configuration types. These functions
+encapsulate configuration access logic, promoting cleaner code in other modules.
 -}
 module Soundpack.Utils.Config
   ( isCacheEnabled,
@@ -19,29 +18,29 @@ module Soundpack.Utils.Config
 where
 
 import qualified Data.Text as T
-import Types.Domain (SoundpackConfig(..))
+import Types.Domain (FeaturesConfig(..), PathsConfig(..))
 
--- | Checks if the soundpack cache is enabled based on the provided 'SoundpackConfig'.
+-- | Checks if the soundpack cache is enabled based on the provided 'FeaturesConfig'.
 --
 -- === Parameters
 --
--- * @config@: The 'SoundpackConfig' record.
+-- * @config@: The 'FeaturesConfig' record.
 --
 -- === Returns
 --
 -- 'True' if caching is enabled, 'False' otherwise.
-isCacheEnabled :: SoundpackConfig -> Bool
-isCacheEnabled = scUseSoundpackCache
+isCacheEnabled :: FeaturesConfig -> Bool
+isCacheEnabled = useSoundpackCache
 
--- | Retrieves the soundpack cache directory path from the provided 'SoundpackConfig'.
+-- | Retrieves the soundpack cache directory path from the provided 'PathsConfig'.
 -- The path is returned as a 'FilePath' (String).
 --
 -- === Parameters
 --
--- * @config@: The 'SoundpackConfig' record.
+-- * @config@: The 'PathsConfig' record.
 --
 -- === Returns
 --
 -- The absolute path to the soundpack cache directory.
-getCacheDirectory :: SoundpackConfig -> FilePath
-getCacheDirectory = T.unpack . scSoundpackCacheDirectory
+getCacheDirectory :: PathsConfig -> FilePath
+getCacheDirectory = T.unpack . soundpackCache

@@ -3,22 +3,17 @@
 
 module Config (
     loadConfig,
-    loadSoundpackConfig,
     loadModSources,
     loadModSourcesFrom -- Export for testing
 ) where
 
 import Dhall
-import Types (Config, ModSourceInfo, SoundpackConfig)
+import Types (Config, ModSourceInfo)
 import Control.Exception (try, SomeException)
 
 -- | Loads the main application configuration.
 loadConfig :: IO Config
 loadConfig = input auto "./config/launcher.dhall"
-
--- | Loads the soundpack-specific configuration.
-loadSoundpackConfig :: IO SoundpackConfig
-loadSoundpackConfig = input auto "{ soundpackCacheDirectory = ./config/launcher.dhall.soundpackCacheDirectory, useSoundpackCache = ./config/launcher.dhall.useSoundpackCache }"
 
 -- | Loads the list of available mod sources from the default path.
 -- See `loadModSourcesFrom` for implementation details.

@@ -10,51 +10,59 @@ import qualified Data.Text as T
 import Data.List (sortOn)
 import Data.Either (isRight)
 
+import TestUtils (testConfig)
+
 import SandboxController
+
 import Handle (liveHandle)
+
 import Types
 
+
+
 -- Helper to provide a temporary sandbox directory for each test
+
 withTempSandboxDir :: ActionWith FilePath -> IO ()
+
 withTempSandboxDir = bracket setup teardown
+
   where
+
     setup = do
+
       parentDir <- getCurrentDirectory
+
       let tempDir = parentDir </> "temp-sandbox-for-testing"
+
       createDirectory tempDir
+
       return tempDir
+
     teardown = removeDirectoryRecursive
 
+
+
 spec :: Spec
+
 spec = around withTempSandboxDir $ do
-  let testConfig tempDir = Config
-        { launcherRootDirectory = ""
-        , cacheDirectory = ""
-        , sysRepoDirectory = ""
-        , userRepoDirectory = ""
-        , sandboxDirectory = T.pack tempDir
-        , backupDirectory = ""
-        , downloadCacheDirectory = ""
-        , maxBackupCount = 0
-        , githubApiUrl = ""
-        , downloadThreads = 1
-        , logLevel = "Debug"
-        , soundpackCacheDirectory = ""
-        , useSoundpackCache = True
-        , soundpackRepos = []
-        }
 
   describe "SandboxController" $ do
+
     describe "listProfiles" $ do
+
       it "returns an empty list when the sandbox directory is empty" $ \tempDir -> do
-        result <- listProfiles liveHandle (testConfig tempDir)
+        let cfg = testConfig tempDir
+        result <- listProfiles liveHandle (paths cfg)
         result `shouldBe` Right []
 
       it "returns a list of profiles for each subdirectory" $ \tempDir -> do
-        createDirectory (tempDir </> "profile1")
-        createDirectory (tempDir </> "profile2")
+        let cfg = testConfig tempDir
+        let sandboxDir = T.unpack $ sandbox (paths cfg)
+        createDirectory sandboxDir
+        createDirectory (sandboxDir </> "profile1")
+        createDirectory (sandboxDir </> "profile2")
         
-        result <- listProfiles liveHandle (testConfig tempDir)
+        result <- listProfiles liveHandle (paths cfg)
         case result of
           Left e -> expectationFailure (show e)
           Right profiles -> do
@@ -63,29 +71,59 @@ spec = around withTempSandboxDir $ do
             (T.pack . spDataDirectory . head) sortedProfiles `shouldSatisfy` T.isSuffixOf "profile1"
             (T.pack . spDataDirectory . last) sortedProfiles `shouldSatisfy` T.isSuffixOf "profile2"
 
+
     describe "createProfile" $ do
+
       it "creates a new directory for the profile and returns the correct profile data" $ \tempDir -> do
+
         let profileName = "my-new-profile"
+
+        let cfg = testConfig tempDir
+
         
-        result <- createProfile liveHandle (testConfig tempDir) profileName
+
+        result <- createProfile liveHandle (paths cfg) profileName
+
         
+
         case result of
+
           Left e -> expectationFailure (show e)
+
           Right profile -> do
+
             spName profile `shouldBe` profileName
+
             T.pack (spDataDirectory profile) `shouldSatisfy` T.isSuffixOf profileName
 
+
+
         -- Verify directory exists
-        profilesAfter <- listProfiles liveHandle (testConfig tempDir)
+
+        profilesAfter <- listProfiles liveHandle (paths cfg)
+
         fmap (map spName) profilesAfter `shouldBe` Right [profileName]
 
+
+
       it "succeeds even if the directory already exists" $ \tempDir -> do
+
         let profileName = "existing-profile"
+
+        let cfg = testConfig tempDir
+
         createDirectory (tempDir </> T.unpack profileName)
+
         
-        result <- createProfile liveHandle (testConfig tempDir) profileName
+
+        result <- createProfile liveHandle (paths cfg) profileName
+
         result `shouldSatisfy` isRight
+
         
+
         -- Verify directory still exists and is listed
-        profilesAfter <- listProfiles liveHandle (testConfig tempDir)
+
+        profilesAfter <- listProfiles liveHandle (paths cfg)
+
         fmap (map spName) profilesAfter `shouldBe` Right [profileName]

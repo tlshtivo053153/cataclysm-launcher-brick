@@ -31,7 +31,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import Data.Time (UTCTime)
-import Types.Domain (Config, SoundpackConfig)
+import Types.Domain (Config)
 import Types.Error (ManagerError)
 import Types.Event (UIEvent)
 
@@ -91,11 +91,9 @@ newtype EventDeps m = EventDeps
   }
 
 -- | A record of functions abstracting access to configuration.
-data ConfigDeps m = ConfigDeps
+newtype ConfigDeps m = ConfigDeps
   { -- | Gets the main application 'Config'.
-    cdGetConfig :: m Config,
-    -- | Gets the 'SoundpackConfig' section of the configuration.
-    cdGetSoundpackConfig :: m SoundpackConfig
+    cdGetConfig :: m Config
   }
 
 -- | A record of functions abstracting archive operations.

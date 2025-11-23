@@ -29,9 +29,9 @@ import           Types
 
 -- | Generates SoundpackInfo objects from repository URLs in the config.
 -- This is now a pure function that constructs download URLs for the master branch.
-generateSoundpackDownloadInfos :: Config -> [SoundpackInfo]
+generateSoundpackDownloadInfos :: SoundpackReposConfig -> [SoundpackInfo]
 generateSoundpackDownloadInfos config =
-    map repoUrlToSoundpackInfo (soundpackRepos config)
+    map repoUrlToSoundpackInfo (repositories config)
 
 repoUrlToSoundpackInfo :: T.Text -> SoundpackInfo
 repoUrlToSoundpackInfo url =
@@ -58,9 +58,9 @@ formatHttpTime :: UTCTime -> String
 formatHttpTime = formatTime defaultTimeLocale "%a, %d %b %Y %H:%M:%S GMT"
 
 -- | Fetches game versions from GitHub releases.
-fetchGameVersions :: (MonadIO m) => AppHandle m -> Config -> m (Either String [GameVersion])
-fetchGameVersions handle config = do
-    let cachePath = T.unpack (cacheDirectory config) </> "github_releases.json"
+fetchGameVersions :: (MonadIO m) => AppHandle m -> PathsConfig -> ApiConfig -> m (Either String [GameVersion])
+fetchGameVersions handle pathsConfig apiConfig = do
+    let cachePath = T.unpack (cache pathsConfig) </> "github_releases.json"
     cacheExists <- hDoesFileExist (appFileSystemHandle handle) cachePath
     if cacheExists
         then do
@@ -71,7 +71,7 @@ fetchGameVersions handle config = do
         else do
             now <- hGetCurrentTime (appTimeHandle handle)
             let thirtyMinutesAgo = addUTCTime (-1800) now
-            let url = T.unpack $ githubApiUrl config
+            let url = T.unpack $ githubUrl apiConfig
             responseResult <- hFetchReleasesFromAPI (appHttpHandle handle) url (Just thirtyMinutesAgo)
 
             case responseResult of

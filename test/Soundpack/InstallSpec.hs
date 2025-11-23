@@ -7,6 +7,7 @@ import Soundpack.Deps
 import Types.Domain
 import Types.Error
 import Types.Event
+import TestUtils (testConfig)
 import Control.Concurrent.Chan
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LBS
@@ -29,11 +30,11 @@ spec = describe "Soundpack.Install" $ do
         , spiReleaseDate = currentTime
         }
   let profile = SandboxProfile "default" "/tmp/sandbox/default"
-  let soundpackConfig = SoundpackConfig { scUseSoundpackCache = True, scSoundpackCacheDirectory = "/tmp/cache" }
+  let config = testConfig "/tmp"
 
   context "when cache is hit" $
     it "successfully installs a soundpack" $ do
-      (events, deps) <- createMockDeps currentTime soundpackConfig (Right "zip data") (Right ()) True
+      (events, deps) <- createMockDeps currentTime config (Right "zip data") (Right ()) True
       result <- installSoundpack deps profile soundpackInfo
 
       case result of
@@ -47,7 +48,7 @@ spec = describe "Soundpack.Install" $ do
 
   context "when cache is missed" $
     it "successfully installs a soundpack" $ do
-      (events, deps) <- createMockDeps currentTime soundpackConfig (Right "zip data") (Right ()) False
+      (events, deps) <- createMockDeps currentTime config (Right "zip data") (Right ()) False
       result <- installSoundpack deps profile soundpackInfo
 
       case result of
@@ -60,20 +61,20 @@ spec = describe "Soundpack.Install" $ do
       finalEvents `shouldContainElements` [LogMessage "Downloading soundpack: download.zip"]
 
   it "returns an error if download fails" $ do
-    (_, deps) <- createMockDeps currentTime soundpackConfig (Left (SoundpackManagerError (SoundpackDownloadFailed "Network error"))) (Right ()) False
+    (_, deps) <- createMockDeps currentTime config (Left (SoundpackManagerError (SoundpackDownloadFailed "Network error"))) (Right ()) False
     result <- installSoundpack deps profile soundpackInfo
 
     result `shouldBe` Left (SoundpackManagerError (SoundpackDownloadFailed "Network error"))
 
   it "returns an error if extraction fails" $ do
-    (_, deps) <- createMockDeps currentTime soundpackConfig (Right "zip data") (Left "Extraction failed") False
+    (_, deps) <- createMockDeps currentTime config (Right "zip data") (Left "Extraction failed") False
     result <- installSoundpack deps profile soundpackInfo
 
     result `shouldBe` Left (SoundpackManagerError (SoundpackExtractionFailed "Extraction failed"))
 
 -- Mocking utilities
-createMockDeps :: UTCTime -> SoundpackConfig -> Either ManagerError B.ByteString -> Either String () -> Bool -> IO (Chan UIEvent, SoundpackDeps IO)
-createMockDeps mockTime mockSndConfig downloadResult extractResult cacheExists = do
+createMockDeps :: UTCTime -> Config -> Either ManagerError B.ByteString -> Either String () -> Bool -> IO (Chan UIEvent, SoundpackDeps IO)
+createMockDeps mockTime mockCfg downloadResult extractResult cacheExists = do
   eventChan <- newChan
   let mockFs = FileSystemDeps
         { fsdDoesFileExist = \_ -> return cacheExists
@@ -90,14 +91,11 @@ createMockDeps mockTime mockSndConfig downloadResult extractResult cacheExists =
         }
   let mockTimeDep = TimeDeps { tdGetCurrentTime = return mockTime }
   let mockEvents = EventDeps { edWriteEvent = writeChan eventChan }
-  let mockConfig = ConfigDeps
-        { cdGetConfig = error "Not implemented"
-        , cdGetSoundpackConfig = return mockSndConfig
-        }
+  let mockConfigDeps = ConfigDeps { cdGetConfig = return mockCfg }
   let mockArchive = ArchiveDeps
         { adExtractZip = \_ _ -> return extractResult
         }
-  let deps = SoundpackDeps mockFs mockNet mockTimeDep mockEvents mockConfig mockArchive
+  let deps = SoundpackDeps mockFs mockNet mockTimeDep mockEvents mockConfigDeps mockArchive
   return (eventChan, deps)
 
 flushEvents :: Chan a -> IO [a]

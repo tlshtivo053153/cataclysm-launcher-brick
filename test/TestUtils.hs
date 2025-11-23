@@ -3,7 +3,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module TestUtils where
+module TestUtils (
+  TestState(..),
+  mockHandle,
+  initialAppState,
+  testConfig
+) where
 
 import Brick.BChan (BChan)
 import Brick.Widgets.List (list)
@@ -13,9 +18,39 @@ import qualified Data.ByteString.Lazy as L
 import Data.Time (getCurrentTime, UTCTime)
 import System.Exit (ExitCode(..))
 import Control.Monad.State.Strict
+import System.FilePath ((</>))
+import GHC.Natural (Natural)
 
 import Types
 import Types.Error (ManagerError)
+
+testConfig :: FilePath -> Config
+testConfig tempDir =
+  let paths = PathsConfig
+        { launcherRoot = T.pack tempDir
+        , cache = T.pack $ tempDir </> "cache"
+        , sysRepo = T.pack $ tempDir </> "sys-repo"
+        , userRepo = T.pack $ tempDir </> "user-repo"
+        , sandbox = T.pack $ tempDir </> "sandbox"
+        , backup = T.pack $ tempDir </> "backups"
+        , downloadCache = T.pack $ tempDir </> "cache" </> "downloads"
+        , soundpackCache = T.pack $ tempDir </> "cache" </> "soundpacks"
+        }
+      api = ApiConfig
+        { githubUrl = "http://test.api/releases"
+        }
+      features = FeaturesConfig
+        { useSoundpackCache = True
+        , downloadThreads = 1
+        , maxBackupCount = 10
+        }
+      logging = LoggingConfig
+        { level = "Info"
+        }
+      soundpackRepos = SoundpackReposConfig
+        { repositories = ["http://example.com/repo.git"]
+        }
+  in Config paths api features logging soundpackRepos
 
 data TestState = TestState
     { tsFileContents :: [(FilePath, L.ByteString)]

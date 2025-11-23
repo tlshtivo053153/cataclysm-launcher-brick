@@ -19,11 +19,11 @@ import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..))
 import Types
 import Types.Error (ManagerError(..))
 
-downloadAndInstall :: (MonadCatch m) => AppHandle m -> Config -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
-downloadAndInstall handle config eventChan gv = do
-    let baseDir = T.unpack $ sysRepoDirectory config
+downloadAndInstall :: (MonadCatch m) => AppHandle m -> PathsConfig -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
+downloadAndInstall handle pathsConfig eventChan gv = do
+    let baseDir = T.unpack $ sysRepo pathsConfig
         installDir = baseDir </> "game" </> T.unpack (gvVersionId gv)
-        cacheDir = T.unpack $ downloadCacheDirectory config
+        cacheDir = T.unpack $ downloadCache pathsConfig
 
     setupResult <- setupDirectories handle installDir cacheDir
     case setupResult of

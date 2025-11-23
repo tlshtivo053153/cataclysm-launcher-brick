@@ -62,12 +62,12 @@ data ExtractionPlan = ExtractionPlan
 -- | Creates an 'InstallPlan' from soundpack info, a profile, and configuration.
 -- This pure function translates high-level information into a concrete plan
 -- that can be executed by other functions.
-processSoundpackInstall :: SoundpackInfo -> SandboxProfile -> SoundpackConfig -> InstallPlan
-processSoundpackInstall soundpackInfo profile config =
+processSoundpackInstall :: SoundpackInfo -> SandboxProfile -> PathsConfig -> FeaturesConfig -> InstallPlan
+processSoundpackInstall soundpackInfo profile pathsConfig featuresConfig =
   let downloadUrl = spiBrowserDownloadUrl soundpackInfo
       soundDir = getSoundpackDirectory (spDataDirectory profile)
-      cacheDir = getCacheDirectory config
-      shouldUseCache = isCacheEnabled config
+      cacheDir = getCacheDirectory pathsConfig
+      shouldUseCache = isCacheEnabled featuresConfig
    in InstallPlan
         { ipDownloadUrl = downloadUrl,
           ipSoundDir = soundDir,

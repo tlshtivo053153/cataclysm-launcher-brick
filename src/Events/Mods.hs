@@ -47,13 +47,13 @@ getInstallModAction st =
             else Just $ do
                 let modSourceInfo = amSource availableMod
                     chan = appEventChannel st
-                    sysRepo = T.unpack $ sysRepoDirectory $ appConfig st
+                    sysRepoPath = T.unpack $ sysRepo (paths (appConfig st))
                 case msiType modSourceInfo of
                     GitHub -> do
                         let modSource = ModSource (msiUrl modSourceInfo)
                             repoName = msiRepositoryName modSourceInfo
                         writeBChan chan $ LogMessage $ "Installing mod from " <> msiUrl modSourceInfo <> "..."
-                        result <- MH.installModFromGitHub (appHandle st) sysRepo repoName modSource
+                        result <- MH.installModFromGitHub (appHandle st) sysRepoPath repoName modSource
                         writeBChan chan $ ModInstallFinished result
                     TarGz -> writeBChan chan $ LogMessage "Installation from .tar.gz is not yet supported."
 
@@ -112,6 +112,6 @@ refreshAvailableModsList = do
         chan = appEventChannel st
     liftIO $ void $ forkIO $ do
         modSources <- loadModSources
-        installedMods <- MH.listAvailableMods (T.unpack $ sysRepoDirectory config) (T.unpack $ userRepoDirectory config)
+        installedMods <- MH.listAvailableMods (T.unpack $ sysRepo (paths config)) (T.unpack $ userRepo (paths config))
         let combined = combineMods modSources installedMods
         writeBChan chan $ AvailableModsListed (combined, installedMods)

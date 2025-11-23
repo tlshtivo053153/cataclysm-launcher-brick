@@ -14,31 +14,14 @@ import Data.Aeson (encode)
 import Data.Time (UTCTime(..), Day(..), DiffTime, secondsToDiffTime, fromGregorian)
 import qualified Data.Text as T
 import Data.Maybe (fromMaybe)
+import System.FilePath ((</>))
 
 import Types
+import TestUtils (testConfig)
 import GitHubIntegration
 import qualified GitHubIntegration.Internal as GH
 
 -- Mock data
-mockConfig :: Config
-mockConfig = Config
-  {
-    launcherRootDirectory = "/root"
-  , cacheDirectory = "/root/cache"
-  , sysRepoDirectory = "/root/sys-repo"
-  , userRepoDirectory = "/root/user-repo"
-  , sandboxDirectory = "/root/sandbox"
-  , backupDirectory = "/root/backup"
-  , downloadCacheDirectory = "/root/cache/downloads"
-  , soundpackCacheDirectory = "/root/cache/soundpacks"
-  , useSoundpackCache = True
-  , maxBackupCount = 5
-  , githubApiUrl = "http://test.api/releases"
-  , downloadThreads = 4
-  , logLevel = "Info"
-  , soundpackRepos = []
-  }
-
 mockReleases :: [GH.Release]
 mockReleases =
   [
@@ -121,13 +104,15 @@ createTestHandles = do
 spec :: Spec
 spec = before createTestHandles $ do
   describe "fetchGameVersions" $ do
+    let tempDir = "/root"
+    let cfg = testConfig tempDir
 
     it "fetches from API and caches when no cache exists" $ \th -> do
       -- Setup: API returns valid data
       writeIORef (thApiContent th) (Right encodedMockReleases)
       
       -- Run
-      result <- fetchGameVersions (thHandle th) mockConfig
+      result <- fetchGameVersions (thHandle th) (paths cfg) (api cfg)
       
       -- Verify
       result `shouldBe` Right mockGameVersions
@@ -135,17 +120,17 @@ spec = before createTestHandles $ do
       apiCalled <- readIORef (thApiCalled th)
       apiCalled `shouldBe` True
       
-      let cacheFilePath = "/root/cache/github_releases.json"
+      let cacheFilePath = T.unpack (cache (paths cfg)) </> "github_releases.json"
       fs <- readIORef (thFileSystem th)
       Map.lookup cacheFilePath fs `shouldBe` Just (L.toStrict encodedMockReleases)
 
     it "loads from cache when cache file exists" $ \th -> do
       -- Setup: Filesystem has a valid cache file
-      let cacheFilePath = "/root/cache/github_releases.json"
+      let cacheFilePath = T.unpack (cache (paths cfg)) </> "github_releases.json"
       writeIORef (thFileSystem th) (Map.singleton cacheFilePath (L.toStrict encodedMockReleases))
       
       -- Run
-      result <- fetchGameVersions (thHandle th) mockConfig
+      result <- fetchGameVersions (thHandle th) (paths cfg) (api cfg)
       
       -- Verify
       result `shouldBe` Right mockGameVersions
@@ -159,7 +144,7 @@ spec = before createTestHandles $ do
       writeIORef (thApiContent th) (Left apiError)
       
       -- Run
-      result <- fetchGameVersions (thHandle th) mockConfig
+      result <- fetchGameVersions (thHandle th) (paths cfg) (api cfg)
       
       -- Verify
       result `shouldBe` Left apiError
@@ -169,12 +154,12 @@ spec = before createTestHandles $ do
 
     it "returns an error if cache file is corrupt" $ \th -> do
       -- Setup: Filesystem has a corrupt cache file
-      let cacheFilePath = "/root/cache/github_releases.json"
+      let cacheFilePath = T.unpack (cache (paths cfg)) </> "github_releases.json"
       let corruptJson = "{\"key\":}" -- Corrected escaping for inner quotes
       writeIORef (thFileSystem th) (Map.singleton cacheFilePath corruptJson)
       
       -- Run
-      result <- fetchGameVersions (thHandle th) mockConfig
+      result <- fetchGameVersions (thHandle th) (paths cfg) (api cfg)
       
       -- Verify
       case result of

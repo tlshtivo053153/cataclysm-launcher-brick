@@ -61,10 +61,10 @@ findExecutableIn fileExistsCheck dir names =
             else findExecutableIn fileExistsCheck dir ns
 
 -- | Creates a new sandbox, links the game files, and launches the game.
-createAndLaunchSandbox :: (MonadIO m, MonadCatch m) => Config -> AppHandle m -> BChan UIEvent -> T.Text -> T.Text -> m (Either ManagerError ())
-createAndLaunchSandbox config handle eventChan gameId sandboxName = do
-    let gameDir = T.unpack (sysRepoDirectory config) </> T.unpack gameId
-    let sandboxBaseDir = T.unpack $ sandboxDirectory config
+createAndLaunchSandbox :: (MonadIO m, MonadCatch m) => PathsConfig -> AppHandle m -> BChan UIEvent -> T.Text -> T.Text -> m (Either ManagerError ())
+createAndLaunchSandbox pathsConfig handle eventChan gameId sandboxName = do
+    let gameDir = T.unpack (sysRepo pathsConfig) </> T.unpack gameId
+    let sandboxBaseDir = T.unpack $ sandbox pathsConfig
     let sandboxPath = sandboxBaseDir </> T.unpack sandboxName
 
     gameExists <- hDoesDirectoryExist (appFileSystemHandle handle) gameDir
@@ -90,9 +90,9 @@ createAndLaunchSandbox config handle eventChan gameId sandboxName = do
 
 
 -- | Creates a new sandbox profile directory.
-createProfile :: MonadIO m => AppHandle m -> Config -> T.Text -> m (Either ManagerError SandboxProfile)
-createProfile handle config profileName = do
-    let sandboxBaseDir = T.unpack $ sandboxDirectory config
+createProfile :: MonadIO m => AppHandle m -> PathsConfig -> T.Text -> m (Either ManagerError SandboxProfile)
+createProfile handle pathsConfig profileName = do
+    let sandboxBaseDir = T.unpack $ sandbox pathsConfig
     let profileDir = sandboxBaseDir </> T.unpack profileName
     hCreateDirectoryIfMissing (appFileSystemHandle handle) True profileDir
     absProfileDir <- hMakeAbsolute (appFileSystemHandle handle) profileDir
@@ -102,9 +102,9 @@ createProfile handle config profileName = do
         }
 
 -- | Lists all existing sandbox profiles.
-listProfiles :: MonadIO m => AppHandle m -> Config -> m (Either ManagerError [SandboxProfile])
-listProfiles handle config = do
-    let sandboxBaseDir = T.unpack $ sandboxDirectory config
+listProfiles :: MonadIO m => AppHandle m -> PathsConfig -> m (Either ManagerError [SandboxProfile])
+listProfiles handle pathsConfig = do
+    let sandboxBaseDir = T.unpack $ sandbox pathsConfig
     hCreateDirectoryIfMissing (appFileSystemHandle handle) True sandboxBaseDir
     absSandboxBaseDir <- hMakeAbsolute (appFileSystemHandle handle) sandboxBaseDir
     profileDirs <- hListDirectory (appFileSystemHandle handle) absSandboxBaseDir

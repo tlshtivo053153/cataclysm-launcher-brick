@@ -11,10 +11,12 @@ import Events (nextActiveList)
 import Events.App (handleAppEventPure, managerErrorToText, modHandlerErrorToText)
 import Types
 import Types.Error
-import TestUtils (initialAppState)
+import TestUtils (initialAppState, testConfig)
 
 spec :: Spec
 spec = describe "Events.App" $ do
+  let dummyConfig = testConfig "/tmp/launcher"
+
   describe "nextActiveList" $ do
     it "cycles through all active lists" $ do
       nextActiveList SandboxProfileList `shouldBe` AvailableList
@@ -68,21 +70,3 @@ spec = describe "Events.App" $ do
     it "converts various mod handler errors to text" $ do
       modHandlerErrorToText (GitCloneFailed "clone failed") `shouldBe` "Git clone failed: clone failed"
       modHandlerErrorToText (ModNotFound "SomeMod") `shouldBe` "Mod not found: SomeMod"
-
-dummyConfig :: Config
-dummyConfig = Config
-    { launcherRootDirectory = "/tmp/launcher"
-    , cacheDirectory = "/tmp/launcher/cache"
-    , sysRepoDirectory = "/tmp/launcher/sys-repo"
-    , userRepoDirectory = "/tmp/launcher/user-repo"
-    , sandboxDirectory = "/tmp/launcher/sandbox"
-    , backupDirectory = "/tmp/launcher/backups"
-    , downloadCacheDirectory = "/tmp/launcher/cache/downloads"
-    , soundpackCacheDirectory = "/tmp/launcher/cache/soundpacks"
-    , useSoundpackCache = True
-    , maxBackupCount = 10
-    , githubApiUrl = "http://test.com/api"
-    , downloadThreads = 1
-    , logLevel = "Info"
-    , soundpackRepos = []
-    }

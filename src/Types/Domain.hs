@@ -18,6 +18,11 @@ used throughout the application to ensure type safety and consistency.
 module Types.Domain (
     -- Config-related types
     Config(..),
+    PathsConfig(..),
+    ApiConfig(..),
+    FeaturesConfig(..),
+    LoggingConfig(..),
+    SoundpackReposConfig(..),
     GameVersion(..),
     ReleaseType(..),
     InstalledVersion(..),
@@ -34,41 +39,67 @@ module Types.Domain (
     SoundpackInfo(..),
     InstalledSoundpack(..),
     SoundpackStatus(..),
-    SoundpackOperation(..),
-    SoundpackConfig(..)
+    SoundpackOperation(..)
 ) where
 
 import Data.Time.Clock (UTCTime)
 import Dhall
 import qualified Data.Text as T
 
--- | Global application configuration.
+-- | Contains all directory and file paths used by the application.
+data PathsConfig = PathsConfig
+    { launcherRoot :: T.Text
+    , cache        :: T.Text
+    , sysRepo      :: T.Text
+    , userRepo     :: T.Text
+    , sandbox      :: T.Text
+    , backup       :: T.Text
+    , downloadCache :: T.Text
+    , soundpackCache :: T.Text
+    } deriving (Generic, Show)
+
+instance FromDhall PathsConfig
+
+-- | Contains settings for external APIs.
+data ApiConfig = ApiConfig
+    { githubUrl :: T.Text
+    } deriving (Generic, Show)
+
+instance FromDhall ApiConfig
+
+-- | Contains settings for feature flags and behavior adjustments.
+data FeaturesConfig = FeaturesConfig
+    { useSoundpackCache :: Bool
+    , downloadThreads   :: Natural
+    , maxBackupCount    :: Natural
+    } deriving (Generic, Show)
+
+instance FromDhall FeaturesConfig
+
+-- | Contains settings related to logging.
+data LoggingConfig = LoggingConfig
+    { level :: T.Text
+    } deriving (Generic, Show)
+
+instance FromDhall LoggingConfig
+
+-- | Contains URLs for soundpack repositories.
+data SoundpackReposConfig = SoundpackReposConfig
+    { repositories :: [T.Text]
+    } deriving (Generic, Show)
+
+instance FromDhall SoundpackReposConfig
+
+-- | Global application configuration, composed of smaller, focused records.
 data Config = Config
-    { launcherRootDirectory :: T.Text
-    , cacheDirectory        :: T.Text
-    , sysRepoDirectory      :: T.Text
-    , userRepoDirectory     :: T.Text
-    , sandboxDirectory      :: T.Text
-    , backupDirectory       :: T.Text
-    , downloadCacheDirectory :: T.Text
-    , soundpackCacheDirectory :: T.Text
-    , useSoundpackCache     :: Bool
-    , maxBackupCount        :: Natural
-    , githubApiUrl          :: T.Text
-    , downloadThreads       :: Natural
-    , logLevel              :: T.Text
-    , soundpackRepos        :: [T.Text]
+    { paths    :: PathsConfig
+    , api      :: ApiConfig
+    , features :: FeaturesConfig
+    , logging  :: LoggingConfig
+    , soundpackRepos :: SoundpackReposConfig
     } deriving (Generic, Show)
 
 instance FromDhall Config
-
--- | Configuration specific to soundpack management.
-data SoundpackConfig = SoundpackConfig
-    { scSoundpackCacheDirectory :: T.Text
-    , scUseSoundpackCache     :: Bool
-    } deriving (Generic, Show)
-
-instance FromDhall SoundpackConfig
 
 -- | Represents a specific version of the game.
 data GameVersion = GameVersion

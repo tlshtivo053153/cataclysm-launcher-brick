@@ -14,7 +14,6 @@ import qualified Data.Text as T
 import Data.Vector (fromList)
 import qualified Data.ByteString.Lazy as LBS
 
-import Config (loadSoundpackConfig)
 import Events.Mods (refreshActiveModsList, refreshAvailableModsList)
 import Events.Soundpack (refreshInstalledSoundpacksList, refreshInstalledSoundpacksList')
 import GameManager (getInstalledVersions)
@@ -50,10 +49,7 @@ handleAppEvent (InstallSoundpack profile soundpackInfo) = do
               }
         let timeDeps = TimeDeps { tdGetCurrentTime = hGetCurrentTime (appTimeHandle handle) }
         let eventDeps = EventDeps { edWriteEvent = writeBChan chan }
-        let configDeps = ConfigDeps
-              { cdGetConfig = return (appConfig st)
-              , cdGetSoundpackConfig = liftIO loadSoundpackConfig
-              }
+        let configDeps = ConfigDeps { cdGetConfig = return (appConfig st) }
         let archiveDeps = ArchiveDeps
               { adExtractZip = \installDir zipData -> do
                   result <- hExtractZip (appArchiveHandle handle) (appFileSystemHandle handle) installDir zipData
@@ -68,17 +64,16 @@ handleAppEvent (InstallSoundpack profile soundpackInfo) = do
 handleAppEvent (UninstallSoundpack profile installedSoundpack) = do
     st <- get
     let handle = appHandle st
-    let config = appConfig st
     let chan = appEventChannel st
     liftIO $ void $ forkIO $ do
-        result <- uninstallSoundpack handle config profile installedSoundpack
+        result <- uninstallSoundpack handle profile installedSoundpack
         writeBChan chan (SoundpackUninstallFinished (fmap (const installedSoundpack) result))
 handleAppEvent event@(SoundpackInstallFinished profile (Right _)) = do
     modify (`handleAppEventPure` event)
     refreshInstalledSoundpacksList' (Just profile)
 handleAppEvent event@(InstallFinished (Right msg)) = do
     st <- get
-    installedVec <- liftIO $ getInstalledVersions (appConfig st)
+    installedVec <- liftIO $ getInstalledVersions (paths $ appConfig st)
     let newList = list InstalledListName (fromList installedVec) 1
     modify $ \s -> (handleAppEventPure s event) { appInstalledVersions = newList, appStatus = T.pack msg }
 handleAppEvent event@(ModInstallFinished (Right _)) = do
@@ -89,7 +84,7 @@ handleAppEvent event = modify (`handleAppEventPure` event)
 -- | A pure function to handle state changes based on UI events.
 handleAppEventPure :: AppState -> UIEvent -> AppState
 handleAppEventPure st FetchSoundpacks =
-    let soundpacks = generateSoundpackDownloadInfos (appConfig st)
+    let soundpacks = generateSoundpackDownloadInfos (soundpackRepos $ appConfig st)
         newList = list AvailableSoundpackListName (fromList soundpacks) 1
     in st { appAvailableSoundpacks = newList, appStatus = "Available soundpacks listed." }
 handleAppEventPure st (LogMessage msg) = st { appStatus = msg }

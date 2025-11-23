@@ -13,7 +13,7 @@ import Soundpack.Deps
 import Soundpack.Install (installSoundpack)
 import System.FilePath ((</>))
 import Test.Hspec
-import TestUtils (TestState (..), mockHandle)
+import TestUtils (TestState (..), mockHandle, testConfig)
 import Types.Domain
 import Types.Event
 import Types.Handle
@@ -23,29 +23,13 @@ spec = describe "installSoundpack" $ do
   -- A minimal valid zip file (an empty archive).
   let minimalZip = L.pack [0x50, 0x4b, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
-  let baseConfig =
-        Config
-          { launcherRootDirectory = "/tmp/launcher",
-            cacheDirectory = "/tmp/launcher/cache",
-            sysRepoDirectory = "/tmp/launcher/sys-repo",
-            userRepoDirectory = "/tmp/launcher/user-repo",
-            sandboxDirectory = "/tmp/launcher/sandbox",
-            backupDirectory = "/tmp/launcher/backups",
-            downloadCacheDirectory = "/tmp/launcher/cache/downloads",
-            soundpackCacheDirectory = "/tmp/launcher/cache/soundpacks",
-            useSoundpackCache = True,
-            maxBackupCount = 10,
-            githubApiUrl = "http://test.com/api",
-            downloadThreads = 1,
-            logLevel = "Info",
-            soundpackRepos = []
-          }
+  let baseConfig = testConfig "/tmp/launcher"
   let profile = SandboxProfile "default" "/sandbox/default"
   now <- runIO getCurrentTime
   let soundpackInfo = SoundpackInfo "repo-id" "Test Soundpack" "http://test.com/soundpack.zip" "1.0" "A test soundpack" "Test Author" 12345 now "checksum"
 
-  let mockSoundpackDeps :: BChan UIEvent -> SoundpackDeps (StateT TestState IO)
-      mockSoundpackDeps eventChan =
+  let mockSoundpackDeps :: BChan UIEvent -> Config -> SoundpackDeps (StateT TestState IO)
+      mockSoundpackDeps eventChan cfg =
         let fs = appFileSystemHandle mockHandle
             http = appHttpHandle mockHandle
             archive = appArchiveHandle mockHandle
@@ -72,8 +56,7 @@ spec = describe "installSoundpack" $ do
                 },
             spdConfig =
               ConfigDeps
-                { cdGetConfig = return baseConfig,
-                  cdGetSoundpackConfig = return $ SoundpackConfig (soundpackCacheDirectory baseConfig) (useSoundpackCache baseConfig)
+                { cdGetConfig = return cfg
                 },
             spdTime =
               TimeDeps
@@ -88,7 +71,7 @@ spec = describe "installSoundpack" $ do
   context "with cache enabled" $ do
     it "should use the cached file if it exists" $ do
       eventChan <- newBChan 10
-      let cachePath = T.unpack (soundpackCacheDirectory baseConfig) </> "soundpack.zip"
+      let cachePath = T.unpack (soundpackCache (paths baseConfig)) </> "soundpack.zip"
       let initialState =
             TestState
               { tsFileContents = [(cachePath, minimalZip)],
@@ -98,7 +81,7 @@ spec = describe "installSoundpack" $ do
                 tsCacheMisses = 0
               }
 
-      (result, finalState) <- runStateT (installSoundpack (mockSoundpackDeps eventChan) profile soundpackInfo) initialState
+      (result, finalState) <- runStateT (installSoundpack (mockSoundpackDeps eventChan baseConfig) profile soundpackInfo) initialState
 
       case result of
         Right installed -> ispName installed `shouldBe` spiAssetName soundpackInfo
@@ -108,7 +91,7 @@ spec = describe "installSoundpack" $ do
 
     it "should download and cache the file if it does not exist" $ do
       eventChan <- newBChan 10
-      let cachePath = T.unpack (soundpackCacheDirectory baseConfig) </> "soundpack.zip"
+      let cachePath = T.unpack (soundpackCache (paths baseConfig)) </> "soundpack.zip"
       let initialState =
             TestState
               { tsFileContents = [],
@@ -118,20 +101,20 @@ spec = describe "installSoundpack" $ do
                 tsCacheMisses = 0
               }
 
-      (result, finalState) <- runStateT (installSoundpack (mockSoundpackDeps eventChan) profile soundpackInfo) initialState
+      (result, finalState) <- runStateT (installSoundpack (mockSoundpackDeps eventChan baseConfig) profile soundpackInfo) initialState
 
       case result of
         Right installed -> ispName installed `shouldBe` spiAssetName soundpackInfo
         Left err -> expectationFailure $ "Expected successful installation, but got " ++ show err
 
-      tsFileContents finalState `shouldBe` [(T.unpack (soundpackCacheDirectory baseConfig) </> "soundpack.zip", minimalZip)]
+      tsFileContents finalState `shouldBe` [(T.unpack (soundpackCache (paths baseConfig)) </> "soundpack.zip", minimalZip)]
 
   context "with cache disabled" $ do
     it "should download the file directly without caching" $ do
       eventChan <- newBChan 10
-      let config = baseConfig {useSoundpackCache = False}
-      let soundpackConfig = SoundpackConfig (soundpackCacheDirectory config) (useSoundpackCache config)
-      let deps = (mockSoundpackDeps eventChan) {spdConfig = ConfigDeps {cdGetConfig = return config, cdGetSoundpackConfig = return soundpackConfig}}
+      let disabledCacheFeatures = (features baseConfig) { useSoundpackCache = False }
+      let config = baseConfig { features = disabledCacheFeatures }
+      let deps = mockSoundpackDeps eventChan config
       let initialState =
             TestState
               { tsFileContents = [],

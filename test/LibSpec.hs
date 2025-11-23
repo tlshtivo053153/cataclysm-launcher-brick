@@ -8,11 +8,13 @@ import Brick.BChan (newBChan)
 import Events (nextActiveList, toggleActiveList)
 import Events.App (handleAppEventPure)
 import Types
-import TestUtils (initialAppState)
+import TestUtils (initialAppState, testConfig)
 
 spec :: Spec
 spec = describe "Lib" $ do
   describe "Events" $ do
+    let dummyConfig = testConfig "/tmp/launcher"
+
     describe "nextActiveList" $ do
       it "cycles through all active lists" $ do
         nextActiveList SandboxProfileList `shouldBe` AvailableList
@@ -38,6 +40,8 @@ spec = describe "Lib" $ do
         appActiveList st' `shouldBe` AvailableSoundpackList
 
   describe "Events.App" $ do
+    let dummyConfig = testConfig "/tmp/launcher"
+
     describe "handleAppEventPure" $ do
       it "updates appStatus on LogMessage" $ do
         chan <- newBChan 10
@@ -52,21 +56,3 @@ spec = describe "Lib" $ do
         let event = ErrorEvent "Test error"
         let st' = handleAppEventPure st event
         appStatus st' `shouldBe` "Error: Test error"
-
-dummyConfig :: Config
-dummyConfig = Config
-    { launcherRootDirectory = "/tmp/launcher"
-    , cacheDirectory = "/tmp/launcher/cache"
-    , sysRepoDirectory = "/tmp/launcher/sys-repo"
-    , userRepoDirectory = "/tmp/launcher/user-repo"
-    , sandboxDirectory = "/tmp/launcher/sandbox"
-    , backupDirectory = "/tmp/launcher/backups"
-    , downloadCacheDirectory = "/tmp/launcher/cache/downloads"
-    , soundpackCacheDirectory = "/tmp/launcher/cache/soundpacks"
-    , useSoundpackCache = True
-    , maxBackupCount = 10
-    , githubApiUrl = "http://test.com/api"
-    , downloadThreads = 1
-    , logLevel = "Info"
-    , soundpackRepos = []
-    }

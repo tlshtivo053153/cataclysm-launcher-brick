@@ -18,10 +18,10 @@ import           Types.Error (ManagerError(..))
 
 -- | List all backups for a given sandbox profile.
 -- Creates the backup directory if it doesn't exist.
-listBackups :: (MonadIO m, MonadCatch m) => AppHandle m -> Config -> SandboxProfile -> m (Either ManagerError [BackupInfo])
-listBackups handle config profile = do
+listBackups :: (MonadIO m, MonadCatch m) => AppHandle m -> PathsConfig -> SandboxProfile -> m (Either ManagerError [BackupInfo])
+listBackups handle pathsConfig profile = do
     let profileName = unpack (spName profile)
-    let backupBaseDir = unpack (backupDirectory config)
+    let backupBaseDir = unpack (backup pathsConfig)
     let backupDir = backupBaseDir </> profileName
     
     hCreateDirectoryIfMissing (appFileSystemHandle handle) True backupDir
@@ -51,11 +51,11 @@ listBackups handle config profile = do
 
 -- | Create a new backup for a given sandbox profile.
 -- The backup is an uncompressed tar archive of the 'save' directory.
-createBackup :: (MonadIO m, MonadCatch m) => AppHandle m -> Config -> SandboxProfile -> m (Either ManagerError ())
-createBackup handle config profile = do
+createBackup :: (MonadIO m, MonadCatch m) => AppHandle m -> PathsConfig -> SandboxProfile -> m (Either ManagerError ())
+createBackup handle pathsConfig profile = do
     let saveDir = spDataDirectory profile </> "save"
     let profileName = unpack (spName profile)
-    let backupBaseDir = unpack (backupDirectory config)
+    let backupBaseDir = unpack (backup pathsConfig)
     let backupDir = backupBaseDir </> profileName
     
     saveDirExists <- hDoesDirectoryExist (appFileSystemHandle handle) saveDir

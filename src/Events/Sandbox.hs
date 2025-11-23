@@ -42,7 +42,7 @@ createProfile = do
         chan = appEventChannel st
         newProfileName = decideNewProfileName st
     liftIO $ void $ forkIO $ do
-        result <- SC.createProfile h cfg newProfileName
+        result <- SC.createProfile h (paths cfg) newProfileName
         writeBChan chan $ ProfileCreated result
 
 -- | EventM action to back up the selected profile.
@@ -56,7 +56,7 @@ backupProfile = do
                 cfg = appConfig st
                 chan = appEventChannel st
             liftIO $ void $ forkIO $ do
-                result <- BS.createBackup h cfg profile
+                result <- BS.createBackup h (paths cfg) profile
                 writeBChan chan $ BackupCreated result
 
 -- | Event handler for the sandbox profiles list.
