@@ -24,6 +24,9 @@ import Types.Error (ManagerError(..))
 import UI (drawUI, theMap)
 import ModUtils (combineMods)
 import Handle (liveHandle)
+import FontManager (listInstalledFonts)
+import Types.Font (FontInfo) 
+import Types.Domain (FontConfig(..))
 
 -- App Definition
 app :: App AppState UIEvent Name
@@ -72,6 +75,10 @@ main = do
                 Just firstProfile -> listInstalledSoundpacks liveHandle (spDataDirectory firstProfile)
                 Nothing -> return []
 
+            -- Load installed fonts
+            installedFonts <- listInstalledFonts liveHandle (paths config)
+            let availFonts = Types.Domain.availableFonts (fonts config)
+
             -- Combine mod sources and installed mods into a single list for the UI
             let combinedMods = combineMods modSources installedMods
             
@@ -87,6 +94,8 @@ main = do
                     , appInstalledModsCache = installedMods
                     , appAvailableSoundpacks = list AvailableSoundpackListName (fromList []) 1
                     , appInstalledSoundpacks = list InstalledSoundpackListName (fromList installedSoundpacks) 1
+                    , appAvailableFonts = list AvailableFontListName (fromList availFonts) 1
+                    , appInstalledFonts = list InstalledFontListName (fromList installedFonts) 1
                     , appConfig = config
                     , appHandle = liveHandle
                     , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."

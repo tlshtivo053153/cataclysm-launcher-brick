@@ -24,7 +24,9 @@ spec = describe "Lib" $ do
         nextActiveList AvailableModList `shouldBe` ActiveModList
         nextActiveList ActiveModList `shouldBe` AvailableSoundpackList
         nextActiveList AvailableSoundpackList `shouldBe` InstalledSoundpackList
-        nextActiveList InstalledSoundpackList `shouldBe` SandboxProfileList
+        nextActiveList InstalledSoundpackList `shouldBe` AvailableFontList
+        nextActiveList AvailableFontList `shouldBe` InstalledFontList
+        nextActiveList InstalledFontList `shouldBe` SandboxProfileList
 
     describe "toggleActiveList" $ do
       it "switches to the next active list in AppState" $ do

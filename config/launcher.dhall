@@ -37,4 +37,12 @@ in {
   , soundpackRepos = {
     , repositories = [ "https://github.com/Kenan2000/Otopack-Mods-Updates" ]
     }
+
+  -- Font configuration
+  , fonts = {
+    , availableFonts = [
+        { fontName = "Terminus", fontUrl = "https://files.ax86.net/terminus-ttf/files/4.49.1/terminus-ttf-4.49.1.zip" }
+      , { fontName = "Unifont", fontUrl = "https://unifoundry.com/pub/unifont/unifont-15.0.01/unifont-15.0.01.zip" }
+      ]
+    }
 }

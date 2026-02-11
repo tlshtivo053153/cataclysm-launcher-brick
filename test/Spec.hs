@@ -15,6 +15,7 @@ import qualified SandboxControllerSpec
 import qualified SoundpackManagerSpec
 import qualified Soundpack.CoreSpec
 import qualified Soundpack.InstallSpec
+import qualified FontManagerSpec
 
 import qualified Events.AppSpec
 import qualified Events.AvailableSpec
@@ -58,3 +59,4 @@ spec = do
   describe "GameManager.Install" GameManager.InstallSpec.spec
   describe "GitHubIntegration.Internal" GitHubIntegration.InternalSpec.spec
   describe "Lib" LibSpec.spec
+  describe "FontManager" FontManagerSpec.spec

@@ -16,6 +16,7 @@ import qualified Data.Text as T
 import qualified Graphics.Vty as V
 
 import Types
+import Types.Font (FontInfo(..), InstalledFont(..))
 
 -- UI Drawing
 drawUI :: AppState -> [Widget Name]
@@ -37,15 +38,22 @@ drawUI st = [ui]
                           renderList renderSoundpackInfo (appActiveList st == AvailableSoundpackList) (appAvailableSoundpacks st)
     installedSoundpacks = renderListPane "Installed Soundpacks" (appActiveList st == InstalledSoundpackList) $
                           renderList renderInstalledSoundpack (appActiveList st == InstalledSoundpackList) (appInstalledSoundpacks st)
+    availableFonts = renderListPane "Available Fonts" (appActiveList st == AvailableFontList) $
+                     renderList renderAvailableFont (appActiveList st == AvailableFontList) (appAvailableFonts st)
+    installedFonts = renderListPane "Installed Fonts" (appActiveList st == InstalledFontList) $
+                     renderList renderInstalledFont (appActiveList st == InstalledFontList) (appInstalledFonts st)
     status = str $ T.unpack $ appStatus st
     topPanes = hBox [sandboxes, available, installed, backups]
     middlePanes = hBox [availableMods, activeMods]
     bottomPanes = hBox [availableSoundpacks, installedSoundpacks]
+    fontPanes = hBox [availableFonts, installedFonts]
     ui = center $ vBox [ topPanes
                        , hBorder
                        , middlePanes
                        , hBorder
                        , bottomPanes
+                       , hBorder
+                       , fontPanes
                        , hBorder
                        , status
                        ]
@@ -80,6 +88,12 @@ renderSoundpackInfo _ a = str $ T.unpack $ spiAssetName a
 
 renderInstalledSoundpack :: Bool -> InstalledSoundpack -> Widget Name
 renderInstalledSoundpack _ a = str $ T.unpack $ ispName a
+
+renderAvailableFont :: Bool -> FontInfo -> Widget Name
+renderAvailableFont _ a = str $ T.unpack $ fontName a
+
+renderInstalledFont :: Bool -> InstalledFont -> Widget Name
+renderInstalledFont _ a = str $ T.unpack $ installedFontName a
 
 
 attrPaneDef :: AttrName

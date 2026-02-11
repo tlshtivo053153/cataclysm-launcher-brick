@@ -77,10 +77,12 @@ library:
   - ModHandler
   - ModUtils
   - SandboxController
+  - FontManager
   - Types
   - Types.Domain
   - Types.Error
   - Types.UI
+  - Types.Font
   - Types.Handle
   - Types.Handles.FileSystem
   - Types.Handles.Http
@@ -97,6 +99,7 @@ library:
   - Events.List
   - Events.Mods
   - Events.Sandbox
+  - Events.Fonts
   - Events.Soundpack
   - Events.Soundpack.CommonHandler
   - Events.Soundpack.InstallHandler
@@ -157,6 +160,7 @@ tests:
     - ConfigSpec
     - ContentManagerSpec
     - FileSystemUtilsSpec
+    - FontManagerSpec
     - GitHubIntegrationSpec
     - HandleSpec
     - IntegrationSpec

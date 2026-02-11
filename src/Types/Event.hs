@@ -4,6 +4,7 @@ module Types.Event (
 
 import qualified Data.Text as T
 import Types.Domain
+import Types.Font (FontInfo, InstalledFont)
 import Types.Error (ManagerError)
 
 data UIEvent
@@ -27,4 +28,9 @@ data UIEvent
   | SoundpackUninstallFinished (Either ManagerError InstalledSoundpack)
   | InstalledSoundpacksListed [InstalledSoundpack]
   | ProfileSelectionChanged
+  | InstallFont FontInfo
+  | FontInstallFinished (Either ManagerError InstalledFont)
+  | ActivateFont SandboxProfile InstalledFont
+  | FontActivationFinished (Either ManagerError ())
+  | InstalledFontsListed [InstalledFont]
   deriving (Show, Eq)

@@ -20,6 +20,7 @@ import GameManager (getInstalledVersions)
 import GitHubIntegration (generateSoundpackDownloadInfos)
 import Soundpack.Deps
 import SoundpackManager (installSoundpack, uninstallSoundpack)
+import FontManager (installFont, configureSandboxForFont)
 import Types
 import Types.Error (ManagerError(..))
 
@@ -79,6 +80,21 @@ handleAppEvent event@(InstallFinished (Right msg)) = do
 handleAppEvent event@(ModInstallFinished (Right _)) = do
     modify (`handleAppEventPure` event)
     refreshAvailableModsList
+handleAppEvent (InstallFont fontInfo) = do
+    st <- get
+    let handle = appHandle st
+    let chan = appEventChannel st
+    let pathsCfg = paths (appConfig st)
+    liftIO $ void $ forkIO $ do
+        result <- installFont handle pathsCfg fontInfo
+        writeBChan chan (FontInstallFinished result)
+handleAppEvent (ActivateFont profile installedFont) = do
+    st <- get
+    let handle = appHandle st
+    let chan = appEventChannel st
+    liftIO $ void $ forkIO $ do
+        result <- configureSandboxForFont handle profile installedFont
+        writeBChan chan (FontActivationFinished result)
 handleAppEvent event = modify (`handleAppEventPure` event)
 
 -- | A pure function to handle state changes based on UI events.
@@ -143,6 +159,16 @@ handleAppEventPure st (SoundpackUninstallFinished (Left err)) =
 handleAppEventPure st (InstalledSoundpacksListed soundpacks) =
     let newList = list InstalledSoundpackListName (fromList soundpacks) 1
     in st { appInstalledSoundpacks = newList }
+handleAppEventPure st (FontInstallFinished (Right installed)) =
+    let currentInstalled = listToList (appInstalledFonts st)
+        newList = list InstalledFontListName (fromList (installed : currentInstalled)) 1
+    in st { appInstalledFonts = newList, appStatus = "Font installed successfully." }
+handleAppEventPure st (FontInstallFinished (Left err)) =
+    st { appStatus = "Font installation failed: " <> managerErrorToText err }
+handleAppEventPure st (FontActivationFinished (Right ())) =
+    st { appStatus = "Font activated for current profile." }
+handleAppEventPure st (FontActivationFinished (Left err)) =
+    st { appStatus = "Font activation failed: " <> managerErrorToText err }
 handleAppEventPure st ProfileSelectionChanged = st -- This is handled in handleAppEvent, so we just return the state.
 handleAppEventPure st _ = st -- Ignore other IO-related events handled in handleAppEvent
 

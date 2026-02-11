@@ -27,3 +27,5 @@ handleListMove st moveFn activeList =
         ActiveModList      -> st { appActiveMods = moveFn (appActiveMods st) }
         AvailableSoundpackList -> st { appAvailableSoundpacks = moveFn (appAvailableSoundpacks st) }
         InstalledSoundpackList -> st { appInstalledSoundpacks = moveFn (appInstalledSoundpacks st) }
+        AvailableFontList      -> st { appAvailableFonts = moveFn (appAvailableFonts st) }
+        InstalledFontList      -> st { appInstalledFonts = moveFn (appInstalledFonts st) }

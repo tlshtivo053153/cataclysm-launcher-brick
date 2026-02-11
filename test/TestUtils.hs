@@ -50,7 +50,10 @@ testConfig tempDir =
       soundpackRepos = SoundpackReposConfig
         { repositories = ["http://example.com/repo.git"]
         }
-  in Config paths api features logging soundpackRepos
+      fontConfig = FontConfig
+        { availableFonts = []
+        }
+  in Config paths api features logging soundpackRepos fontConfig
 
 data TestState = TestState
     { tsFileContents :: [(FilePath, L.ByteString)]
@@ -135,6 +138,8 @@ initialAppState config handle chan =
     , appInstalledModsCache = []
     , appAvailableSoundpacks = list AvailableSoundpackListName Vec.empty 1
     , appInstalledSoundpacks = list InstalledSoundpackListName Vec.empty 1
+    , appAvailableFonts      = list AvailableFontListName Vec.empty 1
+    , appInstalledFonts      = list InstalledFontListName Vec.empty 1
     , appConfig            = config
     , appHandle            = handle
     , appStatus            = "Initial"

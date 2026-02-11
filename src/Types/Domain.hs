@@ -39,12 +39,14 @@ module Types.Domain (
     SoundpackInfo(..),
     InstalledSoundpack(..),
     SoundpackStatus(..),
-    SoundpackOperation(..)
+    SoundpackOperation(..),
+    FontConfig(..)
 ) where
 
 import Data.Time.Clock (UTCTime)
 import Dhall
 import qualified Data.Text as T
+import Types.Font (FontInfo)
 
 -- | Contains all directory and file paths used by the application.
 data PathsConfig = PathsConfig
@@ -97,9 +99,17 @@ data Config = Config
     , features :: FeaturesConfig
     , logging  :: LoggingConfig
     , soundpackRepos :: SoundpackReposConfig
+    , fonts    :: FontConfig
     } deriving (Generic, Show)
 
 instance FromDhall Config
+
+-- | Configuration for available fonts.
+data FontConfig = FontConfig
+    { availableFonts :: [FontInfo]
+    } deriving (Generic, Show)
+
+instance FromDhall FontConfig
 
 -- | Represents a specific version of the game.
 data GameVersion = GameVersion
