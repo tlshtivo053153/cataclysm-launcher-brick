@@ -20,6 +20,7 @@ import Types.Domain
 import Types.Error (ManagerError(..))
 import Types.Event
 import Types.Handle
+import FontManager (linkFontsDirToSandbox)
 
 -- Helper function to recursively create symbolic links.
 -- This version is designed to be idempotent.
@@ -32,7 +33,7 @@ createSymlinksRecursive handle srcDir destDir = do
         let destPath = destDir </> item
         isDirectory <- hDoesDirectoryExist (appFileSystemHandle handle) srcPath
         if isDirectory
-            then createSymlinksRecursive handle srcPath destDir
+            then createSymlinksRecursive handle srcPath destPath
             else do
                 -- Ensure the parent directory for the symlink exists.
                 hCreateDirectoryIfMissing (appFileSystemHandle handle) True (takeDirectory destPath)
@@ -74,6 +75,14 @@ createAndLaunchSandbox pathsConfig handle eventChan gameId sandboxName = do
         result <- try $ do
             -- Create symlinks
             createSymlinksRecursive handle gameDir sandboxPath
+
+            -- Link fonts directory
+            let profile = SandboxProfile sandboxName sandboxPath
+            linkResult <- linkFontsDirToSandbox handle profile pathsConfig
+            case linkResult of
+                Left err -> hWriteBChan (appAsyncHandle handle) eventChan $ ErrorEvent $ "Font linking failed: " <> T.pack (show err)
+                Right () -> return ()
+
 
             -- Find and launch the executable
             let executableNames = ["cataclysm-tiles", "cataclysm"]

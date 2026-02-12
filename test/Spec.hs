@@ -9,6 +9,7 @@ import qualified FileSystemUtilsSpec
 import qualified GitHubIntegrationSpec
 import qualified HandleSpec
 import qualified IntegrationSpec
+import qualified Integration.FontLinkingSpec
 import qualified ModHandlerSpec
 import qualified ModUtilsSpec
 import qualified SandboxControllerSpec
@@ -44,6 +45,7 @@ spec = do
   describe "GitHubIntegration" GitHubIntegrationSpec.spec
   describe "Handle" HandleSpec.spec
   describe "Integration" IntegrationSpec.spec
+  describe "Integration.FontLinking" Integration.FontLinkingSpec.spec
   describe "ModHandler" ModHandlerSpec.spec
   describe "ModUtils" ModUtilsSpec.spec
   describe "SandboxController" SandboxControllerSpec.spec

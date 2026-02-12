@@ -5,6 +5,7 @@
 module FontManager (
     installFont,
     configureSandboxForFont,
+    linkFontsDirToSandbox,
     listInstalledFonts
 ) where
 
@@ -13,7 +14,8 @@ import Control.Monad.Catch (MonadCatch)
 import qualified Data.ByteString.Lazy as LBS ()
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE ()
-import System.FilePath ((</>), takeFileName)
+import System.FilePath ((</>), takeFileName, takeDirectory)
+import Control.Monad (forM_)
 import Data.Aeson (encode, object, (.=))
 
 import Types.Font
@@ -73,6 +75,56 @@ installFont handle pathsConfig font = do
                                 Right _ -> return $ Right $ InstalledFont (fontName font) targetDir
                         else return $ Left $ NetworkError "Unsupported font archive format (only .zip supported)"
 
+-- | Links the global fonts directory to the sandbox's font directory.
+-- Creates a symlink: sandbox/font -> .cataclysm-launcher-brick/fonts
+linkFontsDirToSandbox :: (MonadCatch m)
+                      => AppHandle m
+                      -> SandboxProfile
+                      -> PathsConfig
+                      -> m (Either ManagerError ())
+linkFontsDirToSandbox handle profile pathsConfig = do
+    let fs = appFileSystemHandle handle
+    let sandboxDir = spDataDirectory profile
+    let globalFontsDir = (T.unpack $ launcherRoot pathsConfig) </> "fonts"
+    let sandboxFontLink = sandboxDir </> "font"
+
+    -- Ensure global fonts directory exists
+    hCreateDirectoryIfMissing fs True globalFontsDir
+    
+    -- Convert to absolute path for symlink target
+    absGlobalFontsDir <- hMakeAbsolute fs globalFontsDir
+
+    -- Check if sandbox/font exists
+    isSymlink <- hDoesSymbolicLinkExist fs sandboxFontLink
+    
+    when isSymlink $ hRemoveFile fs sandboxFontLink
+    
+    -- Re-check existence after potential symlink removal
+    stillExists <- hDoesDirectoryExist fs sandboxFontLink
+    when stillExists $ do
+        -- It's a real directory. 
+        -- Copy its contents to globalFontsDir to preserve default fonts.
+        -- We only copy files, assuming flat structure for fonts or simple recurrence?
+        -- Game fonts usually are just .ttf or .txt files in font/ directory.
+        contents <- hListDirectory fs sandboxFontLink
+        forM_ contents $ \item -> do
+            let srcPath = sandboxFontLink </> item
+            let destPath = globalFontsDir </> item
+            -- Check if it is a file
+            isFile <- hDoesFileExist fs srcPath
+            when isFile $ do
+                 -- Read and write to global
+                 -- We don't overwrite if exists? Or do we?
+                 -- Let's overwrite to ensure we have valid files.
+                 fileContent <- hReadFile fs srcPath
+                 hWriteFile fs destPath fileContent
+        
+        -- After copying, remove the directory
+        hRemoveDirectoryRecursive fs sandboxFontLink
+
+    hCreateSymbolicLink fs absGlobalFontsDir sandboxFontLink
+    return $ Right ()
+
 -- | Configures a sandbox to use a specific installed font.
 -- 1. Creates a symlink in the sandbox's font directory.
 -- 2. Generates 'config/fonts.json' in the sandbox.
@@ -85,33 +137,20 @@ configureSandboxForFont handle profile installedFont = do
     let fs = appFileSystemHandle handle
     
     let sandboxDir = spDataDirectory profile
-                                               -- Wait, user request said ".cataclysm-launcher-brick/fonts/ directory link" 
-                                               -- usually user creates a symlink in 'font' folder of the game.
-                                               -- checking docs/resources might be good, but typically CDDA has 'font' folder in root.
-                                               -- User said "sandboxにそのディレクトリのリンクを作ります" (create a link to that directory in the sandbox).
+    -- Find a suitable font file in the installed directory
+    -- Since we use directory linking, the font should be accessible at sandbox/font/<fontName>
+    -- We need to find the specific .ttf/.otf file relative to the sandbox root.
     
-    -- Link destination: <sandbox>/font/<font_name> 
-    -- But usually CDDA reads fonts from data/font or font folder.
-    -- If we use config/fonts.json, we can specify the font file.
-    -- Let's assume we link to <sandbox>/font/managed_font_<name> to isolate it.
+    -- The path where the font is physically located (global repo)
+    let globalFontDir = installedFontPath installedFont
     
-    let targetLinkPath = sandboxDir </> "font" </> (T.unpack $ installedFontName installedFont)
-    
-    -- Ensure sandbox/font exists
-    hCreateDirectoryIfMissing fs True (sandboxDir </> "font")
-    
-    -- Create Symlink
-    -- If link exists, remove it first?
-    linkExists <- hDoesSymbolicLinkExist fs targetLinkPath
-    when linkExists $ hRemoveFile fs targetLinkPath -- Remove existing link/file
-    
-    -- Create new link
-    -- hCreateSymbolicLink target linkname
-    hCreateSymbolicLink fs (installedFontPath installedFont) targetLinkPath
+    -- We assume the relative path in sandbox is font/<fontName>
+    -- because sandbox/font -> global/fonts
+    -- and global/fonts/<fontName> is where files are.
     
     -- Find a suitable font file in the installed directory
     -- We assume the first .ttf file found is the one we want.
-    files <- hListDirectory fs (installedFontPath installedFont)
+    files <- hListDirectory fs globalFontDir
     let mFontFile = findFontFile files
         fontPathInConfig = case mFontFile of
             Just f -> "font" </> T.unpack (installedFontName installedFont) </> f

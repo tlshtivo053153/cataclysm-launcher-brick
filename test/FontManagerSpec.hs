@@ -42,7 +42,7 @@ spec = describe "FontManager" $ do
                 Left err -> expectationFailure $ "Expected success: " ++ show err
 
     context "configureSandboxForFont" $ do
-        it "creates symlink and config file" $ do
+        it "generates config file" $ do
             (mockHandle, _) <- createMockHandle
             let installed = InstalledFont "TestFont" "/root/fonts/TestFont"
             

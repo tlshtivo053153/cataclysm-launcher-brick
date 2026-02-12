@@ -7,6 +7,7 @@ module GameManager (
 
 import qualified Data.Text as T
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Catch (MonadCatch)
 import System.Directory (createDirectoryIfMissing, listDirectory, makeAbsolute)
 import System.FilePath ((</>), takeDirectory)
 
@@ -14,6 +15,7 @@ import qualified GitHubIntegration as GH
 import Types
 import Types.Error (ManagerError(..))
 import GameManager.Install
+import FontManager (linkFontsDirToSandbox)
 
 getGameVersions :: AppHandle IO -> PathsConfig -> ApiConfig -> IO (Either ManagerError [GameVersion])
 getGameVersions handle pathsConfig apiConfig = do
@@ -30,8 +32,8 @@ getInstalledVersions pathsConfig = do
     dirs <- listDirectory absGameDir
     return $ map (\d -> InstalledVersion (T.pack d) (absGameDir </> d)) dirs
 
-launchGame :: (MonadIO m) => AppHandle m -> InstalledVersion -> Maybe SandboxProfile -> m (Either ManagerError ())
-launchGame handle iv mProfile = do
+launchGame :: (MonadIO m, MonadCatch m) => AppHandle m -> PathsConfig -> InstalledVersion -> Maybe SandboxProfile -> m (Either ManagerError ())
+launchGame handle pathsConfig iv mProfile = do
     let installDir = ivPath iv
         executableName = "cataclysm-launcher"
     
@@ -43,6 +45,14 @@ launchGame handle iv mProfile = do
                 args = case mProfile of
                     Just profile -> ["--userdir", spDataDirectory profile]
                     Nothing      -> []
+            
+            -- Link fonts directory if a profile is specified
+            case mProfile of
+                Just profile -> do
+                    _ <- linkFontsDirToSandbox handle profile pathsConfig
+                    return ()
+                Nothing -> return ()
+            
             hCreateProcess (appProcessHandle handle) executablePath args (Just workDir)
             return $ Right ()
         [] ->
