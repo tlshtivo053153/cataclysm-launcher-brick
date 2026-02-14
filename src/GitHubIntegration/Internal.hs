@@ -72,6 +72,6 @@ toGameVersion rel =
 findDownloadUrl :: [Asset] -> Maybe T.Text
 findDownloadUrl = fmap browser_download_url . safeHead . filter isLinuxPackage
   where
-    isLinuxPackage asset = "linux-with-graphics-and-sounds-x64" `T.isInfixOf` browser_download_url asset
+    isLinuxPackage asset = "linux-tiles-x64" `T.isInfixOf` browser_download_url asset
     safeHead [] = Nothing
     safeHead (x:_) = Just x

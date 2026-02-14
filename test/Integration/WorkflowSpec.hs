@@ -49,7 +49,7 @@ spec = describe "Integration Workflow" $ do
 
       apiCalledRef <- liftIO $ newIORef (0 :: Int)
 
-      let mockApiResponse = L8.pack "[{\"tag_name\":\"0.G\",\"name\":\"Version 1.0\",\"prerelease\":false,\"published_at\":\"2025-01-01T00:00:00Z\",\"assets\":[{\"browser_download_url\":\"http://example.com/v1.0-linux-with-graphics-and-sounds-x64.tar.gz\"}]}]"
+      let mockApiResponse = L8.pack "[{\"tag_name\":\"0.G\",\"name\":\"Version 1.0\",\"prerelease\":false,\"published_at\":\"2025-01-01T00:00:00Z\",\"assets\":[{\"browser_download_url\":\"http://example.com/v1.0-linux-tiles-x64.tar.gz\"}]}]"
 
       let testHandle = Handle.liveHandle
 
