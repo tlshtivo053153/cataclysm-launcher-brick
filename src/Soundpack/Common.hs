@@ -1,2 +1,0 @@
-module Soundpack.Common (
-) where

@@ -106,7 +106,6 @@ library:
   - Events.Soundpack.ListHandler
   - Events.Soundpack.UninstallHandler
   - SoundpackManager
-  - Soundpack.Common
   - Soundpack.Install
   - Soundpack.List
   - Soundpack.Uninstall
