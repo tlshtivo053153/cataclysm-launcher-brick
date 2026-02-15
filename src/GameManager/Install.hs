@@ -15,7 +15,7 @@ import System.FilePath ((</>), takeFileName)
 import Brick.BChan (BChan)
 
 import ContentManager (downloadWithCache)
-import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..))
+import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..), toFileSystemDeps)
 import Types
 import Types.Error (ManagerError(..))
 
@@ -34,15 +34,7 @@ downloadAndInstall handle pathsConfig eventChan gv = do
             let onCacheHit = hWriteBChan (appAsyncHandle handle) eventChan $ CacheHit ("Using cached file: " <> T.pack fileName)
             let onCacheMiss = hWriteBChan (appAsyncHandle handle) eventChan $ LogMessage ("Downloading: " <> T.pack fileName)
 
-            let fsDeps = FileSystemDeps
-                  { fsdDoesFileExist = hDoesFileExist (appFileSystemHandle handle)
-                  , fsdReadFile = hReadFile (appFileSystemHandle handle)
-                  , fsdWriteFile = \fp content -> hWriteLazyByteString (appFileSystemHandle handle) fp (LBS.fromStrict content)
-                  , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing (appFileSystemHandle handle)
-                  , fsdDoesDirectoryExist = hDoesDirectoryExist (appFileSystemHandle handle)
-                  , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive (appFileSystemHandle handle)
-                  , fsdListDirectory = hListDirectory (appFileSystemHandle handle)
-                  }
+            let fsDeps = toFileSystemDeps (appFileSystemHandle handle)
             let netDeps = NetworkDeps
                   { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
                   , ndDownloadFile = hDownloadFile (appHttpHandle handle)

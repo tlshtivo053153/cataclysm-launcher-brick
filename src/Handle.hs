@@ -26,7 +26,7 @@ import           Data.Aeson (encode)
 import FileSystemUtils (findFilesRecursively)
 import qualified GitHubIntegration as GH
 import           ArchiveUtils (extractTarball, extractZip)
-import           Soundpack.Deps (FileSystemDeps(..))
+import Soundpack.Deps (FileSystemDeps(..), toFileSystemDeps)
 
 import Types
 import Types.Error (ManagerError(..))
@@ -87,15 +87,7 @@ liveHandle = AppHandle
     , appArchiveHandle = ArchiveHandle
         { hExtractTarball = \archivePath installDir -> liftIO $ extractTarball archivePath installDir
         , hExtractZip = \fsHandle installDir zipData ->
-            let fsDeps = FileSystemDeps
-                    { fsdDoesFileExist = hDoesFileExist fsHandle
-                    , fsdReadFile = hReadFile fsHandle
-                    , fsdWriteFile = \fp content -> hWriteLazyByteString fsHandle fp (LBS.fromStrict content)
-                    , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing fsHandle
-                    , fsdDoesDirectoryExist = hDoesDirectoryExist fsHandle
-                    , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive fsHandle
-                    , fsdListDirectory = hListDirectory fsHandle
-                    }
+            let fsDeps = toFileSystemDeps fsHandle
             in liftIO $ extractZip fsDeps installDir zipData
         }
     }

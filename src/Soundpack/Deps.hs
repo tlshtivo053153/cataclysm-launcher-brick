@@ -24,8 +24,12 @@ module Soundpack.Deps (
     TimeDeps(..),
     EventDeps(..),
     ConfigDeps(..),
-    ArchiveDeps(..)
+    ArchiveDeps(..),
+    toFileSystemDeps
 ) where
+
+import qualified Data.ByteString.Lazy as LBS
+import Types.Handles.FileSystem (FileSystemHandle(..))
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
@@ -101,3 +105,16 @@ newtype ArchiveDeps m = ArchiveDeps
   { -- | Extracts a zip archive from a source path to a destination directory.
     adExtractZip :: FilePath -> B.ByteString -> m (Either String ())
   }
+
+-- | Convert a FileSystemHandle to FileSystemDeps.
+-- This helper function eliminates code duplication when constructing FileSystemDeps.
+toFileSystemDeps :: FileSystemHandle m -> FileSystemDeps m
+toFileSystemDeps fsHandle = FileSystemDeps
+    { fsdDoesFileExist = hDoesFileExist fsHandle
+    , fsdReadFile = hReadFile fsHandle
+    , fsdWriteFile = \fp content -> hWriteLazyByteString fsHandle fp (LBS.fromStrict content)
+    , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing fsHandle
+    , fsdDoesDirectoryExist = hDoesDirectoryExist fsHandle
+    , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive fsHandle
+    , fsdListDirectory = hListDirectory fsHandle
+    }

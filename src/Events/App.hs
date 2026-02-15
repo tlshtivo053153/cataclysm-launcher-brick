@@ -18,7 +18,7 @@ import Events.Mods (refreshActiveModsList, refreshAvailableModsList)
 import Events.Soundpack (refreshInstalledSoundpacksList, refreshInstalledSoundpacksList')
 import GameManager (getInstalledVersions)
 import GitHubIntegration (generateSoundpackDownloadInfos)
-import Soundpack.Deps
+import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..), TimeDeps(..), EventDeps(..), ConfigDeps(..), ArchiveDeps(..), SoundpackDeps(..), toFileSystemDeps)
 import SoundpackManager (installSoundpack, uninstallSoundpack)
 import FontManager (installFont, configureSandboxForFont)
 import Types
@@ -36,15 +36,7 @@ handleAppEvent (InstallSoundpack soundpackInfo) = do
     let pathsCfg = paths (appConfig st)
     liftIO $ void $ forkIO $ do
         -- Construct dependencies
-        let fsDeps = FileSystemDeps
-              { fsdDoesFileExist = hDoesFileExist (appFileSystemHandle handle)
-              , fsdReadFile = hReadFile (appFileSystemHandle handle)
-              , fsdWriteFile = \fp content -> hWriteLazyByteString (appFileSystemHandle handle) fp (LBS.fromStrict content)
-              , fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing (appFileSystemHandle handle)
-              , fsdDoesDirectoryExist = hDoesDirectoryExist (appFileSystemHandle handle)
-              , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive (appFileSystemHandle handle)
-              , fsdListDirectory = hListDirectory (appFileSystemHandle handle)
-              }
+        let fsDeps = toFileSystemDeps (appFileSystemHandle handle)
         let netDeps = NetworkDeps
               { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
               , ndDownloadFile = hDownloadFile (appHttpHandle handle)
