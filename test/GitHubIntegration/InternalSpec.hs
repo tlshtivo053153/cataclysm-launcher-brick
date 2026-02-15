@@ -11,7 +11,7 @@ import Types (ReleaseType(..), GameVersion(..))
 spec :: Spec
 spec = describe "GitHubIntegration.Internal" $ do
   let
-    linuxAsset = Asset "https://example.com/linux-tiles-x64.tar.gz"
+    linuxAsset = Asset "https://example.com/linux-with-graphics-x64.tar.gz"
     windowsAsset = Asset "https://example.com/windows-with-graphics-x64.zip"
 
     stableRelease = Release

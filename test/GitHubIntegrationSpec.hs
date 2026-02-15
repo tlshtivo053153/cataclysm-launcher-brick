@@ -25,8 +25,8 @@ import qualified GitHubIntegration.Internal as GH
 mockReleases :: [GH.Release]
 mockReleases =
   [
-    GH.Release { GH.tag_name = "0.G", GH.name = "Stable Release", GH.prerelease = False, GH.published_at = "2025-01-01T00:00:00Z", GH.assets = [GH.Asset "url-stable-linux-tiles-x64"] }
-  , GH.Release { GH.tag_name = "2024-01-01-0000", GH.name = "Dev Release", GH.prerelease = True, GH.published_at = "2024-12-31T00:00:00Z",  GH.assets = [GH.Asset "url-dev-linux-tiles-x64"] }
+    GH.Release { GH.tag_name = "0.G", GH.name = "Stable Release", GH.prerelease = False, GH.published_at = "2025-01-01T00:00:00Z", GH.assets = [GH.Asset "url-stable-linux-with-graphics-x64"] }
+  , GH.Release { GH.tag_name = "2024-01-01-0000", GH.name = "Dev Release", GH.prerelease = True, GH.published_at = "2024-12-31T00:00:00Z",  GH.assets = [GH.Asset "url-dev-linux-with-graphics-x64"] }
   ]
 
 encodedMockReleases :: L.ByteString
@@ -35,8 +35,8 @@ encodedMockReleases = encode mockReleases
 mockGameVersions :: [GameVersion]
 mockGameVersions =
   [
-    GameVersion { gvVersionId = "0.G", gvVersion = "Stable Release", gvUrl = "url-stable-linux-tiles-x64", gvReleaseType = Stable }
-  , GameVersion { gvVersionId = "2024-01-01-0000", gvVersion = "Dev Release", gvUrl = "url-dev-linux-tiles-x64", gvReleaseType = Development }
+    GameVersion { gvVersionId = "0.G", gvVersion = "Stable Release", gvUrl = "url-stable-linux-with-graphics-x64", gvReleaseType = Stable }
+  , GameVersion { gvVersionId = "2024-01-01-0000", gvVersion = "Dev Release", gvUrl = "url-dev-linux-with-graphics-x64", gvReleaseType = Development }
   ]
 
 -- A fixed time for testing
