@@ -73,7 +73,6 @@ library
       Soundpack.Uninstall
       Soundpack.Deps
       Soundpack.Core
-      Soundpack.Interface
       Soundpack.Utils.Config
       Soundpack.Utils.Conversion
       Soundpack.Utils.File
