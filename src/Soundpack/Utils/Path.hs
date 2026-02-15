@@ -16,6 +16,7 @@ existence, ensuring consistency across the application.
 -}
 module Soundpack.Utils.Path
   ( getSoundpackDirectory,
+    getGlobalSoundpackDirectory,
     generateSoundpackDirectoryName,
     getSoundpackZipPath,
     validateSoundpackPath,
@@ -26,6 +27,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.Text as T
 import System.Directory (doesDirectoryExist)
 import System.FilePath ((</>))
+import Types.Domain (PathsConfig(..))
 
 -- | Constructs the absolute path to the soundpack installation directory
 -- within a given sandbox path. This is typically `sandboxPath/sound`.
@@ -39,6 +41,20 @@ import System.FilePath ((</>))
 -- The absolute path to the soundpack directory.
 getSoundpackDirectory :: FilePath -> FilePath
 getSoundpackDirectory sandboxPath = sandboxPath </> "sound"
+
+-- | Constructs the absolute path to the global soundpack installation directory.
+-- This is typically `launcherRoot/sound`.
+--
+-- === Parameters
+--
+-- * @pathsConfig@: The paths configuration containing the launcher root.
+--
+-- === Returns
+--
+-- The absolute path to the global soundpack directory.
+getGlobalSoundpackDirectory :: PathsConfig -> FilePath
+getGlobalSoundpackDirectory pathsConfig = 
+    T.unpack (launcherRoot pathsConfig) </> "sound"
 
 -- | Generates a standardized directory name for an installed soundpack
 -- based on its repository name and branch. The format is typically

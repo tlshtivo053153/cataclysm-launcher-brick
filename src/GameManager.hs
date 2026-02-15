@@ -16,6 +16,7 @@ import Types
 import Types.Error (ManagerError(..))
 import GameManager.Install
 import FontManager (linkFontsDirToSandbox)
+import SoundpackManager (linkSoundpacksDirToSandbox)
 
 getGameVersions :: AppHandle IO -> PathsConfig -> ApiConfig -> IO (Either ManagerError [GameVersion])
 getGameVersions handle pathsConfig apiConfig = do
@@ -46,10 +47,11 @@ launchGame handle pathsConfig iv mProfile = do
                     Just profile -> ["--userdir", spDataDirectory profile]
                     Nothing      -> []
             
-            -- Link fonts directory if a profile is specified
+            -- Link fonts and soundpacks directory if a profile is specified
             case mProfile of
                 Just profile -> do
                     _ <- linkFontsDirToSandbox handle profile pathsConfig
+                    _ <- linkSoundpacksDirToSandbox handle profile pathsConfig
                     return ()
                 Nothing -> return ()
             

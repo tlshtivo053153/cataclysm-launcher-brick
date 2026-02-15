@@ -70,10 +70,8 @@ main = do
                 Just firstProfile -> listActiveMods (spDataDirectory firstProfile)
                 Nothing -> return []
 
-            -- Load installed soundpacks for the first profile
-            installedSoundpacks <- case listToMaybe profs of
-                Just firstProfile -> listInstalledSoundpacks liveHandle (spDataDirectory firstProfile)
-                Nothing -> return []
+            -- Load installed soundpacks from the global directory
+            installedSoundpacks <- listInstalledSoundpacks liveHandle (paths config)
 
             -- Load installed fonts
             installedFonts <- listInstalledFonts liveHandle (paths config)

@@ -26,7 +26,7 @@ import qualified Data.ByteString as B
 import Data.Time (UTCTime)
 import qualified Data.Text as T
 import Types.Domain
-import Soundpack.Utils.Path (getSoundpackDirectory)
+import Soundpack.Utils.Path (getGlobalSoundpackDirectory)
 import Soundpack.Utils.Config (getCacheDirectory, isCacheEnabled)
 
 -- | Represents a plan for installing a soundpack.
@@ -62,10 +62,14 @@ data ExtractionPlan = ExtractionPlan
 -- | Creates an 'InstallPlan' from soundpack info, a profile, and configuration.
 -- This pure function translates high-level information into a concrete plan
 -- that can be executed by other functions.
+--
+-- Note: The soundpack is installed to the global soundpack directory,
+-- not to a specific sandbox. All sandboxes share the same soundpacks via
+-- symbolic links created at sandbox creation time.
 processSoundpackInstall :: SoundpackInfo -> SandboxProfile -> PathsConfig -> FeaturesConfig -> InstallPlan
-processSoundpackInstall soundpackInfo profile pathsConfig featuresConfig =
+processSoundpackInstall soundpackInfo _profile pathsConfig featuresConfig =
   let downloadUrl = spiBrowserDownloadUrl soundpackInfo
-      soundDir = getSoundpackDirectory (spDataDirectory profile)
+      soundDir = getGlobalSoundpackDirectory pathsConfig
       cacheDir = getCacheDirectory pathsConfig
       shouldUseCache = isCacheEnabled featuresConfig
    in InstallPlan

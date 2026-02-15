@@ -9,8 +9,9 @@ module FontManager (
     listInstalledFonts
 ) where
 
+import Control.Exception (SomeException)
 import Control.Monad (when)
-import Control.Monad.Catch (MonadCatch)
+import Control.Monad.Catch (MonadCatch, try)
 import qualified Data.ByteString.Lazy as LBS ()
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE ()
@@ -95,7 +96,11 @@ linkFontsDirToSandbox handle profile pathsConfig = do
     absGlobalFontsDir <- hMakeAbsolute fs globalFontsDir
 
     -- Check if sandbox/font exists
-    isSymlink <- hDoesSymbolicLinkExist fs sandboxFontLink
+    -- Use try because pathIsSymbolicLink throws an exception if the path doesn't exist
+    isSymlinkEither <- try $ hDoesSymbolicLinkExist fs sandboxFontLink
+    let isSymlink = case isSymlinkEither of
+                         Left (_ :: SomeException) -> False
+                         Right b -> b
     
     when isSymlink $ hRemoveFile fs sandboxFontLink
     

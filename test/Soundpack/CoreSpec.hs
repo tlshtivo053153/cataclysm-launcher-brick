@@ -46,7 +46,8 @@ spec = describe "Soundpack.Core" $ do
     it "creates an install plan with cache enabled" $ do
       let plan = processSoundpackInstall soundpackInfo profile pathsConfig featuresConfig
       ipDownloadUrl plan `shouldBe` "http://example.com/download"
-      ipSoundDir plan `shouldBe` "/tmp/sandbox/default/sound"
+      -- Soundpacks are now installed to the global directory, not sandbox-specific
+      ipSoundDir plan `shouldBe` "/tmp/sound"
       ipCacheDir plan `shouldBe` "/tmp/cache/soundpacks"
       ipUseCache plan `shouldBe` True
       ipSoundpackInfo plan `shouldBe` soundpackInfo

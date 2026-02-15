@@ -15,7 +15,8 @@ and ensure consistent handling of common patterns, such as checking for
 selected items in lists and dispatching events.
 -}
 module Events.Soundpack.CommonHandler (
-    withSelectedItems
+    withSelectedItems,
+    withSelectedSoundpack
 ) where
 
 import Brick
@@ -64,3 +65,26 @@ withSelectedItems getItemList errorPrefix createEvent = do
                     liftIO $ writeBChan chan (ErrorEvent $ errorPrefix <> ": No sandbox profile selected.")
                 Just (_, profile) ->
                     liftIO $ writeBChan chan (createEvent selectedItem profile)
+
+-- | A helper to execute an action if a soundpack item from a list is selected.
+-- This function is used for global soundpack operations that don't require
+-- a specific sandbox profile.
+--
+-- === Parameters
+--
+-- * @getItemList@: A function that takes 'AppState' and returns a 'List' of items.
+-- * @errorPrefix@: A 'Text' prefix for error messages if a selection is missing.
+-- * @createEvent@: A function that takes the selected item and returns the 'UIEvent'
+--                  to be dispatched on success.
+withSelectedSoundpack ::
+    (AppState -> List n a) -> -- ^ Function to get the item list from the state
+    Text -> -- ^ Error message prefix
+    (a -> UIEvent) -> -- ^ Function to create the success event
+    EventM Name AppState ()
+withSelectedSoundpack getItemList errorPrefix createEvent = do
+    st <- get
+    let chan = appEventChannel st
+    case listSelectedElement (getItemList st) of
+        Nothing -> liftIO $ writeBChan chan (ErrorEvent $ errorPrefix <> ": No soundpack selected.")
+        Just (_, selectedItem) ->
+            liftIO $ writeBChan chan (createEvent selectedItem)

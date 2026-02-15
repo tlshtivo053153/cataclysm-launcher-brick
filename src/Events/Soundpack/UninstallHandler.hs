@@ -22,15 +22,14 @@ import Brick (EventM)
 import qualified Graphics.Vty as V
 
 import Events.List (handleListEvents)
-import Events.Soundpack.CommonHandler (withSelectedItems)
+import Events.Soundpack.CommonHandler (withSelectedSoundpack)
 import Types
 
 -- | Handles events originating from the installed soundpacks list, primarily
 -- for initiating uninstallation.
 --
 -- When the 'd' key is pressed, it attempts to uninstall the currently selected
--- soundpack from the currently selected sandbox profile. If either is not
--- selected, an error event is dispatched.
+-- soundpack from the global soundpack directory.
 -- For other events, it delegates to the generic list event handler.
 --
 -- === Parameters
@@ -42,5 +41,5 @@ import Types
 -- An 'EventM' action that updates the application state or dispatches new events.
 handleInstalledSoundpackEvents :: V.Event -> EventM Name AppState ()
 handleInstalledSoundpackEvents (V.EvKey (V.KChar 'd') []) =
-    withSelectedItems appInstalledSoundpacks "Cannot uninstall soundpack" (flip UninstallSoundpack)
+    withSelectedSoundpack appInstalledSoundpacks "Cannot uninstall soundpack" UninstallSoundpack
 handleInstalledSoundpackEvents ev = handleListEvents ev InstalledSoundpackList

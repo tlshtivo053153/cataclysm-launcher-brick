@@ -22,15 +22,14 @@ import Brick (EventM)
 import qualified Graphics.Vty as V
 
 import Events.List (handleListEvents)
-import Events.Soundpack.CommonHandler (withSelectedItems)
+import Events.Soundpack.CommonHandler (withSelectedSoundpack)
 import Types
 
 -- | Handles events originating from the available soundpacks list, primarily
 -- for initiating installation.
 --
 -- When the Enter key is pressed, it attempts to install the currently selected
--- soundpack into the currently selected sandbox profile. If either is not
--- selected, an error event is dispatched.
+-- soundpack into the global soundpack directory.
 -- For other events, it delegates to the generic list event handler.
 --
 -- === Parameters
@@ -42,5 +41,5 @@ import Types
 -- An 'EventM' action that updates the application state or dispatches new events.
 handleAvailableSoundpackEvents :: V.Event -> EventM Name AppState ()
 handleAvailableSoundpackEvents (V.EvKey V.KEnter []) =
-    withSelectedItems appAvailableSoundpacks "Cannot install soundpack" (flip InstallSoundpack)
+    withSelectedSoundpack appAvailableSoundpacks "Cannot install soundpack" InstallSoundpack
 handleAvailableSoundpackEvents ev = handleListEvents ev AvailableSoundpackList

@@ -7,9 +7,9 @@ Maintainer  : Tlsh
 Stability   : experimental
 Portability : POSIX
 
-This module contains the logic for uninstalling a soundpack from a sandbox
-profile. It ensures that the soundpack directory is removed safely from the
-file system.
+This module contains the logic for uninstalling a soundpack from the global
+soundpack directory. It ensures that the soundpack directory is removed safely
+from the file system.
 -}
 module Soundpack.Uninstall (
     uninstallSoundpack
@@ -20,11 +20,12 @@ import qualified Data.Text as T
 import System.FilePath ((</>))
 
 import Soundpack.Utils.File (safeRemoveDirectory)
-import Soundpack.Utils.Path (getSoundpackDirectory)
-import Types (AppHandle (..), InstalledSoundpack (..), SandboxProfile (..))
+import Soundpack.Utils.Path (getGlobalSoundpackDirectory)
+import Types (AppHandle (..), InstalledSoundpack (..))
+import Types.Domain (PathsConfig(..))
 import Types.Error (ManagerError (..))
 
--- | Uninstalls a soundpack from a given sandbox profile.
+-- | Uninstalls a soundpack from the global soundpack directory.
 --
 -- This function removes the directory associated with the specified
 -- 'InstalledSoundpack' from the file system.
@@ -33,7 +34,7 @@ import Types.Error (ManagerError (..))
 --
 -- * @handle@: The application 'Handle' providing access to dependencies like
 --             the file system.
--- * @profile@: The 'SandboxProfile' from which the soundpack will be uninstalled.
+-- * @pathsConfig@: The paths configuration containing the launcher root.
 -- * @installedSoundpack@: The 'InstalledSoundpack' to be removed.
 --
 -- === Returns
@@ -42,10 +43,9 @@ import Types.Error (ManagerError (..))
 -- * 'Right ()': On successful removal.
 -- * 'Left ManagerError': On failure, typically a 'FileSystemError' if the
 --                        directory cannot be removed.
-uninstallSoundpack :: MonadCatch m => AppHandle m -> SandboxProfile -> InstalledSoundpack -> m (Either ManagerError ())
-uninstallSoundpack handle profile installedSoundpack = do
-    let sandboxPath = spDataDirectory profile
-    let soundDir = getSoundpackDirectory sandboxPath
+uninstallSoundpack :: MonadCatch m => AppHandle m -> PathsConfig -> InstalledSoundpack -> m (Either ManagerError ())
+uninstallSoundpack handle pathsConfig installedSoundpack = do
+    let soundDir = getGlobalSoundpackDirectory pathsConfig
     let soundpackDirName = ispDirectoryName installedSoundpack
     let dirToRemove = soundDir </> soundpackDirName
 

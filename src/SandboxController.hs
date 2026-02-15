@@ -21,6 +21,7 @@ import Types.Error (ManagerError(..))
 import Types.Event
 import Types.Handle
 import FontManager (linkFontsDirToSandbox)
+import SoundpackManager (linkSoundpacksDirToSandbox)
 
 -- Helper function to recursively create symbolic links.
 -- This version is designed to be idempotent.
@@ -81,6 +82,12 @@ createAndLaunchSandbox pathsConfig handle eventChan gameId sandboxName = do
             linkResult <- linkFontsDirToSandbox handle profile pathsConfig
             case linkResult of
                 Left err -> hWriteBChan (appAsyncHandle handle) eventChan $ ErrorEvent $ "Font linking failed: " <> T.pack (show err)
+                Right () -> return ()
+
+            -- Link soundpacks directory
+            linkSoundResult <- linkSoundpacksDirToSandbox handle profile pathsConfig
+            case linkSoundResult of
+                Left err -> hWriteBChan (appAsyncHandle handle) eventChan $ ErrorEvent $ "Soundpack linking failed: " <> T.pack (show err)
                 Right () -> return ()
 
 

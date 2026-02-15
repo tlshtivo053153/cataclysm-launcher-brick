@@ -29,10 +29,11 @@ handleAppEvent :: UIEvent -> EventM Name AppState ()
 handleAppEvent ProfileSelectionChanged = do
     refreshActiveModsList
     refreshInstalledSoundpacksList
-handleAppEvent (InstallSoundpack profile soundpackInfo) = do
+handleAppEvent (InstallSoundpack soundpackInfo) = do
     st <- get
     let handle = appHandle st
     let chan = appEventChannel st
+    let pathsCfg = paths (appConfig st)
     liftIO $ void $ forkIO $ do
         -- Construct dependencies
         let fsDeps = FileSystemDeps
@@ -60,18 +61,21 @@ handleAppEvent (InstallSoundpack profile soundpackInfo) = do
               }
         let deps = SoundpackDeps fsDeps netDeps timeDeps eventDeps configDeps archiveDeps
 
-        result <- installSoundpack deps profile soundpackInfo
-        writeBChan chan (SoundpackInstallFinished profile result)
-handleAppEvent (UninstallSoundpack profile installedSoundpack) = do
+        -- Create a dummy profile for the install function (it's not used for directory determination anymore)
+        let dummyProfile = SandboxProfile "" ""
+        result <- installSoundpack deps dummyProfile soundpackInfo
+        writeBChan chan (SoundpackInstallFinished result)
+handleAppEvent (UninstallSoundpack installedSoundpack) = do
     st <- get
     let handle = appHandle st
     let chan = appEventChannel st
+    let pathsCfg = paths (appConfig st)
     liftIO $ void $ forkIO $ do
-        result <- uninstallSoundpack handle profile installedSoundpack
+        result <- uninstallSoundpack handle pathsCfg installedSoundpack
         writeBChan chan (SoundpackUninstallFinished (fmap (const installedSoundpack) result))
-handleAppEvent event@(SoundpackInstallFinished profile (Right _)) = do
+handleAppEvent event@(SoundpackInstallFinished (Right _)) = do
     modify (`handleAppEventPure` event)
-    refreshInstalledSoundpacksList' (Just profile)
+    refreshInstalledSoundpacksList
 handleAppEvent event@(InstallFinished (Right msg)) = do
     st <- get
     installedVec <- liftIO $ getInstalledVersions (paths $ appConfig st)
@@ -144,11 +148,11 @@ handleAppEventPure st (AvailableModsListed (mods, cache)) =
 handleAppEventPure st (ActiveModsListed mods) =
     let newList = list ActiveModListName (fromList mods) 1
     in st { appActiveMods = newList }
-handleAppEventPure st (SoundpackInstallFinished _ (Right installed)) =
+handleAppEventPure st (SoundpackInstallFinished (Right installed)) =
     let currentInstalled = listToList (appInstalledSoundpacks st)
         newList = list InstalledSoundpackListName (fromList (installed : currentInstalled)) 1
     in st { appInstalledSoundpacks = newList, appStatus = "Soundpack installed successfully." }
-handleAppEventPure st (SoundpackInstallFinished _ (Left err)) =
+handleAppEventPure st (SoundpackInstallFinished (Left err)) =
     st { appStatus = "Soundpack installation failed: " <> managerErrorToText err }
 handleAppEventPure st (SoundpackUninstallFinished (Right removed)) =
     let currentInstalled = filter (/= removed) $ listToList (appInstalledSoundpacks st)

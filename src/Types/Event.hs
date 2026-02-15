@@ -22,9 +22,9 @@ data UIEvent
   | AvailableModsListed ([AvailableMod], [ModInfo])
   | ActiveModsListed [ModInfo]
   | FetchSoundpacks
-  | InstallSoundpack SandboxProfile SoundpackInfo
-  | UninstallSoundpack SandboxProfile InstalledSoundpack
-  | SoundpackInstallFinished SandboxProfile (Either ManagerError InstalledSoundpack)
+  | InstallSoundpack SoundpackInfo
+  | UninstallSoundpack InstalledSoundpack
+  | SoundpackInstallFinished (Either ManagerError InstalledSoundpack)
   | SoundpackUninstallFinished (Either ManagerError InstalledSoundpack)
   | InstalledSoundpacksListed [InstalledSoundpack]
   | ProfileSelectionChanged
