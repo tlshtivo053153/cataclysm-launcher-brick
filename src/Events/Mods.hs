@@ -34,7 +34,7 @@ refreshActiveModsList = do
         Nothing -> return ()
         Just (_, profile) ->
             liftIO $ void $ forkIO $ do
-                activeMods <- MH.listActiveMods (spDataDirectory profile)
+                activeMods <- MH.listActiveMods (appHandle st) (spDataDirectory profile)
                 writeBChan chan $ ActiveModsListed activeMods
 
 getInstallModAction :: AppState -> Maybe (IO ())
@@ -69,7 +69,7 @@ getEnableModAction st =
                     Just modInfo -> Just $ do
                         let chan = appEventChannel st
                         writeBChan chan $ LogMessage $ "Enabling mod " <> miName modInfo <> "..."
-                        result <- MH.enableMod (spDataDirectory profile) modInfo
+                        result <- MH.enableMod (appHandle st) (spDataDirectory profile) modInfo
                         writeBChan chan $ ModEnableFinished result
             else Nothing
         _ -> Nothing
@@ -80,7 +80,7 @@ getDisableModAction st =
         (Just (_, modInfo), Just (_, profile)) -> Just $ do
             let chan = appEventChannel st
             writeBChan chan $ LogMessage $ "Disabling mod " <> miName modInfo <> " for " <> spName profile <> "..."
-            result <- MH.disableMod (spDataDirectory profile) modInfo
+            result <- MH.disableMod (appHandle st) (spDataDirectory profile) modInfo
             writeBChan chan $ ModDisableFinished result
         _ -> Nothing
 
@@ -112,6 +112,6 @@ refreshAvailableModsList = do
         chan = appEventChannel st
     liftIO $ void $ forkIO $ do
         modSources <- loadModSources
-        installedMods <- MH.listAvailableMods (T.unpack $ sysRepo (paths config)) (T.unpack $ userRepo (paths config))
+        installedMods <- MH.listAvailableMods (appHandle st) (T.unpack $ sysRepo (paths config)) (T.unpack $ userRepo (paths config))
         let combined = combineMods modSources installedMods
         writeBChan chan $ AvailableModsListed (combined, installedMods)

@@ -48,7 +48,7 @@ main = do
     installed <- getInstalledVersions (paths config)
     profilesE <- listProfiles liveHandle (paths config)
     modSources <- loadModSources
-    installedMods <- listAvailableMods (T.unpack $ sysRepo (paths config)) (T.unpack $ userRepo (paths config))
+    installedMods <- listAvailableMods liveHandle (T.unpack $ sysRepo (paths config)) (T.unpack $ userRepo (paths config))
     
     case (versionsE, profilesE) of
         (Left err, _) -> putStrLn $ "Error fetching versions: " ++ T.unpack (managerErrorToText err)
@@ -56,7 +56,7 @@ main = do
         (Right vers, Right profs) -> do
             -- Load active mods for the first profile if it exists.
             activeMods <- case listToMaybe profs of
-                Just firstProfile -> listActiveMods (spDataDirectory firstProfile)
+                Just firstProfile -> listActiveMods liveHandle (spDataDirectory firstProfile)
                 Nothing -> return []
 
             -- Load installed soundpacks from the global directory
