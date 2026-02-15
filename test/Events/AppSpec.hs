@@ -8,7 +8,7 @@ import Brick.Widgets.List (listElements)
 import Data.Vector (fromList)
 
 import Events (nextActiveList)
-import Events.App (handleAppEventPure, managerErrorToText, modHandlerErrorToText)
+import Events.App (handleAppEventPure, modHandlerErrorToText)
 import Types
 import Types.Error
 import TestUtils (initialAppState, testConfig)
@@ -66,7 +66,7 @@ spec = describe "Events.App" $ do
     it "converts various manager errors to text" $ do
       managerErrorToText (NetworkError "timeout") `shouldBe` "Network Error: timeout"
       managerErrorToText (FileSystemError "permission denied") `shouldBe` "File System Error: permission denied"
-      managerErrorToText (GeneralManagerError "something went wrong") `shouldBe` "something went wrong"
+      managerErrorToText (GeneralManagerError "something went wrong") `shouldBe` "Error: something went wrong"
 
   describe "modHandlerErrorToText" $ do
     it "converts various mod handler errors to text" $ do

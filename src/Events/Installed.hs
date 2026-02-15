@@ -11,7 +11,7 @@ import qualified Graphics.Vty as V
 import Events.List (handleListEvents)
 import GameManager (launchGame)
 import Types
-import Types.Error (ManagerError(..))
+import Types.Error (ManagerError(..), managerErrorToText)
 
 -- | Pure function to determine the IO action for launching a game.
 getLaunchAction :: AppState -> Maybe (IO (Either ManagerError ()))
@@ -35,13 +35,3 @@ handleInstalledEvents (V.EvKey V.KEnter []) = do
                 Right () -> halt
                 Left err -> modify $ \s -> s { appStatus = "Error: " <> managerErrorToText err }
 handleInstalledEvents ev = handleListEvents ev InstalledList
-
-managerErrorToText :: ManagerError -> T.Text
-managerErrorToText err = case err of
-    NetworkError msg -> "Network Error: " <> msg
-    FileSystemError msg -> "File System Error: " <> msg
-    ArchiveError msg -> "Archive Error: " <> msg
-    LaunchError msg -> "Launch Error: " <> msg
-    GeneralManagerError msg -> "Error: " <> msg
-    UnknownError msg -> "Unknown Error: " <> msg
-    SoundpackManagerError e -> "Soundpack Error: " <> T.pack (show e)

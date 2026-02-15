@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Events.App (handleAppEvent, handleAppEventPure, managerErrorToText, modHandlerErrorToText) where
+module Events.App (handleAppEvent, handleAppEventPure, modHandlerErrorToText) where
 
 import Brick
 import Brick.BChan (writeBChan)
@@ -22,7 +22,7 @@ import Soundpack.Deps
 import SoundpackManager (installSoundpack, uninstallSoundpack)
 import FontManager (installFont, configureSandboxForFont)
 import Types
-import Types.Error (ManagerError(..))
+import Types.Error (ManagerError(..), managerErrorToText)
 
 -- | Handles IO-related events and calls the pure event handler.
 handleAppEvent :: UIEvent -> EventM Name AppState ()
@@ -112,7 +112,7 @@ handleAppEventPure st (LogEvent msg) = st { appStatus = msg }
 handleAppEventPure st (ErrorEvent msg) = st { appStatus = "Error: " <> msg }
 handleAppEventPure st (CacheHit msg) = st { appStatus = msg }
 handleAppEventPure st (InstallFinished (Left err)) =
-    st { appStatus = "Error: " <> managerErrorToText err }
+    st { appStatus = managerErrorToText err }
 handleAppEventPure st (InstallFinished (Right msg)) =
     st { appStatus = T.pack msg }
 handleAppEventPure st (ProfileCreated (Right newProfile)) =
@@ -178,16 +178,6 @@ handleAppEventPure st _ = st -- Ignore other IO-related events handled in handle
 
 listToList :: Brick.Widgets.List.List n e -> [e]
 listToList = Data.Vector.toList . Brick.Widgets.List.listElements
-
-managerErrorToText :: ManagerError -> T.Text
-managerErrorToText err = case err of
-    NetworkError msg -> "Network Error: " <> msg
-    FileSystemError msg -> "File System Error: " <> msg
-    ArchiveError msg -> "Archive Error: " <> msg
-    LaunchError msg -> "Launch Error: " <> msg
-    GeneralManagerError msg -> msg
-    UnknownError msg -> "Unknown Error: " <> msg
-    SoundpackManagerError e -> "Soundpack Error: " <> T.pack (show e)
 
 modHandlerErrorToText :: ModHandlerError -> T.Text
 modHandlerErrorToText err = case err of

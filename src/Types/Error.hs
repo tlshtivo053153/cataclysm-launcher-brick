@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Types.Error
 Description : Defines error types for the Cataclysm Launcher application.
@@ -14,7 +15,8 @@ problems, archive processing failures, and soundpack-specific errors.
 -}
 module Types.Error (
     SoundpackError(..),
-    ManagerError(..)
+    ManagerError(..),
+    managerErrorToText
 ) where
 
 import qualified Data.Text as T
@@ -41,3 +43,14 @@ data ManagerError
     | UnknownError T.Text               -- ^ An unexpected or unknown error occurred.
     | SoundpackManagerError SoundpackError -- ^ An error specific to soundpack management.
     deriving (Show, Eq)
+
+-- | Convert 'ManagerError' to a user-friendly 'T.Text' message.
+managerErrorToText :: ManagerError -> T.Text
+managerErrorToText err = case err of
+    NetworkError msg -> "Network Error: " <> msg
+    FileSystemError msg -> "File System Error: " <> msg
+    ArchiveError msg -> "Archive Error: " <> msg
+    LaunchError msg -> "Launch Error: " <> msg
+    GeneralManagerError msg -> "Error: " <> msg
+    UnknownError msg -> "Unknown Error: " <> msg
+    SoundpackManagerError e -> "Soundpack Error: " <> T.pack (show e)

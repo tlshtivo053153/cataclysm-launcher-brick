@@ -20,7 +20,7 @@ import ModHandler (listAvailableMods, listActiveMods)
 import SandboxController (listProfiles)
 import SoundpackManager (listInstalledSoundpacks)
 import Types
-import Types.Error (ManagerError(..))
+import Types.Error (ManagerError(..), managerErrorToText)
 import UI (drawUI, theMap)
 import ModUtils (combineMods)
 import Handle (liveHandle)
@@ -37,17 +37,6 @@ app = App
     , appStartEvent = return ()
     , appAttrMap = const theMap
     }
-
--- | A helper function to convert ManagerError to a user-friendly Text.
-managerErrorToText :: ManagerError -> T.Text
-managerErrorToText err = case err of
-    NetworkError msg -> "Network Error: " <> msg
-    FileSystemError msg -> "File System Error: " <> msg
-    ArchiveError msg -> "Archive Error: " <> msg
-    LaunchError msg -> "Launch Error: " <> msg
-    GeneralManagerError msg -> msg
-    UnknownError msg -> "Unknown Error: " <> msg
-    SoundpackManagerError e -> "Soundpack Error: " <> T.pack (show e)
 
 -- Main
 main :: IO ()
