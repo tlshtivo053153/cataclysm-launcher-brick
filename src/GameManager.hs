@@ -1,3 +1,22 @@
+{-|
+Module      : GameManager
+Description : Game version management and launching functionality.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module provides core functionality for managing game versions in the
+Cataclysm Launcher. It re-exports "GameManager.Install" and provides:
+
+* Fetching available game versions from GitHub
+* Listing installed game versions
+* Launching the game with optional sandbox profile support
+
+The module integrates with font and soundpack management to ensure proper
+environment setup when launching with a sandbox profile.
+-}
 module GameManager (
     module GameManager.Install,
     getGameVersions,
