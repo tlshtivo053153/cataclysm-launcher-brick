@@ -20,6 +20,7 @@ import qualified FontManagerSpec
 
 import qualified Events.AppSpec
 import qualified Events.AvailableSpec
+import qualified Events.HelpSpec
 import qualified Events.InstalledSpec
 import qualified Events.ListSpec
 import qualified Events.ModSpec
@@ -54,6 +55,7 @@ spec = do
   describe "Soundpack.Install" Soundpack.InstallSpec.spec
   describe "Events.App" Events.AppSpec.spec
   describe "Events.Available" Events.AvailableSpec.spec
+  describe "Events.Help" Events.HelpSpec.spec
   describe "Events.Installed" Events.InstalledSpec.spec
   describe "Events.List" Events.ListSpec.spec
   describe "Events.Mod" Events.ModSpec.spec

@@ -57,6 +57,7 @@ library
       Events.App
       Events.Available
       Events.Backup
+      Events.Help
       Events.Installed
       Events.List
       Events.Mod
@@ -181,6 +182,7 @@ test-suite cataclysm-launcher-brick-gemini-test
       Events.AppSpec
       Events.AvailableSpec
       Events.BackupSpec
+      Events.HelpSpec
       Events.InstalledSpec
       Events.ListSpec
       Events.ModSpec

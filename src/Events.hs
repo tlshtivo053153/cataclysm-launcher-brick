@@ -8,6 +8,7 @@ import qualified Graphics.Vty as V
 import Events.App (handleAppEvent)
 import Events.Available (handleAvailableEvents)
 import Events.Backup (handleBackupEvents)
+import Events.Help (getHelpText)
 import Events.Installed (handleInstalledEvents)
 import Events.Mod (handleActiveModEvents, handleAvailableModEvents)
 import Events.Sandbox (handleSandboxProfileEvents)
@@ -25,6 +26,10 @@ handleVtyEvent :: V.Event -> EventM Name AppState ()
 handleVtyEvent (V.EvKey (V.KChar '\t') []) = modify toggleActiveList
 handleVtyEvent (V.EvKey V.KBackTab [])     = modify toggleActiveListBackward
 handleVtyEvent (V.EvKey V.KEsc [])         = halt
+handleVtyEvent (V.EvKey (V.KChar '?') [])  = do
+    st <- get
+    let helpText = getHelpText (appActiveList st)
+    modify $ \s -> s { appStatus = helpText }
 handleVtyEvent ev = do
     st <- get
     case appActiveList st of
