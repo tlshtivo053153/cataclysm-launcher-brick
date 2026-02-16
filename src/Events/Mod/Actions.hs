@@ -1,42 +1,39 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Events.Mods (
-    handleAvailableModEvents,
-    handleActiveModEvents,
-    refreshAvailableModsList,
-    refreshActiveModsList,
+{-|
+Module      : Events.Mod.Actions
+Description : Action generators for mod operations in the Cataclysm Launcher.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module provides action generators for mod operations in the Cataclysm Launcher.
+These functions create IO actions that can be executed to perform mod operations
+such as installation, enabling, and disabling.
+
+All action generators return 'Maybe (IO ())' to handle cases where the action
+cannot be performed (e.g., no item selected, mod already installed).
+-}
+module Events.Mod.Actions (
     getInstallModAction,
     getEnableModAction,
     getDisableModAction
-    ) where
+) where
 
-import Brick hiding (on)
 import Brick.BChan (writeBChan)
 import Brick.Widgets.List (listSelectedElement)
-import Control.Concurrent (forkIO)
 import Control.Monad (void)
-import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.List (find)
-import qualified Graphics.Vty as V
 
 import Config (loadModSources)
-import Events.List (handleListEvents)
 import qualified ModHandler as MH
 import Types
-import ModUtils (combineMods)
 
-refreshActiveModsList :: EventM Name AppState ()
-refreshActiveModsList = do
-    st <- get
-    let chan = appEventChannel st
-    case listSelectedElement (appSandboxProfiles st) of
-        Nothing -> return ()
-        Just (_, profile) ->
-            liftIO $ void $ forkIO $ do
-                activeMods <- MH.listActiveMods (appHandle st) (spDataDirectory profile)
-                writeBChan chan $ ActiveModsListed activeMods
-
+-- | Generate an IO action to install the selected mod.
+-- Returns 'Nothing' if no mod is selected or the mod is already installed.
 getInstallModAction :: AppState -> Maybe (IO ())
 getInstallModAction st =
     case listSelectedElement (appAvailableMods st) of
@@ -57,6 +54,8 @@ getInstallModAction st =
                         writeBChan chan $ ModInstallFinished result
                     TarGz -> writeBChan chan $ LogMessage "Installation from .tar.gz is not yet supported."
 
+-- | Generate an IO action to enable the selected mod for the current profile.
+-- Returns 'Nothing' if no mod is selected, no profile is selected, or the mod is not installed.
 getEnableModAction :: AppState -> Maybe (IO ())
 getEnableModAction st =
     case (listSelectedElement (appAvailableMods st), listSelectedElement (appSandboxProfiles st)) of
@@ -74,6 +73,8 @@ getEnableModAction st =
             else Nothing
         _ -> Nothing
 
+-- | Generate an IO action to disable the selected mod for the current profile.
+-- Returns 'Nothing' if no mod is selected or no profile is selected.
 getDisableModAction :: AppState -> Maybe (IO ())
 getDisableModAction st =
     case (listSelectedElement (appActiveMods st), listSelectedElement (appSandboxProfiles st)) of
@@ -83,35 +84,3 @@ getDisableModAction st =
             result <- MH.disableMod (appHandle st) (spDataDirectory profile) modInfo
             writeBChan chan $ ModDisableFinished result
         _ -> Nothing
-
-handleAvailableModEvents :: V.Event -> EventM Name AppState ()
-handleAvailableModEvents (V.EvKey (V.KChar 'i') []) = do
-    st <- get
-    case getInstallModAction st of
-        Nothing -> modify $ \s -> s { appStatus = "Mod is already installed or not selected." }
-        Just action -> liftIO $ void $ forkIO action
-handleAvailableModEvents (V.EvKey (V.KChar 'e') []) = do
-    st <- get
-    case getEnableModAction st of
-        Nothing -> modify $ \s -> s { appStatus = "Mod not installed, or profile not selected." }
-        Just action -> liftIO $ void $ forkIO action
-handleAvailableModEvents ev = handleListEvents ev AvailableModList
-
-handleActiveModEvents :: V.Event -> EventM Name AppState ()
-handleActiveModEvents (V.EvKey (V.KChar 'd') []) = do
-    st <- get
-    case getDisableModAction st of
-        Nothing -> modify $ \s -> s { appStatus = "Please select a mod and a profile." }
-        Just action -> liftIO $ void $ forkIO action
-handleActiveModEvents ev = handleListEvents ev ActiveModList
-
-refreshAvailableModsList :: EventM Name AppState ()
-refreshAvailableModsList = do
-    st <- get
-    let config = appConfig st
-        chan = appEventChannel st
-    liftIO $ void $ forkIO $ do
-        modSources <- loadModSources
-        installedMods <- MH.listAvailableMods (appHandle st) (T.unpack $ sysRepo (paths config)) (T.unpack $ userRepo (paths config))
-        let combined = combineMods modSources installedMods
-        writeBChan chan $ AvailableModsListed (combined, installedMods)

@@ -22,7 +22,7 @@ import qualified Events.AppSpec
 import qualified Events.AvailableSpec
 import qualified Events.InstalledSpec
 import qualified Events.ListSpec
-import qualified Events.ModsSpec
+import qualified Events.ModSpec
 import qualified Events.SandboxSpec
 
 import qualified GameManager.InstallSpec
@@ -56,7 +56,7 @@ spec = do
   describe "Events.Available" Events.AvailableSpec.spec
   describe "Events.Installed" Events.InstalledSpec.spec
   describe "Events.List" Events.ListSpec.spec
-  describe "Events.Mods" Events.ModsSpec.spec
+  describe "Events.Mod" Events.ModSpec.spec
   describe "Events.Sandbox" Events.SandboxSpec.spec
   describe "GameManager.Install" GameManager.InstallSpec.spec
   describe "GitHubIntegration.Internal" GitHubIntegration.InternalSpec.spec

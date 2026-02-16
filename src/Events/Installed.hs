@@ -1,5 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{-|
+Module      : Events.Installed
+Description : Event handler for the installed game versions list.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module handles events for the installed game versions list in the
+Cataclysm Launcher. It provides functionality for:
+
+* Launching installed game versions
+* Navigating the installed versions list
+
+The main entry point is 'handleInstalledEvents', which processes keyboard
+events for the installed versions list widget. When Enter is pressed,
+the selected game version is launched using the currently selected
+sandbox profile.
+-}
 module Events.Installed (handleInstalledEvents, getLaunchAction) where
 
 import Brick

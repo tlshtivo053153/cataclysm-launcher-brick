@@ -1,5 +1,29 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{-|
+Module      : Events.Sandbox
+Description : Event handler for sandbox profile management in the Cataclysm Launcher.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module provides event handlers for sandbox profile management in the
+Cataclysm Launcher. It handles profile creation, backup, and selection.
+
+The module exports both the event handler and pure helper functions for testing:
+
+* 'handleSandboxProfileEvents' - Main event handler for the sandbox profiles list.
+* 'decideNewProfileName' - Pure function to generate a new profile name.
+* 'shouldBackupProfile' - Pure function to determine if a backup should be created.
+
+=== Key Bindings
+
+* @n@ - Create a new sandbox profile
+* @b@ - Create a backup of the selected profile
+* Arrow keys - Navigate the profiles list (triggers profile selection change)
+-}
 module Events.Sandbox (
     handleSandboxProfileEvents,
     -- Pure logic for testing

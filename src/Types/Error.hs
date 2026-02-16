@@ -11,15 +11,18 @@ Portability : POSIX
 This module centralizes the definition of custom error types used throughout
 the Cataclysm Launcher application. It provides a structured way to report
 and handle various error conditions, including network issues, file system
-problems, archive processing failures, and soundpack-specific errors.
+problems, archive processing failures, soundpack-specific errors, and
+mod-related errors.
 -}
 module Types.Error (
     SoundpackError(..),
     ManagerError(..),
-    managerErrorToText
+    managerErrorToText,
+    modHandlerErrorToText
 ) where
 
 import qualified Data.Text as T
+import Types.Domain (ModHandlerError(..))
 
 -- | Represents errors specific to soundpack operations.
 data SoundpackError
@@ -54,3 +57,10 @@ managerErrorToText err = case err of
     GeneralManagerError msg -> "Error: " <> msg
     UnknownError msg -> "Unknown Error: " <> msg
     SoundpackManagerError e -> "Soundpack Error: " <> T.pack (show e)
+
+-- | Convert 'ModHandlerError' to a user-friendly 'T.Text' message.
+modHandlerErrorToText :: ModHandlerError -> T.Text
+modHandlerErrorToText err = case err of
+    GitCloneFailed msg -> "Git clone failed: " <> msg
+    SymlinkCreationFailed path reason -> "Symlink creation failed for " <> T.pack path <> ": " <> reason
+    ModNotFound name -> "Mod not found: " <> name

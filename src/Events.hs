@@ -9,10 +9,10 @@ import Events.App (handleAppEvent)
 import Events.Available (handleAvailableEvents)
 import Events.Backup (handleBackupEvents)
 import Events.Installed (handleInstalledEvents)
-import Events.Mods (handleActiveModEvents, handleAvailableModEvents)
+import Events.Mod (handleActiveModEvents, handleAvailableModEvents)
 import Events.Sandbox (handleSandboxProfileEvents)
 import Events.Soundpack (handleAvailableSoundpackEvents, handleInstalledSoundpackEvents)
-import Events.Fonts (handleAvailableFontEvents, handleInstalledFontEvents)
+import Events.Font (handleAvailableFontEvents, handleInstalledFontEvents)
 import Types
 
 -- Event Handling

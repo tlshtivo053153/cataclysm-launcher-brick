@@ -97,9 +97,14 @@ library:
   - Events.Backup
   - Events.Installed
   - Events.List
-  - Events.Mods
+  - Events.Mod
+  - Events.Mod.Actions
+  - Events.Mod.ActiveHandler
+  - Events.Mod.AvailableHandler
   - Events.Sandbox
-  - Events.Fonts
+  - Events.Font
+  - Events.Font.AvailableHandler
+  - Events.Font.InstalledHandler
   - Events.Soundpack
   - Events.Soundpack.CommonHandler
   - Events.Soundpack.InstallHandler
@@ -172,7 +177,7 @@ tests:
     - Events.BackupSpec
     - Events.InstalledSpec
     - Events.ListSpec
-    - Events.ModsSpec
+    - Events.ModSpec
     - Events.SandboxSpec
     - GameManager.InstallSpec
     - GitHubIntegration.InternalSpec

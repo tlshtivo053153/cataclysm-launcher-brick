@@ -8,9 +8,9 @@ import Brick.Widgets.List (listElements)
 import Data.Vector (fromList)
 
 import Events (nextActiveList)
-import Events.App (handleAppEventPure, modHandlerErrorToText)
+import Events.App (handleAppEventPure)
 import Types
-import Types.Error
+import Types.Error (ManagerError(..), managerErrorToText, modHandlerErrorToText)
 import TestUtils (initialAppState, testConfig)
 
 spec :: Spec

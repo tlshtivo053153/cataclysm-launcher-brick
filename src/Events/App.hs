@@ -1,6 +1,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Events.App (handleAppEvent, handleAppEventPure, modHandlerErrorToText) where
+{-|
+Module      : Events.App
+Description : Central event hub for handling UI events in the Cataclysm Launcher.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module serves as the central event hub for the Cataclysm Launcher Brick
+application. It handles 'UIEvent' dispatching via 'handleAppEvent' for IO-related
+events and 'handleAppEventPure' for pure state updates.
+
+The module orchestrates various IO operations including:
+
+* Soundpack installation and uninstallation
+* Font installation and activation
+* Mod installation, enable, and disable operations
+* Game version installation
+* Profile selection changes
+-}
+module Events.App (handleAppEvent, handleAppEventPure) where
 
 import Brick
 import Brick.BChan (writeBChan)
@@ -13,7 +34,7 @@ import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.Vector (fromList)
 
-import Events.Mods (refreshActiveModsList, refreshAvailableModsList)
+import Events.Mod (refreshActiveModsList, refreshAvailableModsList)
 import Events.Soundpack (refreshInstalledSoundpacksList, refreshInstalledSoundpacksList')
 import GameManager (getInstalledVersions)
 import GitHubIntegration (generateSoundpackDownloadInfos)
@@ -21,7 +42,7 @@ import Soundpack.Deps (toSoundpackDeps)
 import SoundpackManager (installSoundpack, uninstallSoundpack)
 import FontManager (installFont, configureSandboxForFont)
 import Types
-import Types.Error (ManagerError(..), managerErrorToText)
+import Types.Error (ManagerError(..), managerErrorToText, modHandlerErrorToText)
 
 -- | Handles IO-related events and calls the pure event handler.
 handleAppEvent :: UIEvent -> EventM Name AppState ()
@@ -154,9 +175,3 @@ handleAppEventPure st _ = st -- Ignore other IO-related events handled in handle
 
 listToList :: Brick.Widgets.List.List n e -> [e]
 listToList = Data.Vector.toList . Brick.Widgets.List.listElements
-
-modHandlerErrorToText :: ModHandlerError -> T.Text
-modHandlerErrorToText err = case err of
-    GitCloneFailed msg -> "Git clone failed: " <> msg
-    SymlinkCreationFailed path reason -> "Symlink creation failed for " <> T.pack path <> ": " <> reason
-    ModNotFound name -> "Mod not found: " <> name

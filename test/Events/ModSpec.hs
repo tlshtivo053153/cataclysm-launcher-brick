@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Events.ModsSpec (spec) where
+module Events.ModSpec (spec) where
 
 import Test.Hspec
 import Brick.BChan (newBChan)
@@ -8,12 +8,12 @@ import Data.Maybe (isJust, isNothing)
 import qualified Data.Vector as V
 import Lens.Micro ((&), (.~))
 
-import Events.Mods
+import Events.Mod
 import TestUtils
 import Types
 
 spec :: Spec
-spec = describe "Events.Mods" $ do
+spec = describe "Events.Mod" $ do
   let
     dummyConfig = testConfig "/tmp/launcher"
     modSource1 = ModSourceInfo "Mod A" "repo/a" "https://github.com/user/repo1" GitHub

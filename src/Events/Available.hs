@@ -1,3 +1,21 @@
+{-|
+Module      : Events.Available
+Description : Event handler for the available game versions list.
+Copyright   : (c) 2023-2024 The Cataclysm-Launcher-Brick Team
+License     : MIT
+Maintainer  : Tlsh
+Stability   : experimental
+Portability : POSIX
+
+This module handles events for the available game versions list in the
+Cataclysm Launcher. It provides functionality for:
+
+* Downloading and installing game versions
+* Navigating the available versions list
+
+The main entry point is 'handleAvailableEvents', which processes keyboard
+events for the available versions list widget.
+-}
 module Events.Available (handleAvailableEvents, getDownloadAction) where
 
 import Brick
