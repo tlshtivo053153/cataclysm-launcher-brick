@@ -4,7 +4,8 @@
 
 module ArchiveUtils (
     extractTarball,
-    extractZip
+    extractZip,
+    createTarball
 ) where
 
 import qualified Codec.Archive.Zip as Zip
@@ -73,3 +74,18 @@ extractZip fs installDir zipData = do
             fsdWriteFile fs destPath (LBS.toStrict content)
     
     return $ Right "Zip extraction complete."
+
+-- | Create a tar archive from a directory.
+-- Parameters:
+--   - sourceDir: The parent directory containing the directory to archive
+--   - targetPath: The path for the output .tar file
+--   - dirName: The name of the directory within sourceDir to archive
+-- Example: createTarball "/path/to/parent" "/path/to/backup.tar" "save"
+--   will create a tar archive containing the "save" directory from "/path/to/parent/save"
+createTarball :: FilePath -> FilePath -> FilePath -> IO (Either ManagerError ())
+createTarball sourceDir targetPath dirName = do
+    let fullSourcePath = sourceDir </> dirName
+    result <- try $ Tar.createTarball targetPath [fullSourcePath]
+    case result of
+        Right _ -> return $ Right ()
+        Left (e :: SomeException) -> return $ Left $ ArchiveError $ "tar-conduit creation failed: " <> T.pack (show e)

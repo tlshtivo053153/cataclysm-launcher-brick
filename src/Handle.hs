@@ -25,7 +25,7 @@ import           Data.Aeson (encode)
 
 import FileSystemUtils (findFilesRecursively)
 import qualified GitHubIntegration as GH
-import           ArchiveUtils (extractTarball, extractZip)
+import           ArchiveUtils (extractTarball, extractZip, createTarball)
 import Soundpack.Deps (FileSystemDeps(..), toFileSystemDeps)
 
 import Types
@@ -89,5 +89,6 @@ liveHandle = AppHandle
         , hExtractZip = \fsHandle installDir zipData ->
             let fsDeps = toFileSystemDeps fsHandle
             in liftIO $ extractZip fsDeps installDir zipData
+        , hCreateTarball = \sourceDir targetPath dirName -> liftIO $ createTarball sourceDir targetPath dirName
         }
     }

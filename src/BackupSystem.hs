@@ -72,16 +72,7 @@ createBackup handle pathsConfig profile = do
         -- The directory containing the 'save' directory
         let parentOfSaveDir = spDataDirectory profile
         
-        let command = unwords
-                [ "tar"
-                , "-cf"
-                , "\"" ++ backupFilePath ++ "\""
-                , "-C"
-                , "\"" ++ parentOfSaveDir ++ "\""
-                , "save"
-                ]
-        
-        result <- try (hCallCommand (appProcessHandle handle) command)
+        result <- hCreateTarball (appArchiveHandle handle) parentOfSaveDir backupFilePath "save"
         case result of
-            Left (e :: SomeException) -> return $ Left $ ArchiveError $ pack $ "tar command failed: " ++ show e
+            Left err -> return $ Left err
             Right _ -> return $ Right ()

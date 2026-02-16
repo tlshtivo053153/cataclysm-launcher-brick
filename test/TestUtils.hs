@@ -118,6 +118,7 @@ mockHandle = AppHandle
     , appArchiveHandle = ArchiveHandle
         { hExtractTarball = \_ _ -> return $ Right ()
         , hExtractZip = \_ _ _ -> return $ Right "zip extracted"
+        , hCreateTarball = \_ _ _ -> return $ Right ()
         }
     }
 
