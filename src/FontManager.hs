@@ -178,11 +178,6 @@ configureSandboxForFont handle profile installedFont = do
     -- Write config
     hWriteLazyByteString fs fontsJsonPath jsonContent
     
-    _ <- return $ Right ()
-
-    -- Write config
-    hWriteLazyByteString fs fontsJsonPath jsonContent
-    
     return $ Right ()
 
 findFontFile :: [FilePath] -> Maybe FilePath
