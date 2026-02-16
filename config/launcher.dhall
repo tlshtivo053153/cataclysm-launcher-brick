@@ -41,8 +41,12 @@ in {
   -- Font configuration
   , fonts = {
     , availableFonts = [
-        { fontName = "Terminus", fontUrl = "https://files.ax86.net/terminus-ttf/files/4.49.1/terminus-ttf-4.49.1.zip" }
-      , { fontName = "Unifont", fontUrl = "https://unifoundry.com/pub/unifont/unifont-15.0.01/unifont-15.0.01.zip" }
+        { fontName = "HackGen", fontUrl = "https://github.com/yuru7/HackGen/releases/download/v2.10.0/HackGen_v2.10.0.zip" }
+      , { fontName = "PlemolJP", fontUrl = "https://github.com/yuru7/PlemolJP/releases/download/v3.0.0/PlemolJP_HS_v3.0.0.zip" }
+      , { fontName = "UDEVGothic", fontUrl = "https://github.com/yuru7/udev-gothic/releases/download/v2.1.0/UDEVGothic_HS_v2.1.0.zip" }
+      , { fontName = "Myrica", fontUrl = "https://github.com/tomokuni/Myrica/raw/master/product/Myrica.zip" }
+      , { fontName = "MyricaM", fontUrl = "https://github.com/tomokuni/Myrica/raw/master/product/MyricaM.zip" }
+      , { fontName = "Moralerspace", fontUrl = "https://github.com/yuru7/moralerspace/releases/download/v2.0.0/Moralerspace_v2.0.0.zip" }
       ]
     }
 }
