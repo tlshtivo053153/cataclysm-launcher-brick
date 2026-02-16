@@ -8,14 +8,13 @@ module GameManager.Install (
 ) where
 
 import qualified Data.Text as T
-import qualified Data.ByteString.Lazy as LBS
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch)
 import System.FilePath ((</>), takeFileName)
 import Brick.BChan (BChan)
 
 import ContentManager (downloadWithCache)
-import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..), toFileSystemDeps)
+import Soundpack.Deps (NetworkDeps(..), toFileSystemDeps)
 import Types
 import Types.Error (ManagerError(..))
 

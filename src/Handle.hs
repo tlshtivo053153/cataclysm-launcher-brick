@@ -24,11 +24,10 @@ import           Data.Aeson (encode)
 import FileSystemUtils (findFilesRecursively)
 import qualified GitHubIntegration as GH
 import           ArchiveUtils (extractTarball, extractZip, createTarball)
-import Soundpack.Deps (FileSystemDeps(..), toFileSystemDeps)
+import Soundpack.Deps (toFileSystemDeps)
 
 import Types
 import Types.Error (ManagerError(..))
-import Types.Handle
 
 liveHandle :: AppHandle IO
 liveHandle = AppHandle

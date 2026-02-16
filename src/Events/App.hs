@@ -12,13 +12,12 @@ import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.Vector (fromList)
-import qualified Data.ByteString.Lazy as LBS
 
 import Events.Mods (refreshActiveModsList, refreshAvailableModsList)
 import Events.Soundpack (refreshInstalledSoundpacksList, refreshInstalledSoundpacksList')
 import GameManager (getInstalledVersions)
 import GitHubIntegration (generateSoundpackDownloadInfos)
-import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..), TimeDeps(..), EventDeps(..), ConfigDeps(..), ArchiveDeps(..), SoundpackDeps(..), toFileSystemDeps)
+import Soundpack.Deps (toSoundpackDeps)
 import SoundpackManager (installSoundpack, uninstallSoundpack)
 import FontManager (installFont, configureSandboxForFont)
 import Types
@@ -33,25 +32,10 @@ handleAppEvent (InstallSoundpack soundpackInfo) = do
     st <- get
     let handle = appHandle st
     let chan = appEventChannel st
-    let pathsCfg = paths (appConfig st)
+    let config = appConfig st
     liftIO $ void $ forkIO $ do
-        -- Construct dependencies
-        let fsDeps = toFileSystemDeps (appFileSystemHandle handle)
-        let netDeps = NetworkDeps
-              { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
-              , ndDownloadFile = hDownloadFile (appHttpHandle handle)
-              }
-        let timeDeps = TimeDeps { tdGetCurrentTime = hGetCurrentTime (appTimeHandle handle) }
-        let eventDeps = EventDeps { edWriteEvent = writeBChan chan }
-        let configDeps = ConfigDeps { cdGetConfig = return (appConfig st) }
-        let archiveDeps = ArchiveDeps
-              { adExtractZip = \installDir zipData -> do
-                  result <- hExtractZip (appArchiveHandle handle) (appFileSystemHandle handle) installDir zipData
-                  return $ case result of
-                    Left err -> Left (show err)
-                    Right _ -> Right ()
-              }
-        let deps = SoundpackDeps fsDeps netDeps timeDeps eventDeps configDeps archiveDeps
+        -- Construct dependencies using the conversion function
+        let deps = toSoundpackDeps handle chan config
 
         -- Create a dummy profile for the install function (it's not used for directory determination anymore)
         let dummyProfile = SandboxProfile "" ""

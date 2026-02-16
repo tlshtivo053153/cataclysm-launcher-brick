@@ -17,11 +17,6 @@ import Types.Handles.Time
 import Types.Handles.Async
 import Types.Handles.Archive
 
-import Brick.BChan (BChan)
-import Types.Event (UIEvent)
-import Types.Error (ManagerError)
-import Soundpack.Deps (FileSystemDeps)
-
 data AppHandle m = AppHandle
     { appFileSystemHandle :: FileSystemHandle m
     , appHttpHandle       :: HttpHandle m

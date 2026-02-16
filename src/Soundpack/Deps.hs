@@ -25,11 +25,17 @@ module Soundpack.Deps (
     EventDeps(..),
     ConfigDeps(..),
     ArchiveDeps(..),
-    toFileSystemDeps
+    toFileSystemDeps,
+    toSoundpackDeps
 ) where
 
 import qualified Data.ByteString.Lazy as LBS
 import Types.Handles.FileSystem (FileSystemHandle(..))
+import Types.Handles.Http (HttpHandle(..))
+import Types.Handles.Time (TimeHandle(..))
+import Types.Handles.Archive (ArchiveHandle(..))
+import Types.Handle (AppHandle(..))
+import Brick.BChan (BChan, writeBChan)
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
@@ -117,4 +123,42 @@ toFileSystemDeps fsHandle = FileSystemDeps
     , fsdDoesDirectoryExist = hDoesDirectoryExist fsHandle
     , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive fsHandle
     , fsdListDirectory = hListDirectory fsHandle
+    }
+
+-- | Convert AppHandle to SoundpackDeps.
+-- This function eliminates code duplication when constructing SoundpackDeps
+-- from an existing AppHandle.
+--
+-- Parameters:
+--   handle   - The AppHandle containing all handles
+--   chan     - The event channel for UI events
+--   config   - The application configuration
+--
+-- Returns:
+--   SoundpackDeps ready for use in soundpack operations
+--
+-- Note: This function is specialized to IO because writeBChan requires IO.
+toSoundpackDeps :: AppHandle IO -> BChan UIEvent -> Config -> SoundpackDeps IO
+toSoundpackDeps handle chan config = SoundpackDeps
+    { spdFileSystem = toFileSystemDeps (appFileSystemHandle handle)
+    , spdNetwork = NetworkDeps
+        { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
+        , ndDownloadFile = hDownloadFile (appHttpHandle handle)
+        }
+    , spdTime = TimeDeps
+        { tdGetCurrentTime = hGetCurrentTime (appTimeHandle handle)
+        }
+    , spdEvents = EventDeps
+        { edWriteEvent = writeBChan chan
+        }
+    , spdConfig = ConfigDeps
+        { cdGetConfig = return config
+        }
+    , spdArchive = ArchiveDeps
+        { adExtractZip = \installDir zipData -> do
+            result <- hExtractZip (appArchiveHandle handle) (appFileSystemHandle handle) installDir zipData
+            return $ case result of
+                Left err -> Left (show err)
+                Right _ -> Right ()
+        }
     }
