@@ -37,7 +37,7 @@ installFont handle pathsConfig font = do
         http = appHttpHandle handle
         archive = appArchiveHandle handle
         
-    let fontsDir = (T.unpack $ launcherRoot pathsConfig) </> "fonts"
+    let fontsDir = T.unpack (launcherRoot pathsConfig) </> "fonts"
         fontDirName = T.unpack $ fontName font
         targetDir = fontsDir </> fontDirName
         
@@ -52,7 +52,7 @@ installFont handle pathsConfig font = do
             -- Download
             let url = fontUrl font
                 fileName = takeFileName (T.unpack url)
-                downloadPath = (T.unpack $ downloadCache pathsConfig) </> fileName
+                downloadPath = T.unpack (downloadCache pathsConfig) </> fileName
                 
             -- Ensure cache dir
             hCreateDirectoryIfMissing fs True (T.unpack $ downloadCache pathsConfig)
@@ -85,7 +85,7 @@ linkFontsDirToSandbox :: (MonadCatch m)
 linkFontsDirToSandbox handle profile pathsConfig = do
     let fs = appFileSystemHandle handle
     let sandboxDir = spDataDirectory profile
-    let globalFontsDir = (T.unpack $ launcherRoot pathsConfig) </> "fonts"
+    let globalFontsDir = T.unpack (launcherRoot pathsConfig) </> "fonts"
     let sandboxFontLink = sandboxDir </> "font"
 
     -- Ensure global fonts directory exists
@@ -182,15 +182,15 @@ configureSandboxForFont handle profile installedFont = do
 findFontFile :: [FilePath] -> Maybe FilePath
 findFontFile [] = Nothing
 findFontFile (f:fs)
-    | ".ttf" `T.isSuffixOf` (T.pack f) = Just f
-    | ".otf" `T.isSuffixOf` (T.pack f) = Just f
+    | ".ttf" `T.isSuffixOf` T.pack f = Just f
+    | ".otf" `T.isSuffixOf` T.pack f = Just f
     | otherwise = findFontFile fs
 
 -- | Lists all fonts installed in the global fonts directory.
 listInstalledFonts :: MonadCatch m => AppHandle m -> PathsConfig -> m [InstalledFont]
 listInstalledFonts handle pathsConfig = do
     let fs = appFileSystemHandle handle
-    let fontsDir = (T.unpack $ launcherRoot pathsConfig) </> "fonts"
+    let fontsDir = T.unpack (launcherRoot pathsConfig) </> "fonts"
     
     exists <- hDoesDirectoryExist fs fontsDir
     if not exists

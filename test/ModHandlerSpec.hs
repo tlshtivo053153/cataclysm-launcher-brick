@@ -15,6 +15,7 @@ import System.Process (readProcessWithExitCode, callCommand)
 import Data.IORef (IORef, newIORef, readIORef, modifyIORef)
 import qualified Data.Map as Map
 import Data.Time (getCurrentTime, UTCTime)
+import Control.Monad ((>=>))
 
 import ModHandler
 import Types
@@ -246,7 +247,7 @@ createRealIOHandle = do
             { hCreateDirectoryIfMissing = SD.createDirectoryIfMissing
             , hMakeAbsolute = SD.makeAbsolute
             , hDoesFileExist = SD.doesFileExist
-            , hReadFile = \p -> readFile p >>= return . encodeUtf8 . T.pack
+            , hReadFile = readFile >=> (return . encodeUtf8 . T.pack)
             , hWriteFile = \p c -> TIO.writeFile p (decodeUtf8 c)
             , hDoesDirectoryExist = SD.doesDirectoryExist
             , hRemoveDirectoryRecursive = SD.removeDirectoryRecursive
@@ -259,8 +260,8 @@ createRealIOHandle = do
             , hFindFilesRecursively = \_ _ -> return []
             }
         , appProcessHandle = ProcessHandle
-            { hReadProcessWithExitCode = \cmd args input -> readProcessWithExitCode cmd args input
-            , hCallCommand = \cmd -> callCommand cmd
+            { hReadProcessWithExitCode = readProcessWithExitCode
+            , hCallCommand = callCommand
             , hCreateProcess = \_ _ _ -> return ()
             , hLaunchGame = \_ _ -> return ()
             }

@@ -141,10 +141,8 @@ spec = describe "Font Linking Integration" $ do
                     modify $ \st -> st { msWrittenFiles = path : msWrittenFiles st }
                 , hWriteLazyByteString = \_ _ -> return ()
                 , hFindFilesRecursively = \_ _ -> return []
-                , hDoesSymbolicLinkExist = \link -> do
-                     st <- get
-                     -- Return true if link is in msSymlinks
-                     return $ any (\(_, l) -> l == link) (msSymlinks st)
+                , hDoesSymbolicLinkExist = \link ->
+                     any (\(_, l) -> l == link) . msSymlinks <$> get
                 , hGetSymbolicLinkTarget = \_ -> return ""
                 }
         

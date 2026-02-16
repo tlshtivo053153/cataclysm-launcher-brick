@@ -1,0 +1,4 @@
+# hlint configuration
+# Ignore external library documentation
+- ignore:
+    path: docs/
