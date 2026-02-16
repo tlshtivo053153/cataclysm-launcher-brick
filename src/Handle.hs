@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -8,7 +7,6 @@ module Handle (
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
 import           Data.Time (getCurrentTime)
 import           Control.Exception (SomeException)
