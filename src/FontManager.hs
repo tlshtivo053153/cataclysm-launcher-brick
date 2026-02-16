@@ -10,13 +10,12 @@ module FontManager (
 ) where
 
 import Control.Exception (SomeException)
-import Control.Monad (when)
+import Control.Monad (filterM, forM_, when)
 import Control.Monad.Catch (MonadCatch, try)
 import qualified Data.ByteString.Lazy as LBS ()
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE ()
 import System.FilePath ((</>), takeFileName, takeDirectory)
-import Control.Monad (forM_)
 import Data.Aeson (encode, object, (.=))
 
 import Types.Font
@@ -203,12 +202,3 @@ listInstalledFonts handle pathsConfig = do
             -- We might want to filter out hidden files/dirs.
             fonts <- filterM (hDoesDirectoryExist fs . (fontsDir </>)) contents
             return $ map (\name -> InstalledFont (T.pack name) (fontsDir </> name)) fonts
-
-    where
-        -- simple filterM since it's not in Prelude for everything
-        filterM :: Monad m => (a -> m Bool) -> [a] -> m [a]
-        filterM _ [] = return []
-        filterM p (x:xs) = do
-            flg <- p x
-            ys <- filterM p xs
-            return (if flg then x:ys else ys)
