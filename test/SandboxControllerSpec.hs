@@ -8,7 +8,7 @@ import System.FilePath ((</>))
 import Control.Exception (bracket)
 import qualified Data.Text as T
 import Data.List (sortOn)
-import Data.Either (isRight)
+import Data.Either (isRight, isLeft)
 
 import TestUtils (testConfig)
 
@@ -123,7 +123,50 @@ spec = around withTempSandboxDir $ do
         
 
         -- Verify directory still exists and is listed
-
         profilesAfter <- listProfiles liveHandle (paths cfg)
-
         fmap (map spName) profilesAfter `shouldBe` Right [profileName]
+
+
+    describe "deleteProfile" $ do
+
+      it "deletes an existing profile directory" $ \tempDir -> do
+        let profileName = "profile-to-delete"
+        let cfg = testConfig tempDir
+        
+        -- First create a profile
+        createResult <- createProfile liveHandle (paths cfg) profileName
+        createResult `shouldSatisfy` isRight
+        
+        -- Verify it exists
+        profilesBefore <- listProfiles liveHandle (paths cfg)
+        fmap (map spName) profilesBefore `shouldBe` Right [profileName]
+        
+        -- Delete the profile
+        case createResult of
+          Left _ -> expectationFailure "Profile creation failed"
+          Right profile -> do
+            deleteResult <- deleteProfile liveHandle profile
+            deleteResult `shouldSatisfy` isRight
+            
+            -- Verify it no longer exists
+            profilesAfter <- listProfiles liveHandle (paths cfg)
+            profilesAfter `shouldBe` Right []
+
+      it "returns an error when the profile directory does not exist" $ \tempDir -> do
+        let cfg = testConfig tempDir
+        let nonExistentProfile = SandboxProfile "nonexistent" "/nonexistent/path"
+        
+        result <- deleteProfile liveHandle nonExistentProfile
+        result `shouldSatisfy` isLeft
+
+      it "returns the deleted profile on success" $ \tempDir -> do
+        let profileName = "profile-to-check"
+        let cfg = testConfig tempDir
+        
+        -- Create a profile
+        createResult <- createProfile liveHandle (paths cfg) profileName
+        case createResult of
+          Left _ -> expectationFailure "Profile creation failed"
+          Right profile -> do
+            deleteResult <- deleteProfile liveHandle profile
+            fmap spName deleteResult `shouldBe` Right profileName

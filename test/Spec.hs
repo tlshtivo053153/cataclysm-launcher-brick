@@ -27,6 +27,7 @@ import qualified Events.ModSpec
 import qualified Events.SandboxSpec
 
 import qualified GameManager.InstallSpec
+import qualified GameManager.UninstallSpec
 
 import qualified GitHubIntegration.InternalSpec
 import qualified LibSpec
@@ -61,6 +62,7 @@ spec = do
   describe "Events.Mod" Events.ModSpec.spec
   describe "Events.Sandbox" Events.SandboxSpec.spec
   describe "GameManager.Install" GameManager.InstallSpec.spec
+  describe "GameManager.Uninstall" GameManager.UninstallSpec.spec
   describe "GitHubIntegration.Internal" GitHubIntegration.InternalSpec.spec
   describe "Lib" LibSpec.spec
   describe "FontManager" FontManagerSpec.spec

@@ -20,7 +20,9 @@ import Types.Font (FontInfo(..), InstalledFont(..))
 
 -- UI Drawing
 drawUI :: AppState -> [Widget Name]
-drawUI st = [ui]
+drawUI st = case appConfirmationDialog st of
+    Nothing -> [ui]
+    Just dialog -> [renderConfirmationDialog dialog, ui]
   where
     available = renderListPane "Available Versions" (appActiveList st == AvailableList) $
                 renderList renderGameVersion (appActiveList st == AvailableList) (appAvailableVersions st)
@@ -42,7 +44,10 @@ drawUI st = [ui]
                      renderList renderAvailableFont (appActiveList st == AvailableFontList) (appAvailableFonts st)
     installedFonts = renderListPane "Installed Fonts" (appActiveList st == InstalledFontList) $
                      renderList renderInstalledFont (appActiveList st == InstalledFontList) (appInstalledFonts st)
-    status = str $ T.unpack $ appStatus st
+    
+    -- Status bar or search box
+    bottomWidget = renderBottomWidget st
+    
     topPanes = hBox [sandboxes, available, installed, backups]
     middlePanes = hBox [availableMods, activeMods]
     bottomPanes = hBox [availableSoundpacks, installedSoundpacks]
@@ -55,8 +60,38 @@ drawUI st = [ui]
                        , hBorder
                        , fontPanes
                        , hBorder
-                       , status
+                       , bottomWidget
                        ]
+
+-- | Render the bottom widget (status bar or search box)
+renderBottomWidget :: AppState -> Widget Name
+renderBottomWidget st =
+    let searchState = appSearchState st
+    in if ssActive searchState
+       then renderSearchBox (ssQuery searchState)
+       else str $ T.unpack $ appStatus st
+
+-- | Render the search input box
+renderSearchBox :: T.Text -> Widget Name
+renderSearchBox query =
+    withAttr searchBoxAttr $
+    hBox [ str "Search: "
+         , txt query
+         , withAttr cursorAttr $ str " "
+         , str " [Esc to cancel, Enter to apply]"
+         ]
+
+-- | Render the confirmation dialog as a modal overlay
+renderConfirmationDialog :: ConfirmationDialog -> Widget Name
+renderConfirmationDialog dialog =
+    centerLayer $ 
+    withAttr dialogAttr $
+    borderWithLabel (str " Confirm ") $
+    padAll 1 $
+    vBox [ txt (cdMessage dialog)
+         , str " "
+         , hCenter $ str "[y/Enter] Yes   [n/Esc] No"
+         ]
 
 renderListPane :: String -> Bool -> Widget Name -> Widget Name
 renderListPane label hasFocus =
@@ -102,10 +137,22 @@ attrPaneDef = attrName "panedef"
 attrPaneFocus :: AttrName
 attrPaneFocus = attrName "panefocus"
 
+dialogAttr :: AttrName
+dialogAttr = attrName "dialog"
+
+searchBoxAttr :: AttrName
+searchBoxAttr = attrName "searchBox"
+
+cursorAttr :: AttrName
+cursorAttr = attrName "cursor"
+
 theMap :: AttrMap
 theMap = attrMap V.defAttr
     [ (attrPaneDef, fg V.white)
     , (attrPaneFocus, fg V.yellow `V.withStyle` V.bold)
     , (listSelectedAttr, V.black `on` V.cyan)
     , (listSelectedFocusedAttr, V.black `on` V.yellow)
+    , (dialogAttr, fg V.yellow `V.withStyle` V.bold)
+    , (searchBoxAttr, fg V.cyan `V.withStyle` V.bold)
+    , (cursorAttr, V.black `on` V.cyan)
     ]

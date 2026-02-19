@@ -64,3 +64,4 @@ modHandlerErrorToText err = case err of
     GitCloneFailed msg -> "Git clone failed: " <> msg
     SymlinkCreationFailed path reason -> "Symlink creation failed for " <> T.pack path <> ": " <> reason
     ModNotFound name -> "Mod not found: " <> name
+    TarGzExtractionFailed msg -> "Tar.gz extraction failed: " <> msg

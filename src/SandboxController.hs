@@ -5,6 +5,7 @@
 module SandboxController (
     createProfile,
     listProfiles,
+    deleteProfile,
     createAndLaunchSandbox
 ) where
 
@@ -126,3 +127,15 @@ listProfiles handle pathsConfig = do
     profileDirs <- hListDirectory (appFileSystemHandle handle) absSandboxBaseDir
     let profiles = map (\dir -> SandboxProfile (T.pack dir) (absSandboxBaseDir </> dir)) profileDirs
     return $ Right profiles
+
+-- | Deletes a sandbox profile directory.
+-- This removes the profile and all its contents (save data, configs, mod links, etc.)
+deleteProfile :: MonadIO m => AppHandle m -> SandboxProfile -> m (Either ManagerError SandboxProfile)
+deleteProfile handle profile = do
+    let profileDir = spDataDirectory profile
+    exists <- hDoesDirectoryExist (appFileSystemHandle handle) profileDir
+    if not exists
+    then return $ Left $ GeneralManagerError $ "Profile directory not found: " <> T.pack profileDir
+    else do
+        hRemoveDirectoryRecursive (appFileSystemHandle handle) profileDir
+        return $ Right profile

@@ -19,7 +19,8 @@ cannot be performed (e.g., no item selected, mod already installed).
 module Events.Mod.Actions (
     getInstallModAction,
     getEnableModAction,
-    getDisableModAction
+    getDisableModAction,
+    getUninstallModAction
 ) where
 
 import Brick.BChan (writeBChan)
@@ -52,7 +53,11 @@ getInstallModAction st =
                         writeBChan chan $ LogMessage $ "Installing mod from " <> msiUrl modSourceInfo <> "..."
                         result <- MH.installModFromGitHub (appHandle st) sysRepoPath repoName modSource
                         writeBChan chan $ ModInstallFinished result
-                    TarGz -> writeBChan chan $ LogMessage "Installation from .tar.gz is not yet supported."
+                    TarGz -> do
+                        let tarGzPath = T.unpack $ msiUrl modSourceInfo
+                        writeBChan chan $ LogMessage $ "Installing mod from " <> msiUrl modSourceInfo <> "..."
+                        result <- MH.installModFromTarGz (appHandle st) sysRepoPath tarGzPath
+                        writeBChan chan $ ModInstallFinished result
 
 -- | Generate an IO action to enable the selected mod for the current profile.
 -- Returns 'Nothing' if no mod is selected, no profile is selected, or the mod is not installed.
@@ -84,3 +89,22 @@ getDisableModAction st =
             result <- MH.disableMod (appHandle st) (spDataDirectory profile) modInfo
             writeBChan chan $ ModDisableFinished result
         _ -> Nothing
+
+-- | Generate an IO action to uninstall the selected mod completely.
+-- Returns 'Nothing' if no mod is selected or the mod is not installed.
+getUninstallModAction :: AppState -> Maybe (IO ())
+getUninstallModAction st =
+    case listSelectedElement (appAvailableMods st) of
+        Nothing -> Nothing
+        Just (_, availableMod) ->
+            if amIsInstalled availableMod
+            then
+                let mModInfo = find (\mi -> miName mi == msiRepositoryName (amSource availableMod)) (appInstalledModsCache st)
+                in case mModInfo of
+                    Nothing -> Nothing
+                    Just modInfo -> Just $ do
+                        let chan = appEventChannel st
+                        writeBChan chan $ LogMessage $ "Uninstalling mod " <> miName modInfo <> "..."
+                        result <- MH.uninstallMod (appHandle st) modInfo
+                        writeBChan chan $ ModUninstalled $ fmap (const modInfo) result
+            else Nothing

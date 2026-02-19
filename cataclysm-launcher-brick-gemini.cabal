@@ -188,6 +188,7 @@ test-suite cataclysm-launcher-brick-gemini-test
       Events.ModSpec
       Events.SandboxSpec
       GameManager.InstallSpec
+      GameManager.UninstallSpec
       GitHubIntegration.InternalSpec
       Types.DomainSpec
       Types.EventSpec
@@ -197,6 +198,7 @@ test-suite cataclysm-launcher-brick-gemini-test
       Integration.WorkflowSpec
       Integration.DownloadSpec
       Integration.SandboxSpec
+      Integration.FontLinkingSpec
       Soundpack.CoreSpec
       Soundpack.InstallSpec
   hs-source-dirs:

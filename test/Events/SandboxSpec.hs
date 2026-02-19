@@ -96,3 +96,31 @@ spec = describe "Events.Sandbox" $ do
             }
 
       isNothing (shouldBackupProfile stWithoutProfile) `shouldBe` True
+
+
+
+  describe "shouldDeleteProfile" $ do
+
+    it "returns Just the profile if one is selected" $ do
+      chan <- newBChan 10
+      let stWithProfile = (initialAppState dummyConfig undefined chan)
+            { appSandboxProfiles = list SandboxProfileListName (Vec.fromList [profile1]) 1
+            }
+      let st = stWithProfile { appSandboxProfiles = listMoveTo 0 (appSandboxProfiles stWithProfile) }
+      isJust (shouldDeleteProfile st) `shouldBe` True
+      shouldDeleteProfile st `shouldBe` Just profile1
+
+    it "returns Nothing if no profile is selected" $ do
+      chan <- newBChan 10
+      let stWithProfile = (initialAppState dummyConfig undefined chan)
+            { appSandboxProfiles = list SandboxProfileListName (Vec.fromList [profile1]) 1
+            }
+      let st = stWithProfile { appSandboxProfiles = appSandboxProfiles stWithProfile & listSelectedL .~ Nothing }
+      isNothing (shouldDeleteProfile st) `shouldBe` True
+
+    it "returns Nothing if profile list is empty" $ do
+      chan <- newBChan 10
+      let stWithoutProfile = (initialAppState dummyConfig undefined chan)
+            { appSandboxProfiles = list SandboxProfileListName Vec.empty 1
+            }
+      isNothing (shouldDeleteProfile stWithoutProfile) `shouldBe` True

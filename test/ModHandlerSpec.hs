@@ -19,7 +19,9 @@ import Control.Monad ((>=>))
 
 import ModHandler
 import Types
+import Types.Domain (ModHandlerError(..))
 import Types.Handle (appFileSystemHandle)
+import Types.Error (ManagerError(..))
 
 -- Test State for mocking file system and process calls
 data TestState = TestState
@@ -29,12 +31,18 @@ data TestState = TestState
     , tsProcessStderr :: String
     , tsCreatedSymlinks :: [(FilePath, FilePath)]  -- (target, link)
     , tsRemovedFiles :: [FilePath]
+    , tsRemovedDirs :: [FilePath]
     , tsDirectoryContents :: Map.Map FilePath [FilePath]
     , tsSymlinkTargets :: Map.Map FilePath FilePath
     } deriving (Show, Eq)
 
 initialState :: TestState
-initialState = TestState [] [] ExitSuccess "" [] [] Map.empty Map.empty
+initialState = TestState [] [] ExitSuccess "" [] [] [] Map.empty Map.empty
+
+-- Helper function to check if an error is TarGzExtractionFailed
+isTarGzExtractionFailed :: ModHandlerError -> Bool
+isTarGzExtractionFailed (TarGzExtractionFailed _) = True
+isTarGzExtractionFailed _ = False
 
 -- Create a test handle using IORef for state tracking
 createTestHandle :: IORef TestState -> AppHandle IO
@@ -48,7 +56,7 @@ createTestHandle ref = AppHandle
         , hDoesDirectoryExist = \p -> do
             s <- readIORef ref
             return $ p `elem` tsCreatedDirs s
-        , hRemoveDirectoryRecursive = \_ -> return ()
+        , hRemoveDirectoryRecursive = \p -> modifyIORef ref $ \s -> s { tsRemovedDirs = p : tsRemovedDirs s }
         , hListDirectory = \p -> do
             s <- readIORef ref
             return $ Map.findWithDefault [] p (tsDirectoryContents s)
@@ -85,7 +93,9 @@ createTestHandle ref = AppHandle
         }
     , appArchiveHandle = ArchiveHandle
         { hExtractTarball = \_ _ -> return $ Right ()
+        , hExtractUncompressedTarball = \_ _ -> return $ Right ()
         , hExtractZip = \_ _ _ -> return $ Right ""
+        , hCreateTarball = \_ _ _ -> return $ Right ()
         }
     }
 
@@ -122,6 +132,32 @@ spec = describe "ModHandler" $ do
             
             result `shouldBe` Right ()
             tsRemovedFiles finalState `shouldContain` [linkPath]
+
+    describe "uninstallMod" $ do
+        it "removes the mod directory when the mod exists" $ do
+            let modInstallPath = "/sys-repo/mods/TestMod"
+                modInfo = ModInfo (T.pack "TestMod") (ModSource "local") modInstallPath
+                stateWithMod = initialState { tsCreatedDirs = [modInstallPath] }
+            
+            ref <- newIORef stateWithMod
+            let testHandle = createTestHandle ref
+            
+            result <- uninstallMod testHandle modInfo
+            finalState <- readIORef ref
+            
+            result `shouldBe` Right ()
+            tsRemovedDirs finalState `shouldContain` [modInstallPath]
+        
+        it "returns an error when the mod does not exist" $ do
+            let modInstallPath = "/sys-repo/mods/NonExistentMod"
+                modInfo = ModInfo (T.pack "NonExistentMod") (ModSource "local") modInstallPath
+            
+            ref <- newIORef initialState
+            let testHandle = createTestHandle ref
+            
+            result <- uninstallMod testHandle modInfo
+            
+            result `shouldBe` Left (ModNotFound (T.pack "NonExistentMod"))
 
     describe "listAvailableMods" $ do
         it "lists mods from both sys-repo and user-repo" $ do
@@ -199,6 +235,43 @@ spec = describe "ModHandler" $ do
                 Left err -> err `shouldBe` GitCloneFailed (T.pack gitError)
 
             tsProcessLog finalState `shouldBe` [expectedProcessCall]
+
+    describe "installModFromTarGz" $ do
+        let sysRepoPath = "/tmp/sys-repo"
+            tarGzPath = "/path/to/TestMod.tar.gz"
+            expectedInstallPath = sysRepoPath </> "mods" </> "TestMod"
+
+        it "succeeds and extracts the tar.gz file" $ do
+            ref <- newIORef initialState
+            let testHandle = createTestHandle ref
+            
+            result <- installModFromTarGz testHandle sysRepoPath tarGzPath
+            finalState <- readIORef ref
+
+            case result of
+                Left err -> expectationFailure $ "Expected Right, got Left: " ++ show err
+                Right modInfo -> do
+                    miName modInfo `shouldBe` T.pack "TestMod"
+                    miInstallPath modInfo `shouldBe` expectedInstallPath
+            
+            tsCreatedDirs finalState `shouldBe` [sysRepoPath </> "mods"]
+
+        it "fails and returns an error if extraction fails" $ do
+            let extractionError = "extraction failed"
+            ref <- newIORef initialState
+            let testHandle = (createTestHandle ref) { appArchiveHandle = ArchiveHandle
+                    { hExtractTarball = \_ _ -> return $ Left $ error extractionError
+                    , hExtractUncompressedTarball = \_ _ -> return $ Right ()
+                    , hExtractZip = \_ _ _ -> return $ Right ""
+                    , hCreateTarball = \_ _ _ -> return $ Right ()
+                    }
+                }
+            
+            result <- installModFromTarGz testHandle sysRepoPath tarGzPath
+
+            case result of
+                Right _ -> expectationFailure "Expected Left, got Right"
+                Left err -> err `shouldSatisfy` isTarGzExtractionFailed
 
     -- Integration tests using real IO
     describe "integration tests with real IO" $ do
@@ -278,6 +351,8 @@ createRealIOHandle = do
             }
         , appArchiveHandle = ArchiveHandle
             { hExtractTarball = \_ _ -> return $ Right ()
+            , hExtractUncompressedTarball = \_ _ -> return $ Right ()
             , hExtractZip = \_ _ _ -> return $ Right ""
+            , hCreateTarball = \_ _ _ -> return $ Right ()
             }
         }

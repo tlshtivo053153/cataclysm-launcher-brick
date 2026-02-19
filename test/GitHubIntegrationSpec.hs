@@ -168,3 +168,54 @@ spec = before createTestHandles $ do
       
       apiCalled <- readIORef (thApiCalled th)
       apiCalled `shouldBe` False
+
+  describe "fetchGameVersionsForce" $ do
+    let tempDir = "/root"
+    let cfg = testConfig tempDir
+
+    it "fetches from API even when cache exists" $ \th -> do
+      -- Setup: Filesystem has a valid cache file
+      let cacheFilePath = T.unpack (cache (paths cfg)) </> "github_releases.json"
+      writeIORef (thFileSystem th) (Map.singleton cacheFilePath (L.toStrict encodedMockReleases))
+      -- API returns new data
+      writeIORef (thApiContent th) (Right encodedMockReleases)
+      
+      -- Run
+      result <- fetchGameVersionsForce (thHandle th) (paths cfg) (api cfg)
+      
+      -- Verify: API should be called even though cache exists
+      result `shouldBe` Right mockGameVersions
+      
+      apiCalled <- readIORef (thApiCalled th)
+      apiCalled `shouldBe` True
+
+    it "fetches from API and caches when no cache exists" $ \th -> do
+      -- Setup: API returns valid data
+      writeIORef (thApiContent th) (Right encodedMockReleases)
+      
+      -- Run
+      result <- fetchGameVersionsForce (thHandle th) (paths cfg) (api cfg)
+      
+      -- Verify
+      result `shouldBe` Right mockGameVersions
+      
+      apiCalled <- readIORef (thApiCalled th)
+      apiCalled `shouldBe` True
+      
+      let cacheFilePath = T.unpack (cache (paths cfg)) </> "github_releases.json"
+      fs <- readIORef (thFileSystem th)
+      Map.lookup cacheFilePath fs `shouldBe` Just (L.toStrict encodedMockReleases)
+
+    it "returns an error if API call fails" $ \th -> do
+      -- Setup: API returns an error
+      let apiError = "API is down"
+      writeIORef (thApiContent th) (Left apiError)
+      
+      -- Run
+      result <- fetchGameVersionsForce (thHandle th) (paths cfg) (api cfg)
+      
+      -- Verify
+      result `shouldBe` Left apiError
+      
+      apiCalled <- readIORef (thApiCalled th)
+      apiCalled `shouldBe` True

@@ -3,11 +3,13 @@
 
 module BackupSystem (
     listBackups,
-    createBackup
+    createBackup,
+    restoreBackup,
+    deleteBackup
 ) where
 
 import           Control.Monad.Catch    (MonadCatch, SomeException, try)
-import           Control.Monad          (filterM)
+import           Control.Monad          (filterM, when)
 import           Control.Monad.IO.Class (MonadIO)
 import           Data.List              (isSuffixOf)
 import           Data.Text              (pack, unpack)
@@ -76,3 +78,42 @@ createBackup handle pathsConfig profile = do
         case result of
             Left err -> return $ Left err
             Right _ -> return $ Right ()
+
+-- | Restore a backup for a given sandbox profile.
+-- Extracts the tar archive to the profile's data directory.
+-- This will overwrite any existing save directory.
+restoreBackup :: (MonadIO m, MonadCatch m) => AppHandle m -> SandboxProfile -> BackupInfo -> m (Either ManagerError ())
+restoreBackup handle profile backupInfo = do
+    let backupFilePath = biFilePath backupInfo
+    let profileDataDir = spDataDirectory profile
+    
+    backupExists <- hDoesFileExist (appFileSystemHandle handle) backupFilePath
+    if not backupExists
+    then return $ Left $ FileSystemError $ "Backup file not found: " <> pack backupFilePath
+    else do
+        -- Remove existing save directory if it exists
+        let saveDir = profileDataDir </> "save"
+        saveDirExists <- hDoesDirectoryExist (appFileSystemHandle handle) saveDir
+        when saveDirExists $ hRemoveDirectoryRecursive (appFileSystemHandle handle) saveDir
+        
+        -- Extract the backup tar to the profile's data directory
+        -- The tar contains a "save" directory which will be extracted
+        result <- hExtractUncompressedTarball (appArchiveHandle handle) backupFilePath profileDataDir
+        case result of
+            Left err -> return $ Left err
+            Right _ -> return $ Right ()
+
+-- | Delete a backup file.
+-- Removes the specified backup file from the filesystem.
+deleteBackup :: (MonadIO m, MonadCatch m) => AppHandle m -> BackupInfo -> m (Either ManagerError BackupInfo)
+deleteBackup handle backupInfo = do
+    let backupFilePath = biFilePath backupInfo
+    
+    backupExists <- hDoesFileExist (appFileSystemHandle handle) backupFilePath
+    if not backupExists
+    then return $ Left $ FileSystemError $ "Backup file not found: " <> pack backupFilePath
+    else do
+        result <- try $ hRemoveFile (appFileSystemHandle handle) backupFilePath
+        case result of
+            Left (e :: SomeException) -> return $ Left $ FileSystemError $ "Failed to delete backup: " <> pack (show e)
+            Right _ -> return $ Right backupInfo

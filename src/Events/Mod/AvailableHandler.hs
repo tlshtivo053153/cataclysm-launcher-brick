@@ -14,6 +14,7 @@ It provides functionality for:
 
 * Installing mods from the available mods list
 * Enabling installed mods for the current profile
+* Uninstalling mods completely from the system
 * Refreshing the available mods list
 * Navigating the available mods list
 
@@ -21,6 +22,7 @@ It provides functionality for:
 
 * @i@ - Install the selected mod
 * @e@ - Enable the selected mod for the current profile
+* @d@ or @Delete@ - Uninstall the selected mod (shows confirmation dialog)
 * Arrow keys - Navigate the list
 -}
 module Events.Mod.AvailableHandler (
@@ -30,11 +32,13 @@ module Events.Mod.AvailableHandler (
 
 import Brick
 import Brick.BChan (writeBChan)
+import Brick.Widgets.List (listSelectedElement)
 import Control.Concurrent (forkIO)
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import qualified Graphics.Vty as V
+import Data.List (find)
 
 import Config (loadModSources)
 import Events.List (handleListEvents)
@@ -55,7 +59,30 @@ handleAvailableModEvents (V.EvKey (V.KChar 'e') []) = do
     case getEnableModAction st of
         Nothing -> modify $ \s -> s { appStatus = "Mod not installed, or profile not selected." }
         Just action -> liftIO $ void $ forkIO action
+handleAvailableModEvents (V.EvKey (V.KChar 'd') []) = handleUninstallMod
+handleAvailableModEvents (V.EvKey V.KDel []) = handleUninstallMod
 handleAvailableModEvents ev = handleListEvents ev AvailableModList
+
+-- | Handle the uninstall action for the selected mod.
+-- Shows a confirmation dialog before uninstalling.
+handleUninstallMod :: EventM Name AppState ()
+handleUninstallMod = do
+    st <- get
+    case listSelectedElement (appAvailableMods st) of
+        Nothing -> modify $ \s -> s { appStatus = "No mod selected." }
+        Just (_, availableMod) ->
+            if amIsInstalled availableMod
+            then
+                let mModInfo = find (\mi -> miName mi == msiRepositoryName (amSource availableMod)) (appInstalledModsCache st)
+                in case mModInfo of
+                    Nothing -> modify $ \s -> s { appStatus = "Mod not installed or not selected." }
+                    Just modInfo -> do
+                        let dialog = ConfirmationDialog
+                                { cdMessage = "Uninstall mod " <> miName modInfo <> "?"
+                                , cdAction = ConfirmUninstallMod modInfo
+                                }
+                        modify $ \s -> s { appConfirmationDialog = Just dialog }
+            else modify $ \s -> s { appStatus = "Mod not installed." }
 
 -- | Refresh the available mods list by loading mod sources and combining
 -- with installed mods information.

@@ -182,6 +182,7 @@ tests:
     - Events.ModSpec
     - Events.SandboxSpec
     - GameManager.InstallSpec
+    - GameManager.UninstallSpec
     - GitHubIntegration.InternalSpec
     - Types.DomainSpec
     - Types.EventSpec
@@ -191,5 +192,6 @@ tests:
     - Integration.WorkflowSpec
     - Integration.DownloadSpec
     - Integration.SandboxSpec
+    - Integration.FontLinkingSpec
     - Soundpack.CoreSpec
     - Soundpack.InstallSpec

@@ -3,6 +3,7 @@
 
 module GitHubIntegration (
     fetchGameVersions,
+    fetchGameVersionsForce,
     downloadAsset,
     generateSoundpackDownloadInfos, -- Replaces fetchLatestSoundpackReleases
     fetchReleasesFromAPI
@@ -58,6 +59,7 @@ formatHttpTime :: UTCTime -> String
 formatHttpTime = formatTime defaultTimeLocale "%a, %d %b %Y %H:%M:%S GMT"
 
 -- | Fetches game versions from GitHub releases.
+-- Uses cache if available, otherwise fetches from API.
 fetchGameVersions :: (MonadIO m) => AppHandle m -> PathsConfig -> ApiConfig -> m (Either String [GameVersion])
 fetchGameVersions handle pathsConfig apiConfig = do
     let cachePath = T.unpack (cache pathsConfig) </> "github_releases.json"
@@ -81,6 +83,24 @@ fetchGameVersions handle pathsConfig apiConfig = do
                     case eitherDecode body of
                         Right releases -> return $ Right $ processReleases releases
                         Left err'      -> return $ Left ("Failed to decode releases: " ++ err')
+
+-- | Fetches game versions from GitHub releases, ignoring any existing cache.
+-- Always fetches fresh data from the API and updates the cache.
+fetchGameVersionsForce :: (MonadIO m) => AppHandle m -> PathsConfig -> ApiConfig -> m (Either String [GameVersion])
+fetchGameVersionsForce handle pathsConfig apiConfig = do
+    let cachePath = T.unpack (cache pathsConfig) </> "github_releases.json"
+    now <- hGetCurrentTime (appTimeHandle handle)
+    let thirtyMinutesAgo = addUTCTime (-1800) now
+    let url = T.unpack $ githubUrl apiConfig
+    responseResult <- hFetchReleasesFromAPI (appHttpHandle handle) url (Just thirtyMinutesAgo)
+
+    case responseResult of
+        Left err -> return $ Left err
+        Right body -> do
+            hWriteFile (appFileSystemHandle handle) cachePath (L.toStrict body)
+            case eitherDecode body of
+                Right releases -> return $ Right $ processReleases releases
+                Left err'      -> return $ Left ("Failed to decode releases: " ++ err')
 
 fetchReleasesFromAPI :: String -> Maybe UTCTime -> IO (Either String [Release])
 fetchReleasesFromAPI url msince = do

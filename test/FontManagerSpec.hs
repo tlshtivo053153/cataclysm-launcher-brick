@@ -53,6 +53,28 @@ spec = describe "FontManager" $ do
             -- 1. Symlink /sandbox/default/font/TestFont -> /root/fonts/TestFont
             -- 2. File /sandbox/default/config/fonts.json contains "TestFont"
 
+    context "uninstallFont" $ do
+        it "removes font directory when it exists" $ do
+            (mockHandle, _) <- createMockHandleWithExistingFit "/root/fonts/TestFont"
+            let installed = InstalledFont "TestFont" "/root/fonts/TestFont"
+            
+            result <- uninstallFont mockHandle pathsConfig installed
+            case result of
+                Right removed -> do
+                    installedFontName removed `shouldBe` "TestFont"
+                    installedFontPath removed `shouldBe` "/root/fonts/TestFont"
+                Left err -> expectationFailure $ "Expected success but got: " ++ show err
+
+        it "returns error when font directory does not exist" $ do
+            (mockHandle, _) <- createMockHandle  -- No existing path
+            let installed = InstalledFont "NonExistentFont" "/root/fonts/NonExistentFont"
+            
+            result <- uninstallFont mockHandle pathsConfig installed
+            case result of
+                Left (FileSystemError _) -> return ()  -- Expected
+                Left err -> expectationFailure $ "Expected FileSystemError but got: " ++ show err
+                Right _ -> expectationFailure "Expected error but got success"
+
 -- Mock implementation
 createMockHandle :: IO (AppHandle IO, IO [String])
 createMockHandle = createMockHandleWithExistingFit ""

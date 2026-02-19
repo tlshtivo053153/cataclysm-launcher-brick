@@ -10,25 +10,28 @@ Stability   : experimental
 Portability : POSIX
 
 This module provides event handlers for sandbox profile management in the
-Cataclysm Launcher. It handles profile creation, backup, and selection.
+Cataclysm Launcher. It handles profile creation, backup, deletion, and selection.
 
 The module exports both the event handler and pure helper functions for testing:
 
 * 'handleSandboxProfileEvents' - Main event handler for the sandbox profiles list.
 * 'decideNewProfileName' - Pure function to generate a new profile name.
 * 'shouldBackupProfile' - Pure function to determine if a backup should be created.
+* 'shouldDeleteProfile' - Pure function to determine which profile to delete.
 
 === Key Bindings
 
 * @n@ - Create a new sandbox profile
 * @b@ - Create a backup of the selected profile
+* @d@ or @Delete@ - Delete the selected profile (shows confirmation dialog)
 * Arrow keys - Navigate the profiles list (triggers profile selection change)
 -}
 module Events.Sandbox (
     handleSandboxProfileEvents,
     -- Pure logic for testing
     decideNewProfileName,
-    shouldBackupProfile
+    shouldBackupProfile,
+    shouldDeleteProfile
 ) where
 
 import Brick
@@ -57,6 +60,11 @@ shouldBackupProfile :: AppState -> Maybe SandboxProfile
 shouldBackupProfile st =
     fmap snd (listSelectedElement (appSandboxProfiles st))
 
+-- | Pure function to determine which profile to delete.
+shouldDeleteProfile :: AppState -> Maybe SandboxProfile
+shouldDeleteProfile st =
+    fmap snd (listSelectedElement (appSandboxProfiles st))
+
 -- | EventM action to create a new profile.
 createProfile :: EventM Name AppState ()
 createProfile = do
@@ -83,10 +91,25 @@ backupProfile = do
                 result <- BS.createBackup h (paths cfg) profile
                 writeBChan chan $ BackupCreated result
 
+-- | EventM action to show confirmation dialog for profile deletion.
+deleteProfile :: EventM Name AppState ()
+deleteProfile = do
+    st <- get
+    case shouldDeleteProfile st of
+        Nothing -> return ()
+        Just profile -> do
+            let dialog = ConfirmationDialog
+                    { cdMessage = "Delete profile " <> spName profile <> "?"
+                    , cdAction = ConfirmDeleteProfile profile
+                    }
+            modify $ \s -> s { appConfirmationDialog = Just dialog }
+
 -- | Event handler for the sandbox profiles list.
 handleSandboxProfileEvents :: V.Event -> EventM Name AppState ()
 handleSandboxProfileEvents (V.EvKey (V.KChar 'n') []) = createProfile
 handleSandboxProfileEvents (V.EvKey (V.KChar 'b') []) = backupProfile
+handleSandboxProfileEvents (V.EvKey (V.KChar 'd') []) = deleteProfile
+handleSandboxProfileEvents (V.EvKey V.KDel []) = deleteProfile
 handleSandboxProfileEvents ev = do
     -- First, handle the list movement, which might change the selection.
     modify $ handleListEvents' ev SandboxProfileList

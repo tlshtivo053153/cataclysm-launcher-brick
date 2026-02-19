@@ -27,6 +27,7 @@ import Handle (liveHandle)
 import FontManager (listInstalledFonts)
 import Types.Font (FontInfo) 
 import Types.Domain (FontConfig(..))
+import Types.UI (initialSearchState)
 
 -- App Definition
 app :: App AppState UIEvent Name
@@ -88,6 +89,8 @@ main = do
                     , appStatus = "Tab to switch lists, Enter to install/launch, 'b' to backup, Esc to quit."
                     , appActiveList = SandboxProfileList
                     , appEventChannel = chan
+                    , appConfirmationDialog = Nothing
+                    , appSearchState = initialSearchState
                     }
             writeBChan chan FetchSoundpacks
             void $ customMain initialVty buildVty (Just chan) app initialState

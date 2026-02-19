@@ -15,6 +15,7 @@ import Types.Handles.FileSystem (FileSystemHandle)
 
 data ArchiveHandle m = ArchiveHandle
     { hExtractTarball :: FilePath -> FilePath -> m (Either ManagerError ())
+    , hExtractUncompressedTarball :: FilePath -> FilePath -> m (Either ManagerError ())
     , hExtractZip     :: FileSystemHandle m -> FilePath -> B.ByteString -> m (Either ManagerError String)
     , hCreateTarball  :: FilePath -> FilePath -> FilePath -> m (Either ManagerError ())
     }

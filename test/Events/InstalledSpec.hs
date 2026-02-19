@@ -8,7 +8,7 @@ import Brick.Widgets.List (list, listMoveTo, listSelectedL)
 import Brick.BChan (newBChan)
 import Lens.Micro ((&), (.~))
 
-import Events.Installed (getLaunchAction)
+import Events.Installed (getLaunchAction, getUninstallAction)
 import TestUtils (initialAppState, testConfig)
 import Types
 
@@ -63,3 +63,25 @@ spec = describe "Events.Installed" $ do
                 , appSandboxProfiles = appSandboxProfiles stWithVersions & listSelectedL .~ Nothing
                 }
       isJust (getLaunchAction st) `shouldBe` True
+
+  describe "getUninstallAction" $ do
+    it "returns Just action when an item is selected" $ do
+      chan <- newBChan 10
+      let stWithVersions = (initialAppState dummyConfig undefined chan)
+            { appInstalledVersions = list InstalledListName (V.fromList [iv]) 1
+            }
+      let st = stWithVersions { appInstalledVersions = listMoveTo 0 (appInstalledVersions stWithVersions) }
+      isJust (getUninstallAction st) `shouldBe` True
+
+    it "returns Nothing when no item is selected" $ do
+      chan <- newBChan 10
+      let stWithVersions = (initialAppState dummyConfig undefined chan)
+            { appInstalledVersions = list InstalledListName (V.fromList [iv]) 1
+            }
+      let st = stWithVersions { appInstalledVersions = appInstalledVersions stWithVersions & listSelectedL .~ Nothing }
+      isNothing (getUninstallAction st) `shouldBe` True
+
+    it "returns Nothing when installed list is empty" $ do
+      chan <- newBChan 10
+      let st = (initialAppState dummyConfig undefined chan) { appInstalledVersions = list InstalledListName V.empty 0 }
+      isNothing (getUninstallAction st) `shouldBe` True

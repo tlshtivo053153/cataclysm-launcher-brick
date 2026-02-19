@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 {-|
 Module      : GameManager
 Description : Game version management and launching functionality.
@@ -13,6 +15,7 @@ Cataclysm Launcher. It re-exports "GameManager.Install" and provides:
 * Fetching available game versions from GitHub
 * Listing installed game versions
 * Launching the game with optional sandbox profile support
+* Uninstalling game versions
 
 The module integrates with font and soundpack management to ensure proper
 environment setup when launching with a sandbox profile.
@@ -21,7 +24,8 @@ module GameManager (
     module GameManager.Install,
     getGameVersions,
     getInstalledVersions,
-    launchGame
+    launchGame,
+    uninstallGame
 ) where
 
 import qualified Data.Text as T
@@ -80,3 +84,30 @@ launchGame handle pathsConfig iv mProfile = do
             return $ Left $ LaunchError $ T.pack ("Executable '" <> executableName <> "' not found in " <> installDir)
         _ ->
             return $ Left $ LaunchError $ T.pack ("Multiple executables named '" <> executableName <> "' found in " <> installDir)
+
+-- | Uninstall a game version by removing its installation directory.
+--
+-- This function removes the directory associated with the specified
+-- 'InstalledVersion' from the file system.
+--
+-- === Parameters
+--
+-- * @handle@: The application 'AppHandle' providing access to dependencies like
+--             the file system.
+-- * @installedVersion@: The 'InstalledVersion' to be removed.
+--
+-- === Returns
+--
+-- An 'Either' containing:
+-- * 'Right ()': On successful removal.
+-- * 'Left ManagerError': On failure, typically a 'FileSystemError' if the
+--                        directory cannot be removed.
+uninstallGame :: Monad m => AppHandle m -> InstalledVersion -> m (Either ManagerError ())
+uninstallGame handle installedVersion = do
+    let dirToRemove = ivPath installedVersion
+    exists <- hDoesDirectoryExist (appFileSystemHandle handle) dirToRemove
+    if exists
+        then do
+            hRemoveDirectoryRecursive (appFileSystemHandle handle) dirToRemove
+            return $ Right ()
+        else return $ Left $ FileSystemError $ "Game directory not found: " <> T.pack dirToRemove

@@ -159,6 +159,7 @@ data ModHandlerError
   = GitCloneFailed T.Text
   | SymlinkCreationFailed FilePath T.Text
   | ModNotFound T.Text
+  | TarGzExtractionFailed T.Text
   deriving (Show, Eq)
 
 -- | Defines the distribution type of a mod (e.g., GitHub release, TarGz archive).

@@ -4,6 +4,7 @@
 
 module ArchiveUtils (
     extractTarball,
+    extractUncompressedTarball,
     extractZip,
     createTarball
 ) where
@@ -38,6 +39,33 @@ extractTarball archivePath installDir = do
         runResourceT $ runConduit $
             sourceFile archivePath
             .| ungzip
+            .| Tar.untar (customRestoreAction installDir)
+
+    case result of
+        Right _ -> return $ Right ()
+        Left (e :: SomeException) -> return $ Left $ ArchiveError $ "tar-conduit extraction failed: " <> T.pack (show e)
+  where
+    customRestoreAction :: MonadResource m => FilePath -> Tar.FileInfo -> ConduitM B.ByteString o m ()
+    customRestoreAction destDir fi = do
+        let fp = destDir </> BS.Char8.unpack (Tar.filePath fi)
+        absDestDir <- liftIO $ makeAbsolute destDir
+        absFp <- liftIO $ makeAbsolute fp
+        when (absDestDir `isPrefixOf` absFp) $ do
+            case Tar.fileType fi of
+                Tar.FTNormal -> do
+                    liftIO $ createDirectoryIfMissing True (takeDirectory fp)
+                    sinkFile fp
+                Tar.FTDirectory -> liftIO $ createDirectoryIfMissing True fp
+                _ -> return () -- Ignore other file types
+
+-- | Extract an uncompressed tar archive.
+-- This is used for backup restoration since backups are stored as uncompressed tar files.
+extractUncompressedTarball :: FilePath -> FilePath -> IO (Either ManagerError ())
+extractUncompressedTarball archivePath installDir = do
+    result <- try $ do
+        liftIO $ createDirectoryIfMissing True installDir
+        runResourceT $ runConduit $
+            sourceFile archivePath
             .| Tar.untar (customRestoreAction installDir)
 
     case result of

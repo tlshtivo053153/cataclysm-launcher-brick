@@ -4,6 +4,7 @@
 
 module FontManager (
     installFont,
+    uninstallFont,
     configureSandboxForFont,
     linkFontsDirToSandbox,
     listInstalledFonts
@@ -202,3 +203,24 @@ listInstalledFonts handle pathsConfig = do
             -- We might want to filter out hidden files/dirs.
             fonts <- filterM (hDoesDirectoryExist fs . (fontsDir </>)) contents
             return $ map (\name -> InstalledFont (T.pack name) (fontsDir </> name)) fonts
+
+-- | Uninstalls a font by removing its directory from the global fonts directory.
+-- This removes the font from the system entirely.
+-- Note: Sandboxes that have this font configured will need to have their config updated separately.
+uninstallFont :: (MonadCatch m) 
+              => AppHandle m 
+              -> PathsConfig 
+              -> InstalledFont 
+              -> m (Either ManagerError InstalledFont)
+uninstallFont handle pathsConfig installedFont = do
+    let fs = appFileSystemHandle handle
+    let fontPath = installedFontPath installedFont
+    
+    exists <- hDoesDirectoryExist fs fontPath
+    if exists
+        then do
+            result <- try $ hRemoveDirectoryRecursive fs fontPath
+            case result of
+                Right () -> return $ Right installedFont
+                Left (e :: SomeException) -> return $ Left $ FileSystemError $ T.pack $ show e
+        else return $ Left $ FileSystemError $ "Font directory not found: " <> T.pack fontPath
