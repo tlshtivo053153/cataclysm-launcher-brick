@@ -20,7 +20,8 @@ import           System.Posix.Types (FileMode(..), CMode(..))
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
 import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, getResponseStatusCode)
-import           Network.HTTP.Client (withResponse, responseBody, responseHeaders, responseStatus, newManager, defaultManagerSettings, BodyReader, brRead)
+import           Network.HTTP.Client (withResponse, responseBody, responseHeaders, responseStatus, BodyReader, brRead)
+import           Network.HTTP.Conduit (newManager, tlsManagerSettings)
 import           Network.HTTP.Types (hContentLength, statusCode)
 import           Data.Aeson (encode)
 import           System.FilePath (takeDirectory)
@@ -79,7 +80,7 @@ downloadWithProgressImpl :: T.Text
                          -> (Int -> Int -> IO ())  -- downloaded, total
                          -> IO (Either ManagerError B.ByteString)
 downloadWithProgressImpl url progressCallback = do
-    manager <- newManager defaultManagerSettings
+    manager <- newManager tlsManagerSettings
     request <- parseRequest (T.unpack url)
     result <- try $ withResponse request manager $ \response -> do
         let status = statusCode (responseStatus response)
