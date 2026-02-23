@@ -90,7 +90,7 @@ downloadWithProgressImpl url progressCallback = do
         else do
             let mContentLength = lookup hContentLength (responseHeaders response)
                 totalBytes = maybe 0 (read . BC.unpack) mContentLength
-            chunks <- collectChunks (responseBody response) totalBytes 0 [] progressCallback
+            chunks <- collectChunks (responseBody response) totalBytes 0 0 [] progressCallback
             return $ Right $ B.concat (reverse chunks)
     case result of
         Left (e :: SomeException) -> return $ Left $ NetworkError $ T.pack (show e)
@@ -101,10 +101,11 @@ downloadWithProgressImpl url progressCallback = do
 collectChunks :: BodyReader 
               -> Int           -- total bytes
               -> Int           -- downloaded so far
+              -> Int           -- last reported downloaded (for throttling)
               -> [B.ByteString] -- accumulated chunks
               -> (Int -> Int -> IO ()) -- progress callback
               -> IO [B.ByteString]
-collectChunks bodyReader totalBytes downloaded chunks callback = do
+collectChunks bodyReader totalBytes downloaded lastReported chunks callback = do
     chunk <- brRead bodyReader
     if B.null chunk
     then do
@@ -114,10 +115,13 @@ collectChunks bodyReader totalBytes downloaded chunks callback = do
     else do
         let newDownloaded = downloaded + B.length chunk
             newChunks = chunk : chunks
-        -- 1MBごとまたは完了時にコールバック呼び出し
-        when (newDownloaded - downloaded >= 1024 * 1024 || newDownloaded == totalBytes) $
+            -- Report progress every 1MB or on completion
+            shouldReport = newDownloaded - lastReported >= 1024 * 1024 
+                        || newDownloaded == totalBytes
+        when shouldReport $
             callback newDownloaded totalBytes
-        collectChunks bodyReader totalBytes newDownloaded newChunks callback
+        let newLastReported = if shouldReport then newDownloaded else lastReported
+        collectChunks bodyReader totalBytes newDownloaded newLastReported newChunks callback
 
 liveHandle :: AppHandle IO
 liveHandle = AppHandle
