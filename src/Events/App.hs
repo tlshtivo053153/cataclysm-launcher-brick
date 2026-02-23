@@ -146,11 +146,21 @@ handleAppEvent (DownloadProgressUpdate dp) = do
                                }
             modify $ \s -> s { appDownloadProgress = Just updatedAd }
 handleAppEvent (DownloadFinished name) = do
-    modify $ \s -> s { appDownloadProgress = Nothing
+    st <- get
+    -- 現在のダウンロードと同じファイル名の場合のみクリア
+    let shouldClear = case appDownloadProgress st of
+            Just ad -> diFileName (adInfo ad) == name
+            Nothing -> True
+    modify $ \s -> s { appDownloadProgress = if shouldClear then Nothing else appDownloadProgress s
                      , appStatus = "Download complete: " <> name
                      }
 handleAppEvent (DownloadFailed name err) = do
-    modify $ \s -> s { appDownloadProgress = Nothing
+    st <- get
+    -- 現在のダウンロードと同じファイル名の場合のみクリア
+    let shouldClear = case appDownloadProgress st of
+            Just ad -> diFileName (adInfo ad) == name
+            Nothing -> True
+    modify $ \s -> s { appDownloadProgress = if shouldClear then Nothing else appDownloadProgress s
                      , appStatus = "Download failed: " <> name <> " - " <> err
                      }
 handleAppEvent event = modify (`handleAppEventPure` event)
