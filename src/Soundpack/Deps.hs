@@ -92,7 +92,9 @@ data NetworkDeps m = NetworkDeps
   { -- | Downloads a remote asset as a strict 'ByteString'.
     ndDownloadAsset :: T.Text -> m (Either ManagerError B.ByteString),
     -- | Downloads a remote file as a lazy 'L.ByteString'.
-    ndDownloadFile :: T.Text -> m (Either ManagerError L.ByteString)
+    ndDownloadFile :: T.Text -> m (Either ManagerError L.ByteString),
+    -- | Downloads with progress callback: downloaded bytes, total bytes.
+    ndDownloadWithProgress :: T.Text -> (Int -> Int -> m ()) -> m (Either ManagerError B.ByteString)
   }
 
 -- | A record of functions abstracting time-related operations.
@@ -154,6 +156,7 @@ toSoundpackDeps handle chan config = SoundpackDeps
     , spdNetwork = NetworkDeps
         { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
         , ndDownloadFile = hDownloadFile (appHttpHandle handle)
+        , ndDownloadWithProgress = hDownloadWithProgress (appHttpHandle handle)
         }
     , spdTime = TimeDeps
         { tdGetCurrentTime = hGetCurrentTime (appTimeHandle handle)

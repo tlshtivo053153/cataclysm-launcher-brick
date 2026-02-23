@@ -14,4 +14,6 @@ data HttpHandle m = HttpHandle
     { hDownloadAsset        :: T.Text -> m (Either ManagerError B.ByteString)
     , hDownloadFile         :: T.Text -> m (Either ManagerError L.ByteString)
     , hFetchReleasesFromAPI :: String -> Maybe UTCTime -> m (Either String L.ByteString)
+    , hDownloadWithProgress :: T.Text -> (Int -> Int -> m ()) -> m (Either ManagerError B.ByteString)
+    -- ^ Download with progress callback: downloaded bytes, total bytes
     }

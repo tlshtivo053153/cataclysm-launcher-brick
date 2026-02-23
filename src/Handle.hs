@@ -114,6 +114,13 @@ liveHandle = AppHandle
             return $ case result of
                 Left err -> Left err
                 Right releases -> Right $ encode releases
+        -- TODO: Implement proper progress tracking in Phase 2
+        -- For now, this is a placeholder that ignores the progress callback
+        , hDownloadWithProgress = \url _progressCallback -> liftIO $ do
+            result <- GH.downloadAsset url
+            case result of
+                Left err -> return $ Left $ NetworkError $ T.pack err
+                Right bs -> return $ Right $ L.toStrict bs
         }
     , appProcessHandle = ProcessHandle
         { hCallCommand = liftIO . callCommand

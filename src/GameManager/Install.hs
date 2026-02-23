@@ -37,6 +37,7 @@ downloadAndInstall handle pathsConfig eventChan gv = do
             let netDeps = NetworkDeps
                   { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
                   , ndDownloadFile = hDownloadFile (appHttpHandle handle)
+                  , ndDownloadWithProgress = hDownloadWithProgress (appHttpHandle handle)
                   }
 
             assetDataEither <- downloadWithCache fsDeps netDeps cacheDir url onCacheHit onCacheMiss

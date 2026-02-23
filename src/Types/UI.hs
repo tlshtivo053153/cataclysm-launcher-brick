@@ -7,6 +7,7 @@ module Types.UI (
     ConfirmationAction(..),
     SearchState(..),
     PendingOperation(..),
+    ActiveDownload(..),
     initialSearchState
 ) where
 
@@ -14,9 +15,10 @@ import Brick.Widgets.List (List)
 import Brick.BChan (BChan)
 import qualified Data.Text as T
 import qualified Data.Set as Set
+import Data.Time (UTCTime)
 import Types.Domain
 import Types.Handle
-import Types.Event
+import Types.Event (UIEvent, DownloadInfo)
 import Types.Font (FontInfo, InstalledFont)
 
 data Name = AvailableListName | InstalledListName | SandboxProfileListName | BackupListName | AvailableModListName | ActiveModListName | AvailableSoundpackListName | InstalledSoundpackListName | AvailableFontListName | InstalledFontListName | SearchEditorName deriving (Eq, Ord, Show)
@@ -56,6 +58,14 @@ data PendingOperation
     | PendingModDownload T.Text       -- ^ Mod name being downloaded
     deriving (Eq, Ord, Show)
 
+-- | Represents an active download with progress tracking
+data ActiveDownload = ActiveDownload
+    { adInfo :: DownloadInfo       -- ^ Download information
+    , adDownloaded :: Int          -- ^ Downloaded bytes
+    , adLastUpdateTime :: UTCTime  -- ^ Last update time
+    , adSpeed :: Double            -- ^ bytes per second
+    } deriving (Eq, Show)
+
 data AppState = AppState
     { appAvailableVersions :: List Name GameVersion
     , appInstalledVersions :: List Name InstalledVersion
@@ -76,4 +86,5 @@ data AppState = AppState
     , appConfirmationDialog :: Maybe ConfirmationDialog
     , appSearchState       :: SearchState
     , appPendingOperations :: Set.Set PendingOperation  -- ^ Track in-progress operations
+    , appDownloadProgress  :: Maybe ActiveDownload      -- ^ Current download progress
     }

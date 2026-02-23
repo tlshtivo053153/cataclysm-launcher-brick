@@ -93,6 +93,7 @@ main = do
                     , appConfirmationDialog = Nothing
                     , appSearchState = initialSearchState
                     , appPendingOperations = Set.empty
+                    , appDownloadProgress = Nothing
                     }
             writeBChan chan FetchSoundpacks
             void $ customMain initialVty buildVty (Just chan) app initialState
