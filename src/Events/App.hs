@@ -109,15 +109,21 @@ handleAppEvent (ActivateFont profile installedFont) = do
         result <- configureSandboxForFont handle profile installedFont
         writeBChan chan (FontActivationFinished result)
 handleAppEvent (DownloadStarted info) = do
-    let ad = ActiveDownload
-            { adInfo = info
-            , adDownloaded = 0
-            , adLastUpdateTime = diStartTime info
-            , adSpeed = 0
-            }
-    modify $ \s -> s { appDownloadProgress = Just ad
-                     , appStatus = "Downloading " <> diName info <> "..."
-                     }
+    st <- get
+    -- 既にダウンロード中の場合は、新しいダウンロード開始イベントを無視する
+    -- （ファイルロックにより実際にはダウンロードされないが、UIが乱れるのを防ぐ）
+    case appDownloadProgress st of
+        Just _ -> return ()
+        Nothing -> do
+            let ad = ActiveDownload
+                    { adInfo = info
+                    , adDownloaded = 0
+                    , adLastUpdateTime = diStartTime info
+                    , adSpeed = 0
+                    }
+            modify $ \s -> s { appDownloadProgress = Just ad
+                             , appStatus = "Downloading " <> diName info <> "..."
+                             }
 handleAppEvent (DownloadProgressUpdate dp) = do
     st <- get
     case appDownloadProgress st of
