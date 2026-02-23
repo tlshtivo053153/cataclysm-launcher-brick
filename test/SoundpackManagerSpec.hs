@@ -52,7 +52,8 @@ spec = describe "installSoundpack" $ do
             spdNetwork =
               NetworkDeps
                 { ndDownloadAsset = hDownloadAsset http,
-                  ndDownloadFile = hDownloadFile http
+                  ndDownloadFile = hDownloadFile http,
+                  ndDownloadWithProgress = hDownloadWithProgress http
                 },
             spdEvents =
               EventDeps

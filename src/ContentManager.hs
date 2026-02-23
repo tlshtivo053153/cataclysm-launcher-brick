@@ -64,8 +64,9 @@ downloadWithCache :: MonadCatch m
                   -> T.Text        -- ^ URL
                   -> m ()          -- ^ Action to run on cache hit
                   -> m ()          -- ^ Action to run on cache miss
+                  -> (Int -> Int -> m ())  -- ^ Progress callback: downloaded, total
                   -> m (Either ManagerError FilePath) -- ^ Path to the cached file
-downloadWithCache fs net cacheDir url onCacheHit onCacheMiss = do
+downloadWithCache fs net cacheDir url onCacheHit onCacheMiss progressCallback = do
     let fileName = takeFileName (T.unpack url)
     let cacheFilePath = cacheDir </> fileName
 
@@ -97,7 +98,7 @@ downloadWithCache fs net cacheDir url onCacheHit onCacheMiss = do
             else do
                 -- Perform the actual download
                 onCacheMiss
-                result <- doDownload fs net cacheFilePath url
+                result <- doDownload fs net cacheFilePath url progressCallback
                 -- Always release the lock
                 fsdReleaseFileLock fs cacheFilePath
                 return result
@@ -125,13 +126,13 @@ waitForDownload fs cacheFilePath onCacheHit = do
             return $ Left $ FileSystemError $ T.pack "Previous download failed, please retry"
 
 -- | Perform the actual download
-doDownload :: MonadCatch m => FileSystemDeps m -> NetworkDeps m -> FilePath -> T.Text -> m (Either ManagerError FilePath)
-doDownload fs net cacheFilePath url = do
-    result <- ndDownloadFile net url
+doDownload :: MonadCatch m => FileSystemDeps m -> NetworkDeps m -> FilePath -> T.Text -> (Int -> Int -> m ()) -> m (Either ManagerError FilePath)
+doDownload fs net cacheFilePath url progressCallback = do
+    result <- ndDownloadWithProgress net url progressCallback
     case result of
         Left e -> return $ Left e
         Right responseBody -> do
-            writeResult <- try $ fsdWriteFile fs cacheFilePath (LBS.toStrict responseBody)
+            writeResult <- try $ fsdWriteFile fs cacheFilePath responseBody
             case writeResult of
                 Left (e :: SomeException) -> return $ Left $ FileSystemError $ T.pack $ show e
                 Right () -> return $ Right cacheFilePath

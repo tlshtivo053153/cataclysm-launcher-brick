@@ -29,7 +29,7 @@ import Soundpack.Deps (ArchiveDeps(..), ConfigDeps (..), EventDeps (..), FileSys
 import System.FilePath (takeFileName)
 import Types.Domain (Config (..), InstalledSoundpack (..), SandboxProfile, SoundpackInfo (..))
 import Types.Error (ManagerError (..), SoundpackError (..))
-import Types.Event (UIEvent (..))
+import Types.Event (UIEvent (..), DownloadInfo(..), DownloadProgress(..))
 
 -- | Installs a soundpack into a given sandbox profile.
 --
@@ -83,23 +83,56 @@ installSoundpack deps profile soundpackInfo = do
   zipDataResult <-
     if shouldUseCache
       then do
-        let fileName = takeFileName (T.unpack downloadUrl)
-        let onCacheHit = edWriteEvent events $ CacheHit ("Using cached soundpack: " <> T.pack fileName)
-        let onCacheMiss = edWriteEvent events $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
+        let fileName = T.pack $ takeFileName (T.unpack downloadUrl)
+        let onCacheHit = edWriteEvent events $ CacheHit ("Using cached soundpack: " <> fileName)
+        let onCacheMiss = do
+                -- Send DownloadStarted event
+                startTime <- tdGetCurrentTime time
+                edWriteEvent events $ DownloadStarted DownloadInfo
+                    { diName = spiRepoName soundpackInfo
+                    , diFileName = fileName
+                    , diTotalBytes = 0  -- Will be updated by progress callback
+                    , diStartTime = startTime
+                    }
 
-        cachePathEither <- downloadWithCache fs net cacheDir downloadUrl onCacheHit onCacheMiss
+        let progressCallback downloaded total =
+                edWriteEvent events $ DownloadProgressUpdate DownloadProgress
+                    { dpFileName = fileName
+                    , dpDownloaded = downloaded
+                    , dpTotalBytes = total
+                    }
+
+        cachePathEither <- downloadWithCache fs net cacheDir downloadUrl onCacheHit onCacheMiss progressCallback
         case cachePathEither of
-          Left err -> return $ Left err
+          Left err -> do
+            -- Send DownloadFailed event
+            edWriteEvent events $ DownloadFailed fileName (T.pack $ show err)
+            return $ Left err
           Right path -> do
+            -- Send DownloadFinished event
+            edWriteEvent events $ DownloadFinished fileName
             content <- fsdReadFile fs path
             return $ Right content
       else do
-        let fileName = takeFileName (T.unpack downloadUrl)
-        edWriteEvent events $ LogMessage ("Downloading soundpack: " <> T.pack fileName)
+        let fileName = T.pack $ takeFileName (T.unpack downloadUrl)
+        -- Send DownloadStarted event
+        startTime <- tdGetCurrentTime time
+        edWriteEvent events $ DownloadStarted DownloadInfo
+            { diName = spiRepoName soundpackInfo
+            , diFileName = fileName
+            , diTotalBytes = 0
+            , diStartTime = startTime
+            }
         result <- ndDownloadAsset net downloadUrl
-        return $ case result of
-          Left err -> Left $ SoundpackManagerError $ SoundpackDownloadFailed $ T.pack $ show err
-          Right content -> Right content
+        case result of
+          Left err -> do
+            -- Send DownloadFailed event
+            edWriteEvent events $ DownloadFailed fileName (T.pack $ show err)
+            return $ Left $ SoundpackManagerError $ SoundpackDownloadFailed $ T.pack $ show err
+          Right content -> do
+            -- Send DownloadFinished event
+            edWriteEvent events $ DownloadFinished fileName
+            return $ Right content
 
   case zipDataResult of
     Left err -> return $ Left err

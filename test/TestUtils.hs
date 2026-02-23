@@ -107,6 +107,12 @@ mockHandle = AppHandle
                 Just result -> return result
                 Nothing -> error $ "Asset not found for url: " ++ T.unpack url
         , hFetchReleasesFromAPI = \_ _ -> return $ Left "mocked API error"
+        , hDownloadWithProgress = \url _progressCallback -> do
+            st <- get
+            case lookup url (tsDownloadedAssets st) of
+                Just (Right bs) -> return $ Right $ L.toStrict bs
+                Just (Left err) -> return $ Left err
+                Nothing -> error $ "Asset not found for url: " ++ T.unpack url
         }
     , appProcessHandle = ProcessHandle
         { hCallCommand = \_ -> return ()

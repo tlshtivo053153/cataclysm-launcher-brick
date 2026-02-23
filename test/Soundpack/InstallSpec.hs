@@ -14,6 +14,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Time.Clock (UTCTime(..))
 import Data.Time.Calendar (fromGregorian)
 import Control.Monad (unless)
+import System.Timeout (timeout)
 
 spec :: Spec
 spec = describe "Soundpack.Install" $ do
@@ -58,7 +59,10 @@ spec = describe "Soundpack.Install" $ do
           ispVersion installed `shouldBe` "1.0"
 
       finalEvents <- flushEvents events
-      finalEvents `shouldContainElements` [LogMessage "Downloading soundpack: download.zip"]
+      -- Check for DownloadStarted event (new behavior)
+      case finalEvents of
+        (DownloadStarted di : _) -> diFileName di `shouldBe` "download.zip"
+        _ -> expectationFailure $ "Expected DownloadStarted event, but got: " ++ show finalEvents
 
   it "returns an error if download fails" $ do
     (_, deps) <- createMockDeps currentTime config (Left (SoundpackManagerError (SoundpackDownloadFailed "Network error"))) (Right ()) False
@@ -92,6 +96,7 @@ createMockDeps mockTime mockCfg downloadResult extractResult cacheExists = do
   let mockNet = NetworkDeps
         { ndDownloadAsset = \_ -> return downloadResult
         , ndDownloadFile = \_ -> return $ LBS.fromStrict <$> downloadResult
+        , ndDownloadWithProgress = \_ _ -> return downloadResult
         }
   let mockTimeDep = TimeDeps { tdGetCurrentTime = return mockTime }
   let mockEvents = EventDeps { edWriteEvent = writeChan eventChan }
@@ -103,7 +108,11 @@ createMockDeps mockTime mockCfg downloadResult extractResult cacheExists = do
   return (eventChan, deps)
 
 flushEvents :: Chan a -> IO [a]
-flushEvents = getChanContents
+flushEvents chan = do
+  result <- timeout 1000000 $ getChanContents chan
+  case result of
+    Just events -> return $ take 10 events  -- Take only first 10 events to avoid blocking
+    Nothing -> return []
 
 -- A helper to check if a list contains all elements of another list
 shouldContainElements :: (Show a, Eq a) => [a] -> [a] -> Expectation
