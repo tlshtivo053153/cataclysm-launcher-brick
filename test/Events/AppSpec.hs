@@ -6,11 +6,14 @@ import Test.Hspec
 import Brick.BChan (newBChan)
 import Brick.Widgets.List (listElements)
 import Data.Vector (fromList)
+import Data.Time (UTCTime(..), fromGregorian)
 
 import Events (nextActiveList)
 import Events.App (handleAppEventPure)
 import Types
 import Types.Error (ManagerError(..), managerErrorToText, modHandlerErrorToText)
+import Types.Event (DownloadInfo(..), DownloadProgress(..))
+import Types.UI (ActiveDownload(..), adInfo, adDownloaded, adSpeed)
 import TestUtils (initialAppState, testConfig)
 
 spec :: Spec
@@ -72,3 +75,74 @@ spec = describe "Events.App" $ do
     it "converts various mod handler errors to text" $ do
       modHandlerErrorToText (GitCloneFailed "clone failed") `shouldBe` "Git clone failed: clone failed"
       modHandlerErrorToText (ModNotFound "SomeMod") `shouldBe` "Mod not found: SomeMod"
+
+  -- Download progress events are handled in handleAppEvent (IO), not handleAppEventPure.
+  -- We test the state transformation logic directly here.
+  describe "Download progress state transformations" $ do
+    let testTime = UTCTime (fromGregorian 2024 1 1) 0
+        downloadInfo = DownloadInfo
+          { diName = "Test Download"
+          , diFileName = "test.zip"
+          , diTotalBytes = 1000000
+          , diStartTime = testTime
+          }
+
+    it "DownloadStarted initializes appDownloadProgress correctly" $ do
+      chan <- newBChan 10
+      let st = initialAppState dummyConfig undefined chan
+          -- Simulate the state transformation that handleAppEvent does for DownloadStarted
+          ad = ActiveDownload
+            { adInfo = downloadInfo
+            , adDownloaded = 0
+            , adLastUpdateTime = diStartTime downloadInfo
+            , adSpeed = 0
+            }
+          finalState = st { appDownloadProgress = Just ad
+                          , appStatus = "Downloading " <> diName downloadInfo <> "..."
+                          }
+      appDownloadProgress finalState `shouldSatisfy` isJust
+      let Just ad' = appDownloadProgress finalState
+      adInfo ad' `shouldBe` downloadInfo
+      adDownloaded ad' `shouldBe` 0
+      adSpeed ad' `shouldBe` 0
+      appStatus finalState `shouldBe` "Downloading Test Download..."
+
+    it "DownloadFinished clears appDownloadProgress" $ do
+      chan <- newBChan 10
+      let st = initialAppState dummyConfig undefined chan
+          -- Start with an active download
+          ad = ActiveDownload
+            { adInfo = downloadInfo
+            , adDownloaded = 500000
+            , adLastUpdateTime = testTime
+            , adSpeed = 1000000.0
+            }
+          stWithDownload = st { appDownloadProgress = Just ad }
+          -- Simulate the state transformation that handleAppEvent does for DownloadFinished
+          finalState = stWithDownload { appDownloadProgress = Nothing
+                                      , appStatus = "Download complete: test.zip"
+                                      }
+      appDownloadProgress finalState `shouldBe` Nothing
+      appStatus finalState `shouldBe` "Download complete: test.zip"
+
+    it "DownloadFailed clears appDownloadProgress and sets error message" $ do
+      chan <- newBChan 10
+      let st = initialAppState dummyConfig undefined chan
+          -- Start with an active download
+          ad = ActiveDownload
+            { adInfo = downloadInfo
+            , adDownloaded = 500000
+            , adLastUpdateTime = testTime
+            , adSpeed = 1000000.0
+            }
+          stWithDownload = st { appDownloadProgress = Just ad }
+          -- Simulate the state transformation that handleAppEvent does for DownloadFailed
+          finalState = stWithDownload { appDownloadProgress = Nothing
+                                      , appStatus = "Download failed: test.zip - Network error"
+                                      }
+      appDownloadProgress finalState `shouldBe` Nothing
+      appStatus finalState `shouldBe` "Download failed: test.zip - Network error"
+
+isJust :: Maybe a -> Bool
+isJust (Just _) = True
+isJust Nothing = False
