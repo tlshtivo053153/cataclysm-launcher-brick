@@ -17,6 +17,8 @@ import qualified Graphics.Vty as V
 
 import Types
 import Types.Font (FontInfo(..), InstalledFont(..))
+import Types.Event (DownloadInfo(..), DownloadProgress(..))
+import Types.UI (ActiveDownload(..))
 
 -- UI Drawing
 drawUI :: AppState -> [Widget Name]
@@ -69,7 +71,9 @@ renderBottomWidget st =
     let searchState = appSearchState st
     in if ssActive searchState
        then renderSearchBox (ssQuery searchState)
-       else str $ T.unpack $ appStatus st
+       else case appDownloadProgress st of
+           Just ad -> renderDownloadProgress ad
+           Nothing -> str $ T.unpack $ appStatus st
 
 -- | Render the search input box
 renderSearchBox :: T.Text -> Widget Name
@@ -155,4 +159,59 @@ theMap = attrMap V.defAttr
     , (dialogAttr, fg V.yellow `V.withStyle` V.bold)
     , (searchBoxAttr, fg V.cyan `V.withStyle` V.bold)
     , (cursorAttr, V.black `on` V.cyan)
+    , (progressBarAttr, fg V.green `V.withStyle` V.bold)
     ]
+
+-- | Progress bar attribute
+progressBarAttr :: AttrName
+progressBarAttr = attrName "progressBar"
+
+-- | ダウンロード進捗を表示するウィジェット
+renderDownloadProgress :: ActiveDownload -> Widget Name
+renderDownloadProgress ad =
+    let total = diTotalBytes (adInfo ad)
+        downloaded = adDownloaded ad
+        percentage = if total > 0 then (downloaded * 100) `div` total else 0
+        barWidth = 30
+        filled = (percentage * barWidth) `div` 100
+        empty = barWidth - filled
+        bar = replicate filled '█' ++ replicate empty '░'
+        speed = adSpeed ad
+        remaining = if speed > 0 
+                    then Just $ fromIntegral (total - downloaded) / speed
+                    else Nothing
+    in withAttr progressBarAttr $
+       vBox
+        [ str $ "Downloading: " ++ T.unpack (diName (adInfo ad))
+        , hBox
+            [ str $ "[" ++ bar ++ "] "
+            , str $ show percentage ++ "%"
+            ]
+        , hBox
+            [ str $ formatBytes downloaded ++ " / " ++ formatBytes total
+            , str " | "
+            , str $ formatSpeed speed
+            , case remaining of
+                Just secs -> str $ " | ETA: " ++ formatTime secs
+                Nothing -> str ""
+            ]
+        ]
+
+-- | バイト数を人間が読みやすい形式に変換
+formatBytes :: Int -> String
+formatBytes n
+    | n >= 1024 * 1024 * 1024 = show (n `div` (1024 * 1024 * 1024)) ++ " GB"
+    | n >= 1024 * 1024 = show (n `div` (1024 * 1024)) ++ " MB"
+    | n >= 1024 = show (n `div` 1024) ++ " KB"
+    | otherwise = show n ++ " B"
+
+-- | 速度を人間が読みやすい形式に変換
+formatSpeed :: Double -> String
+formatSpeed bytesPerSec = formatBytes (round bytesPerSec) ++ "/s"
+
+-- | 時間を人間が読みやすい形式に変換
+formatTime :: Double -> String
+formatTime secs
+    | secs >= 3600 = show (round secs `div` 3600) ++ "h " ++ show ((round secs `mod` 3600) `div` 60) ++ "m"
+    | secs >= 60 = show (round secs `div` 60) ++ "m " ++ show (round secs `mod` 60) ++ "s"
+    | otherwise = show (round secs) ++ "s"

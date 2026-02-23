@@ -32,6 +32,7 @@ import Control.Concurrent (forkIO)
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
+import Data.Time (getCurrentTime, diffUTCTime)
 import Data.Vector (fromList)
 
 import Events.Mod (refreshActiveModsList, refreshAvailableModsList)
@@ -44,6 +45,8 @@ import FontManager (installFont, configureSandboxForFont)
 import Types
 import Types.Font (installedFontName)
 import Types.Error (ManagerError(..), managerErrorToText, modHandlerErrorToText)
+import Types.Event (DownloadInfo(..), DownloadProgress(..))
+import Types.UI (ActiveDownload(..))
 
 -- | Handles IO-related events and calls the pure event handler.
 handleAppEvent :: UIEvent -> EventM Name AppState ()
@@ -105,6 +108,42 @@ handleAppEvent (ActivateFont profile installedFont) = do
     liftIO $ void $ forkIO $ do
         result <- configureSandboxForFont handle profile installedFont
         writeBChan chan (FontActivationFinished result)
+handleAppEvent (DownloadStarted info) = do
+    let ad = ActiveDownload
+            { adInfo = info
+            , adDownloaded = 0
+            , adLastUpdateTime = diStartTime info
+            , adSpeed = 0
+            }
+    modify $ \s -> s { appDownloadProgress = Just ad
+                     , appStatus = "Downloading " <> diName info <> "..."
+                     }
+handleAppEvent (DownloadProgressUpdate dp) = do
+    st <- get
+    case appDownloadProgress st of
+        Nothing -> return ()
+        Just ad -> do
+            now <- liftIO getCurrentTime
+            let elapsed = diffUTCTime now (adLastUpdateTime ad)
+                bytesDiff = dpDownloaded dp - adDownloaded ad
+                newSpeed = if elapsed > 0 
+                           then fromIntegral bytesDiff / realToFrac elapsed
+                           else adSpeed ad
+                -- 移動平均を使用して速度をスムーズに
+                smoothedSpeed = (adSpeed ad * 0.7) + (newSpeed * 0.3)
+                updatedAd = ad { adDownloaded = dpDownloaded dp
+                               , adLastUpdateTime = now
+                               , adSpeed = smoothedSpeed
+                               }
+            modify $ \s -> s { appDownloadProgress = Just updatedAd }
+handleAppEvent (DownloadFinished name) = do
+    modify $ \s -> s { appDownloadProgress = Nothing
+                     , appStatus = "Download complete: " <> name
+                     }
+handleAppEvent (DownloadFailed name err) = do
+    modify $ \s -> s { appDownloadProgress = Nothing
+                     , appStatus = "Download failed: " <> name <> " - " <> err
+                     }
 handleAppEvent event = modify (`handleAppEventPure` event)
 
 -- | A pure function to handle state changes based on UI events.
