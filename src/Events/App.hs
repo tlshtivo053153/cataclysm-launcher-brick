@@ -131,9 +131,12 @@ handleAppEvent (DownloadProgressUpdate dp) = do
                            else adSpeed ad
                 -- 移動平均を使用して速度をスムーズに
                 smoothedSpeed = (adSpeed ad * 0.7) + (newSpeed * 0.3)
+                -- diTotalBytesを更新（初期値0から実際の値へ）
+                updatedInfo = (adInfo ad) { diTotalBytes = dpTotalBytes dp }
                 updatedAd = ad { adDownloaded = dpDownloaded dp
                                , adLastUpdateTime = now
                                , adSpeed = smoothedSpeed
+                               , adInfo = updatedInfo
                                }
             modify $ \s -> s { appDownloadProgress = Just updatedAd }
 handleAppEvent (DownloadFinished name) = do
