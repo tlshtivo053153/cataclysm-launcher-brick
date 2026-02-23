@@ -6,12 +6,12 @@ module Handle (
 ) where
 
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as BC (unpack)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import           Data.Time (getCurrentTime)
-import           Control.Exception (SomeException, catch, IOException)
-import           Control.Monad (void)
-import           Control.Monad.Catch (try)
+import           Control.Exception (SomeException, catch, IOException, try)
+import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (liftIO)
 import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, makeAbsolute, pathIsSymbolicLink, removeDirectoryRecursive, removeFile)
 import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
@@ -20,6 +20,8 @@ import           System.Posix.Types (FileMode(..), CMode(..))
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
 import           Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest, setRequestHeader, getResponseStatusCode)
+import           Network.HTTP.Client (withResponse, responseBody, responseHeaders, responseStatus, newManager, defaultManagerSettings, BodyReader, brRead)
+import           Network.HTTP.Types (hContentLength, statusCode)
 import           Data.Aeson (encode)
 import           System.FilePath (takeDirectory)
 
@@ -71,6 +73,51 @@ isFileLocked filePath = do
     let lockFile = filePath ++ lockFileSuffix
     doesFileExist lockFile
 
+-- | Download with progress tracking using HTTP streaming
+-- Reports progress via callback (downloaded bytes, total bytes)
+downloadWithProgressImpl :: T.Text 
+                         -> (Int -> Int -> IO ())  -- downloaded, total
+                         -> IO (Either ManagerError B.ByteString)
+downloadWithProgressImpl url progressCallback = do
+    manager <- newManager defaultManagerSettings
+    request <- parseRequest (T.unpack url)
+    result <- try $ withResponse request manager $ \response -> do
+        let status = statusCode (responseStatus response)
+        if status /= 200
+        then return $ Left $ NetworkError $ T.pack $ 
+            "HTTP error: " ++ show status
+        else do
+            let mContentLength = lookup hContentLength (responseHeaders response)
+                totalBytes = maybe 0 (read . BC.unpack) mContentLength
+            chunks <- collectChunks (responseBody response) totalBytes 0 [] progressCallback
+            return $ Right $ B.concat (reverse chunks)
+    case result of
+        Left (e :: SomeException) -> return $ Left $ NetworkError $ T.pack (show e)
+        Right r -> return r
+
+-- | Collect chunks from response body with progress reporting
+-- Reports progress every 1MB or on completion
+collectChunks :: BodyReader 
+              -> Int           -- total bytes
+              -> Int           -- downloaded so far
+              -> [B.ByteString] -- accumulated chunks
+              -> (Int -> Int -> IO ()) -- progress callback
+              -> IO [B.ByteString]
+collectChunks bodyReader totalBytes downloaded chunks callback = do
+    chunk <- brRead bodyReader
+    if B.null chunk
+    then do
+        -- Report final progress when download completes
+        when (downloaded > 0) $ callback downloaded totalBytes
+        return chunks
+    else do
+        let newDownloaded = downloaded + B.length chunk
+            newChunks = chunk : chunks
+        -- 1MBごとまたは完了時にコールバック呼び出し
+        when (newDownloaded - downloaded >= 1024 * 1024 || newDownloaded == totalBytes) $
+            callback newDownloaded totalBytes
+        collectChunks bodyReader totalBytes newDownloaded newChunks callback
+
 liveHandle :: AppHandle IO
 liveHandle = AppHandle
     { appFileSystemHandle = FileSystemHandle
@@ -114,13 +161,9 @@ liveHandle = AppHandle
             return $ case result of
                 Left err -> Left err
                 Right releases -> Right $ encode releases
-        -- TODO: Implement proper progress tracking in Phase 2
-        -- For now, this is a placeholder that ignores the progress callback
-        , hDownloadWithProgress = \url _progressCallback -> liftIO $ do
-            result <- GH.downloadAsset url
-            case result of
-                Left err -> return $ Left $ NetworkError $ T.pack err
-                Right bs -> return $ Right $ L.toStrict bs
+        -- Download with progress tracking using HTTP streaming
+        , hDownloadWithProgress = \url progressCallback -> liftIO $ 
+            downloadWithProgressImpl url progressCallback
         }
     , appProcessHandle = ProcessHandle
         { hCallCommand = liftIO . callCommand
