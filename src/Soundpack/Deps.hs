@@ -77,7 +77,14 @@ data FileSystemDeps m = FileSystemDeps
     -- | Recursively removes a directory and its contents.
     fsdRemoveDirectoryRecursive :: FilePath -> m (),
     -- | Lists the contents of a directory.
-    fsdListDirectory :: FilePath -> m [FilePath]
+    fsdListDirectory :: FilePath -> m [FilePath],
+    -- | Tries to acquire a file lock for thread-safe downloads.
+    -- Returns True if the lock was acquired, False if already locked.
+    fsdTryAcquireFileLock :: FilePath -> m Bool,
+    -- | Releases a file lock.
+    fsdReleaseFileLock :: FilePath -> m (),
+    -- | Checks if a file is currently locked.
+    fsdIsFileLocked :: FilePath -> m Bool
   }
 
 -- | A record of functions abstracting network operations.
@@ -123,6 +130,9 @@ toFileSystemDeps fsHandle = FileSystemDeps
     , fsdDoesDirectoryExist = hDoesDirectoryExist fsHandle
     , fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive fsHandle
     , fsdListDirectory = hListDirectory fsHandle
+    , fsdTryAcquireFileLock = hTryAcquireFileLock fsHandle
+    , fsdReleaseFileLock = hReleaseFileLock fsHandle
+    , fsdIsFileLocked = hIsFileLocked fsHandle
     }
 
 -- | Convert AppHandle to SoundpackDeps.

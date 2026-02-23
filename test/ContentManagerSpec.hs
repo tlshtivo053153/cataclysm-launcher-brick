@@ -31,6 +31,10 @@ spec = describe "ContentManager" $ do
             , fsdDoesDirectoryExist = \_ -> return True
             , fsdRemoveDirectoryRecursive = \_ -> return ()
             , fsdListDirectory = \_ -> return []
+            -- File locking functions for tests (mock implementations)
+            , fsdTryAcquireFileLock = \_ -> return True  -- Always succeed in tests
+            , fsdReleaseFileLock = \_ -> return ()
+            , fsdIsFileLocked = \_ -> return False
             }
     let mockNetDeps :: NetworkDeps (StateT TestState IO)
         mockNetDeps = NetworkDeps

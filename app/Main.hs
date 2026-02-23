@@ -4,6 +4,7 @@ module Main (main) where
 
 import Control.Monad (void)
 import qualified Data.Text as T
+import qualified Data.Set as Set
 import Data.Vector (fromList)
 import qualified Graphics.Vty as V
 import qualified Graphics.Vty.CrossPlatform as VCP
@@ -91,6 +92,7 @@ main = do
                     , appEventChannel = chan
                     , appConfirmationDialog = Nothing
                     , appSearchState = initialSearchState
+                    , appPendingOperations = Set.empty
                     }
             writeBChan chan FetchSoundpacks
             void $ customMain initialVty buildVty (Just chan) app initialState

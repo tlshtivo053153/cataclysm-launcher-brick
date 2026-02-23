@@ -6,12 +6,14 @@ module Types.UI (
     ConfirmationDialog(..),
     ConfirmationAction(..),
     SearchState(..),
+    PendingOperation(..),
     initialSearchState
 ) where
 
 import Brick.Widgets.List (List)
 import Brick.BChan (BChan)
 import qualified Data.Text as T
+import qualified Data.Set as Set
 import Types.Domain
 import Types.Handle
 import Types.Event
@@ -46,6 +48,14 @@ data SearchState = SearchState
 initialSearchState :: SearchState
 initialSearchState = SearchState False T.empty
 
+-- | Represents a pending operation to prevent duplicate downloads
+data PendingOperation
+    = PendingGameDownload T.Text      -- ^ Game version ID being downloaded
+    | PendingSoundpackDownload T.Text -- ^ Soundpack name being downloaded
+    | PendingFontDownload T.Text      -- ^ Font name being downloaded
+    | PendingModDownload T.Text       -- ^ Mod name being downloaded
+    deriving (Eq, Ord, Show)
+
 data AppState = AppState
     { appAvailableVersions :: List Name GameVersion
     , appInstalledVersions :: List Name InstalledVersion
@@ -65,4 +75,5 @@ data AppState = AppState
     , appEventChannel      :: BChan UIEvent
     , appConfirmationDialog :: Maybe ConfirmationDialog
     , appSearchState       :: SearchState
+    , appPendingOperations :: Set.Set PendingOperation  -- ^ Track in-progress operations
     }

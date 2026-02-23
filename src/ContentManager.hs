@@ -7,8 +7,8 @@ module ContentManager (
     downloadWithCache
 ) where
 
-import Control.Monad (forM)
-import Control.Monad.Catch (MonadCatch, SomeException, try)
+import Control.Monad (forM, when)
+import Control.Monad.Catch (MonadCatch, SomeException, try, finally)
 import qualified Data.Text as T
 import System.FilePath ((</>), makeRelative, takeFileName)
 import qualified Data.Map as Map
@@ -48,13 +48,15 @@ listAvailableContent handle sysRepo userRepo = do
     userFiles <- listAllFiles handle userRepo
 
     let sysContent = map (\p -> Content (makeRelative sysRepo p) p) sysFiles
-    let userContent = map (\p -> Content (makeRelative userRepo p) p) userFiles
+    let userContent' = map (\p -> Content (makeRelative userRepo p) p) userFiles
 
-    let contentMap = foldl' (\acc c -> Map.insert (contentName c) c acc) Map.empty (sysContent ++ userContent)
+    let contentMap = foldl' (\acc c -> Map.insert (contentName c) c acc) Map.empty (sysContent ++ userContent')
 
     return $ Map.elems contentMap
 
 -- | Downloads a file from a URL, using a cache if available.
+-- Uses file locking to prevent race conditions when multiple threads
+-- attempt to download the same file simultaneously.
 downloadWithCache :: MonadCatch m
                   => FileSystemDeps m
                   -> NetworkDeps m
@@ -69,18 +71,67 @@ downloadWithCache fs net cacheDir url onCacheHit onCacheMiss = do
 
     fsdCreateDirectoryIfMissing fs True cacheDir
 
+    -- First check: Quick path for already cached files
     cacheExists <- fsdDoesFileExist fs cacheFilePath
     if cacheExists
     then do
         onCacheHit
         return $ Right cacheFilePath
     else do
-        onCacheMiss
-        result <- ndDownloadFile net url
-        case result of
-            Left e -> return $ Left e
-            Right responseBody -> do
-                writeResult <- try $ fsdWriteFile fs cacheFilePath (LBS.toStrict responseBody)
-                case writeResult of
-                    Left (e :: SomeException) -> return $ Left $ FileSystemError $ T.pack $ show e
-                    Right () -> return $ Right cacheFilePath
+        -- Try to acquire lock for downloading
+        lockAcquired <- fsdTryAcquireFileLock fs cacheFilePath
+        if not lockAcquired
+        then do
+            -- Another thread is downloading, wait for it to complete
+            -- by checking if the file exists (with polling)
+            waitForDownload fs cacheFilePath onCacheHit
+        else do
+            -- We have the lock, check again (double-check locking pattern)
+            -- Another thread might have completed the download while we waited for the lock
+            cacheExistsAfterLock <- fsdDoesFileExist fs cacheFilePath
+            if cacheExistsAfterLock
+            then do
+                fsdReleaseFileLock fs cacheFilePath
+                onCacheHit
+                return $ Right cacheFilePath
+            else do
+                -- Perform the actual download
+                onCacheMiss
+                result <- doDownload fs net cacheFilePath url
+                -- Always release the lock
+                fsdReleaseFileLock fs cacheFilePath
+                return result
+
+-- | Wait for another thread to complete the download
+waitForDownload :: Monad m => FileSystemDeps m -> FilePath -> m () -> m (Either ManagerError FilePath)
+waitForDownload fs cacheFilePath onCacheHit = do
+    -- Check if file exists now
+    exists <- fsdDoesFileExist fs cacheFilePath
+    if exists
+    then do
+        onCacheHit
+        return $ Right cacheFilePath
+    else do
+        -- Check if still locked (download in progress)
+        locked <- fsdIsFileLocked fs cacheFilePath
+        if locked
+        then do
+            -- Still downloading, return a "pending" result
+            -- The caller should retry later or handle this case
+            return $ Left $ FileSystemError $ T.pack "Download in progress by another thread"
+        else do
+            -- Not locked and file doesn't exist - something went wrong
+            -- The previous download may have failed
+            return $ Left $ FileSystemError $ T.pack "Previous download failed, please retry"
+
+-- | Perform the actual download
+doDownload :: MonadCatch m => FileSystemDeps m -> NetworkDeps m -> FilePath -> T.Text -> m (Either ManagerError FilePath)
+doDownload fs net cacheFilePath url = do
+    result <- ndDownloadFile net url
+    case result of
+        Left e -> return $ Left e
+        Right responseBody -> do
+            writeResult <- try $ fsdWriteFile fs cacheFilePath (LBS.toStrict responseBody)
+            case writeResult of
+                Left (e :: SomeException) -> return $ Left $ FileSystemError $ T.pack $ show e
+                Right () -> return $ Right cacheFilePath

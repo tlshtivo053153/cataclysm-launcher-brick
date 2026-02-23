@@ -24,4 +24,8 @@ data FileSystemHandle m = FileSystemHandle
     , hCreateSymbolicLink   :: FilePath -> FilePath -> m ()
     , hDoesSymbolicLinkExist :: FilePath -> m Bool
     , hGetSymbolicLinkTarget :: FilePath -> m FilePath
+    -- File locking functions for thread-safe downloads
+    , hTryAcquireFileLock  :: FilePath -> m Bool
+    , hReleaseFileLock     :: FilePath -> m ()
+    , hIsFileLocked        :: FilePath -> m Bool
     }

@@ -43,7 +43,11 @@ spec = describe "installSoundpack" $ do
                   fsdCreateDirectoryIfMissing = hCreateDirectoryIfMissing fs,
                   fsdDoesDirectoryExist = hDoesDirectoryExist fs,
                   fsdRemoveDirectoryRecursive = hRemoveDirectoryRecursive fs,
-                  fsdListDirectory = hListDirectory fs
+                  fsdListDirectory = hListDirectory fs,
+                  -- File locking functions for tests
+                  fsdTryAcquireFileLock = hTryAcquireFileLock fs,
+                  fsdReleaseFileLock = hReleaseFileLock fs,
+                  fsdIsFileLocked = hIsFileLocked fs
                 },
             spdNetwork =
               NetworkDeps

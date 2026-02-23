@@ -15,6 +15,7 @@ import Brick.Widgets.List (list)
 import qualified Data.Vector as Vec
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as L
+import qualified Data.Set as Set
 import Data.Time (getCurrentTime, UTCTime)
 import System.Exit (ExitCode(..))
 import Control.Monad.State.Strict
@@ -88,6 +89,10 @@ mockHandle = AppHandle
         , hCreateSymbolicLink = \_ _ -> return ()
         , hDoesSymbolicLinkExist = \_ -> return False
         , hGetSymbolicLinkTarget = \_ -> return ""
+        -- File locking functions for tests (mock implementations)
+        , hTryAcquireFileLock = \_ -> return True  -- Always succeed in tests
+        , hReleaseFileLock = \_ -> return ()
+        , hIsFileLocked = \_ -> return False
         }
     , appHttpHandle = HttpHandle
         { hDownloadAsset = \url -> do
@@ -146,4 +151,5 @@ initialAppState config handle chan =
     , appStatus            = "Initial"
     , appActiveList        = AvailableList
     , appEventChannel      = chan
+    , appPendingOperations = Set.empty
     }

@@ -84,6 +84,10 @@ createMockDeps mockTime mockCfg downloadResult extractResult cacheExists = do
         , fsdDoesDirectoryExist = \_ -> return True
         , fsdRemoveDirectoryRecursive = \_ -> return ()
         , fsdListDirectory = \_ -> return []
+        -- File locking functions for tests
+        , fsdTryAcquireFileLock = \_ -> return True
+        , fsdReleaseFileLock = \_ -> return ()
+        , fsdIsFileLocked = \_ -> return False
         }
   let mockNet = NetworkDeps
         { ndDownloadAsset = \_ -> return downloadResult
