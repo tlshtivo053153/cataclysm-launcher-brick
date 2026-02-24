@@ -31,6 +31,7 @@ import FileSystemUtils (findFilesRecursively)
 import qualified GitHubIntegration as GH
 import           ArchiveUtils (extractTarball, extractUncompressedTarball, extractZip, createTarball)
 import Soundpack.Deps (toFileSystemDeps)
+import Logger (LogEnv)
 
 import Types
 import Types.Error (ManagerError(..))
@@ -129,8 +130,8 @@ collectChunks bodyReader totalBytes downloaded lastReported chunks callback = do
         let newLastReported = if shouldReport then newDownloaded else lastReported
         collectChunks bodyReader totalBytes newDownloaded newLastReported newChunks callback
 
-liveHandle :: AppHandle IO
-liveHandle = AppHandle
+liveHandle :: Maybe LogEnv -> AppHandle IO
+liveHandle logEnv = AppHandle
     { appFileSystemHandle = FileSystemHandle
         { hDoesFileExist = liftIO . doesFileExist
         , hReadFile = liftIO . B.readFile
@@ -196,4 +197,5 @@ liveHandle = AppHandle
             in liftIO $ extractZip fsDeps installDir zipData
         , hCreateTarball = \sourceDir targetPath dirName -> liftIO $ createTarball sourceDir targetPath dirName
         }
+    , appLogEnv = logEnv
     }

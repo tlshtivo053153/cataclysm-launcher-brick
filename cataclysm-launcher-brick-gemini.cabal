@@ -40,6 +40,7 @@ library
       ModUtils
       SandboxController
       FontManager
+      Logger
       Types
       Types.Domain
       Types.Error
@@ -108,6 +109,7 @@ library
     , http-conduit
     , http-types
     , katip
+    , optparse-applicative
     , process
     , resourcet
     , tar
@@ -128,6 +130,7 @@ executable cataclysm-launcher-brick-gemini-exe
   main-is: Main.hs
   other-modules:
       UI
+      Cli
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -149,6 +152,7 @@ executable cataclysm-launcher-brick-gemini-exe
     , http-conduit
     , http-types
     , katip
+    , optparse-applicative
     , process
     , resourcet
     , tar
@@ -230,6 +234,7 @@ test-suite cataclysm-launcher-brick-gemini-test
     , katip
     , microlens
     , mtl
+    , optparse-applicative
     , process
     , resourcet
     , tar

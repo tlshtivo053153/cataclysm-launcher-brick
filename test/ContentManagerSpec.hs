@@ -70,7 +70,7 @@ spec = describe "ContentManager" $ do
                     , tsCacheMisses = 0
                     }
             
-            (result, finalState) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (modify (\s -> s { tsCacheHits = tsCacheHits s + 1 })) (return ()) (\_ _ -> return ())) initialState
+            (result, finalState) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (modify (\s -> s { tsCacheHits = tsCacheHits s + 1 })) (return ()) (\_ _ -> return ()) (\_ -> return ())) initialState
 
             result `shouldBe` Right cacheFilePath
             tsDownloadedAssets finalState `shouldBe` []
@@ -89,7 +89,7 @@ spec = describe "ContentManager" $ do
                     , tsCacheMisses = 0
                     }
 
-            (result, finalState) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (return ()) (modify (\s -> s { tsCacheMisses = tsCacheMisses s + 1 })) (\_ _ -> return ())) initialState
+            (result, finalState) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (return ()) (modify (\s -> s { tsCacheMisses = tsCacheMisses s + 1 })) (\_ _ -> return ()) (\_ -> return ())) initialState
 
             result `shouldBe` Right cacheFilePath
             tsFileContents finalState `shouldBe` [(cacheFilePath, fileContent)]
@@ -107,6 +107,6 @@ spec = describe "ContentManager" $ do
                     , tsCacheMisses = 0
                     }
 
-            (result, _) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (return ()) (return ()) (\_ _ -> return ())) initialState
+            (result, _) <- runStateT (downloadWithCache mockFsDeps mockNetDeps cacheDir url (return ()) (return ()) (\_ _ -> return ()) (\_ -> return ())) initialState
 
             result `shouldBe` Left (NetworkError "download failed")

@@ -116,5 +116,5 @@ createMockHandleWithExistingFit existingPath = do
     let process' = undefined
     let async = undefined
     
-    let handle = AppHandle fs http process' time async archive
+    let handle = AppHandle fs http process' time async archive Nothing
     return (handle, return [])

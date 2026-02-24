@@ -34,7 +34,7 @@ import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.Time (getCurrentTime, diffUTCTime)
 import Data.Vector (fromList)
-import Debug.Trace (trace)
+import Logger (logDebug)
 
 import Events.Mod (refreshActiveModsList, refreshAvailableModsList)
 import Events.Soundpack (refreshInstalledSoundpacksList, refreshInstalledSoundpacksList')
@@ -59,9 +59,10 @@ handleAppEvent (InstallSoundpack soundpackInfo) = do
     let handle = appHandle st
     let chan = appEventChannel st
     let config = appConfig st
+    let logEnv = appLogEnv (appHandle st)
     liftIO $ void $ forkIO $ do
         -- Construct dependencies using the conversion function
-        let deps = toSoundpackDeps handle chan config
+        let deps = toSoundpackDeps handle chan config logEnv
 
         -- Create a dummy profile for the install function (it's not used for directory determination anymore)
         let dummyProfile = SandboxProfile "" ""
@@ -114,14 +115,16 @@ handleAppEvent (DownloadStarted info) = do
     -- 既にダウンロード中の場合は、新しいダウンロード開始イベントを無視する
     -- （ファイルロックにより実際にはダウンロードされないが、UIが乱れるのを防ぐ）
     -- DEBUG LOG: DownloadStarted受信時の状態
-    let debugMsg = T.unpack $ "[DEBUG] DownloadStarted: " <> diName info 
+    let debugMsg = "DownloadStarted: " <> diName info 
                  <> " (fileName: " <> diFileName info <> ")"
-    trace debugMsg $ case appDownloadProgress st of
+    liftIO $ logDebug (appLogEnv (appHandle st)) debugMsg
+    case appDownloadProgress st of
         Just existingAd -> do
             -- DEBUG LOG: 既存のダウンロードがある場合
-            let ignoreMsg = T.unpack $ "[DEBUG] Ignoring DownloadStarted - already downloading: " 
+            let ignoreMsg = "Ignoring DownloadStarted - already downloading: " 
                           <> diName (adInfo existingAd)
-            trace ignoreMsg $ return ()
+            liftIO $ logDebug (appLogEnv (appHandle st)) ignoreMsg
+            return ()
         Nothing -> do
             let ad = ActiveDownload
                     { adInfo = info
@@ -137,16 +140,16 @@ handleAppEvent (DownloadProgressUpdate dp) = do
     case appDownloadProgress st of
         Nothing -> do
             -- DEBUG LOG: 進捗イベント受信時にダウンロード状態がない
-            let msg = T.unpack $ "[DEBUG] DownloadProgressUpdate ignored - no active download: " <> dpFileName dp
-            trace msg $ return ()
+            let msg = "DownloadProgressUpdate ignored - no active download: " <> dpFileName dp
+            liftIO $ logDebug (appLogEnv (appHandle st)) msg
             return ()
         Just ad -> do
             -- ファイル名が一致する場合のみ処理（複数スレッドからのイベント混在を防ぐ）
             if diFileName (adInfo ad) /= dpFileName dp
             then do
-                let msg = "[DEBUG] DownloadProgressUpdate ignored - file mismatch: expected " 
-                        ++ T.unpack (diFileName (adInfo ad)) ++ " but got " ++ T.unpack (dpFileName dp)
-                trace msg $ return ()
+                let msg = "DownloadProgressUpdate ignored - file mismatch: expected " 
+                        <> diFileName (adInfo ad) <> " but got " <> dpFileName dp
+                liftIO $ logDebug (appLogEnv (appHandle st)) msg
                 return ()
             else do
                 now <- liftIO getCurrentTime
@@ -168,14 +171,15 @@ handleAppEvent (DownloadProgressUpdate dp) = do
                                    , adInfo = updatedInfo
                                    }
                 -- DEBUG LOG: 進捗更新の詳細
-                let debugMsg = "[DEBUG] DownloadProgressUpdate: " ++ T.unpack (dpFileName dp)
+                let debugMsg = T.pack $ "DownloadProgressUpdate: " ++ T.unpack (dpFileName dp)
                             ++ " | dpDownloaded=" ++ show (dpDownloaded dp)
                             ++ " | adDownloaded=" ++ show (adDownloaded ad)
                             ++ " | bytesDiff=" ++ show bytesDiff
                             ++ " | elapsed=" ++ show elapsed
                             ++ " | newSpeed=" ++ show actualSpeed
                             ++ " | smoothedSpeed=" ++ show smoothedSpeed
-                trace debugMsg $ modify $ \s -> s { appDownloadProgress = Just updatedAd }
+                liftIO $ logDebug (appLogEnv (appHandle st)) debugMsg
+                modify $ \s -> s { appDownloadProgress = Just updatedAd }
 handleAppEvent (DownloadFinished name) = do
     st <- get
     -- 現在のダウンロードと同じファイル名の場合のみクリア

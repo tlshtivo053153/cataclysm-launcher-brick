@@ -24,6 +24,7 @@ dependencies:
 - brick
 - dhall
 - http-conduit
+- optparse-applicative
 - http-client
 - http-types
 - aeson
@@ -80,6 +81,7 @@ library:
   - ModUtils
   - SandboxController
   - FontManager
+  - Logger
   - Types
   - Types.Domain
   - Types.Error
@@ -137,6 +139,7 @@ executables:
     - cataclysm-launcher-brick-gemini
     other-modules:
     - UI
+    - Cli
 
 tests:
   cataclysm-launcher-brick-gemini-test:

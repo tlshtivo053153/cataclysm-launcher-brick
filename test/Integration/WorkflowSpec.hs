@@ -51,9 +51,10 @@ spec = describe "Integration Workflow" $ do
 
       let mockApiResponse = L8.pack "[{\"tag_name\":\"0.G\",\"name\":\"Version 1.0\",\"prerelease\":false,\"published_at\":\"2025-01-01T00:00:00Z\",\"assets\":[{\"browser_download_url\":\"http://example.com/v1.0-linux-with-graphics-x64.tar.gz\"}]}]"
 
-      let testHandle = Handle.liveHandle
+      let baseHandle = Handle.liveHandle Nothing
+      let handleUnderTest = baseHandle
 
-            { appHttpHandle = (appHttpHandle Handle.liveHandle)
+            { appHttpHandle = (appHttpHandle baseHandle)
 
               { hFetchReleasesFromAPI = \_ _ -> do
 
@@ -69,13 +70,13 @@ spec = describe "Integration Workflow" $ do
 
       -- CRITICAL STEP: Ensure the cache directory exists before calling the function under test.
 
-      liftIO $ hCreateDirectoryIfMissing (appFileSystemHandle testHandle) True (T.unpack $ cache (paths config))
+      liftIO $ hCreateDirectoryIfMissing (appFileSystemHandle handleUnderTest) True (T.unpack $ cache (paths config))
 
 
 
       -- 4. First fetch: should call API and create cache
 
-      eitherVersions1 <- liftIO $ fetchGameVersions testHandle (paths config) (api config)
+      eitherVersions1 <- liftIO $ fetchGameVersions handleUnderTest (paths config) (api config)
 
       
 
@@ -107,7 +108,7 @@ spec = describe "Integration Workflow" $ do
 
           -- 5. Second fetch: should use cache, not call API
 
-          eitherVersions2 <- liftIO $ fetchGameVersions testHandle (paths config) (api config)
+          eitherVersions2 <- liftIO $ fetchGameVersions handleUnderTest (paths config) (api config)
 
           
 

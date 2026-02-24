@@ -42,19 +42,20 @@ spec = describe "Integration Sandbox" $ do
       launchedCommandRef <- liftIO $ newIORef (Nothing :: Maybe (String, [String]))
       eventChan <- newBChan 10
 
-      let testHandle = Handle.liveHandle
-            { appProcessHandle = (appProcessHandle Handle.liveHandle)
+      let baseHandle = Handle.liveHandle Nothing
+      let handleUnderTest = baseHandle
+            { appProcessHandle = (appProcessHandle baseHandle)
                 { hLaunchGame = \cmd args -> do
                     liftIO $ atomicModifyIORef' launchedCommandRef (const (Just (cmd, args), ()))
                     -- In a real scenario, this would block. For tests, we just record and return.
                 }
-            , appAsyncHandle = (appAsyncHandle Handle.liveHandle)
+            , appAsyncHandle = (appAsyncHandle baseHandle)
                 { hWriteBChan = \_ _ -> return () -- Ignore UI events
                 }
             }
 
       -- 2. Execute
-      result <- liftIO $ createAndLaunchSandbox (paths cfg) testHandle eventChan (T.pack gameId) (T.pack sandboxName)
+      result <- liftIO $ createAndLaunchSandbox (paths cfg) handleUnderTest eventChan (T.pack gameId) (T.pack sandboxName)
 
       -- 3. Verify
       case result of

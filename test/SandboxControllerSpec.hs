@@ -10,11 +10,9 @@ import qualified Data.Text as T
 import Data.List (sortOn)
 import Data.Either (isRight, isLeft)
 
-import TestUtils (testConfig)
+import TestUtils (testConfig, testHandle)
 
 import SandboxController
-
-import Handle (liveHandle)
 
 import Types
 
@@ -52,7 +50,7 @@ spec = around withTempSandboxDir $ do
 
       it "returns an empty list when the sandbox directory is empty" $ \tempDir -> do
         let cfg = testConfig tempDir
-        result <- listProfiles liveHandle (paths cfg)
+        result <- listProfiles testHandle (paths cfg)
         result `shouldBe` Right []
 
       it "returns a list of profiles for each subdirectory" $ \tempDir -> do
@@ -62,7 +60,7 @@ spec = around withTempSandboxDir $ do
         createDirectory (sandboxDir </> "profile1")
         createDirectory (sandboxDir </> "profile2")
         
-        result <- listProfiles liveHandle (paths cfg)
+        result <- listProfiles testHandle (paths cfg)
         case result of
           Left e -> expectationFailure (show e)
           Right profiles -> do
@@ -82,7 +80,7 @@ spec = around withTempSandboxDir $ do
 
         
 
-        result <- createProfile liveHandle (paths cfg) profileName
+        result <- createProfile testHandle (paths cfg) profileName
 
         
 
@@ -100,7 +98,7 @@ spec = around withTempSandboxDir $ do
 
         -- Verify directory exists
 
-        profilesAfter <- listProfiles liveHandle (paths cfg)
+        profilesAfter <- listProfiles testHandle (paths cfg)
 
         fmap (map spName) profilesAfter `shouldBe` Right [profileName]
 
@@ -116,14 +114,14 @@ spec = around withTempSandboxDir $ do
 
         
 
-        result <- createProfile liveHandle (paths cfg) profileName
+        result <- createProfile testHandle (paths cfg) profileName
 
         result `shouldSatisfy` isRight
 
         
 
         -- Verify directory still exists and is listed
-        profilesAfter <- listProfiles liveHandle (paths cfg)
+        profilesAfter <- listProfiles testHandle (paths cfg)
         fmap (map spName) profilesAfter `shouldBe` Right [profileName]
 
 
@@ -134,29 +132,29 @@ spec = around withTempSandboxDir $ do
         let cfg = testConfig tempDir
         
         -- First create a profile
-        createResult <- createProfile liveHandle (paths cfg) profileName
+        createResult <- createProfile testHandle (paths cfg) profileName
         createResult `shouldSatisfy` isRight
         
         -- Verify it exists
-        profilesBefore <- listProfiles liveHandle (paths cfg)
+        profilesBefore <- listProfiles testHandle (paths cfg)
         fmap (map spName) profilesBefore `shouldBe` Right [profileName]
         
         -- Delete the profile
         case createResult of
           Left _ -> expectationFailure "Profile creation failed"
           Right profile -> do
-            deleteResult <- deleteProfile liveHandle profile
+            deleteResult <- deleteProfile testHandle profile
             deleteResult `shouldSatisfy` isRight
             
             -- Verify it no longer exists
-            profilesAfter <- listProfiles liveHandle (paths cfg)
+            profilesAfter <- listProfiles testHandle (paths cfg)
             profilesAfter `shouldBe` Right []
 
       it "returns an error when the profile directory does not exist" $ \tempDir -> do
         let cfg = testConfig tempDir
         let nonExistentProfile = SandboxProfile "nonexistent" "/nonexistent/path"
         
-        result <- deleteProfile liveHandle nonExistentProfile
+        result <- deleteProfile testHandle nonExistentProfile
         result `shouldSatisfy` isLeft
 
       it "returns the deleted profile on success" $ \tempDir -> do
@@ -164,9 +162,9 @@ spec = around withTempSandboxDir $ do
         let cfg = testConfig tempDir
         
         -- Create a profile
-        createResult <- createProfile liveHandle (paths cfg) profileName
+        createResult <- createProfile testHandle (paths cfg) profileName
         case createResult of
           Left _ -> expectationFailure "Profile creation failed"
           Right profile -> do
-            deleteResult <- deleteProfile liveHandle profile
+            deleteResult <- deleteProfile testHandle profile
             fmap spName deleteResult `shouldBe` Right profileName

@@ -16,6 +16,7 @@ import Types.Handles.Process
 import Types.Handles.Time
 import Types.Handles.Async
 import Types.Handles.Archive
+import Logger (LogEnv)
 
 data AppHandle m = AppHandle
     { appFileSystemHandle :: FileSystemHandle m
@@ -24,4 +25,5 @@ data AppHandle m = AppHandle
     , appTimeHandle       :: TimeHandle m
     , appAsyncHandle      :: AsyncHandle m
     , appArchiveHandle    :: ArchiveHandle m
+    , appLogEnv           :: Maybe LogEnv
     }

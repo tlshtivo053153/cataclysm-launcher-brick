@@ -10,17 +10,19 @@ module GameManager.Install (
 import qualified Data.Text as T
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import System.FilePath ((</>), takeFileName)
 import Brick.BChan (BChan)
 import Data.Time (getCurrentTime)
 
 import ContentManager (downloadWithCache)
 import Soundpack.Deps (NetworkDeps(..), toFileSystemDeps)
+import Logger (logDebug)
 import Types
 import Types.Error (ManagerError(..))
 import Types.Event (UIEvent(..), DownloadInfo(..), DownloadProgress(..))
 
-downloadAndInstall :: (MonadCatch m) => AppHandle m -> PathsConfig -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
+downloadAndInstall :: (MonadCatch m, MonadIO m) => AppHandle m -> PathsConfig -> BChan UIEvent -> GameVersion -> m (Either ManagerError String)
 downloadAndInstall handle pathsConfig eventChan gv = do
     let baseDir = T.unpack $ sysRepo pathsConfig
         installDir = baseDir </> "game" </> T.unpack (gvVersionId gv)
@@ -56,8 +58,9 @@ downloadAndInstall handle pathsConfig eventChan gv = do
                   , ndDownloadFile = hDownloadFile (appHttpHandle handle)
                   , ndDownloadWithProgress = hDownloadWithProgress (appHttpHandle handle)
                   }
+            let debugLog = liftIO . logDebug (appLogEnv handle) . T.pack
 
-            assetDataEither <- downloadWithCache fsDeps netDeps cacheDir url onCacheHit onCacheMiss progressCallback
+            assetDataEither <- downloadWithCache fsDeps netDeps cacheDir url onCacheHit onCacheMiss progressCallback debugLog
             
             case assetDataEither of
                 Left err -> do

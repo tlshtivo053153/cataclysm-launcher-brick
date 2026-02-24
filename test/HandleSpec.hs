@@ -14,9 +14,9 @@ import qualified Data.ByteString as B
 import qualified Data.Text as T
 import Brick.BChan (newBChan)
 
-import Handle (liveHandle)
 import Types
 import Types.Error (ManagerError(..))
+import TestUtils (testHandle)
 
 -- Handle has fields that are functions, which don't have NFData instances.
 -- We create a custom instance that just evaluates each field to WHNF
@@ -54,8 +54,8 @@ spec = describe "Handle" $ do
     it "constructs a live handle without runtime errors" $ do
       -- The goal is to ensure that creating liveHandle and evaluating its fields
       -- to WHNF doesn't cause a crash (e.g., from an `undefined` field).
-      -- We must give `liveHandle` a concrete type for the test. `AppHandle IO` is appropriate.
-      let handle = liveHandle :: AppHandle IO
+      -- We must give `testHandle` a concrete type for the test. `AppHandle IO` is appropriate.
+      let handle = testHandle :: AppHandle IO
 
       -- `force` uses our custom NFData instance to evaluate each field.
       -- `evaluate` then ensures this computation is run within the IO monad
@@ -64,7 +64,7 @@ spec = describe "Handle" $ do
 
     it "allows individual fields to be evaluated without crashing" $ do
       -- This test is slightly redundant but serves as a more explicit check.
-      let handle = liveHandle :: AppHandle IO
+      let handle = testHandle :: AppHandle IO
       chan <- newBChan 10
 
       evaluate (hDoesFileExist (appFileSystemHandle handle) `seq` ()) `shouldReturn` ()

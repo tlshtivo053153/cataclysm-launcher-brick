@@ -37,19 +37,20 @@ spec = describe "Integration Download" $ do
       dummyArchiveData <- liftIO $ B8.readFile "test/data/dummy.tar.gz"
       eventChan <- newBChan 10
 
-      let testHandle = Handle.liveHandle
-            { appHttpHandle = (appHttpHandle Handle.liveHandle)
+      let baseHandle = Handle.liveHandle Nothing
+      let handleUnderTest = baseHandle
+            { appHttpHandle = (appHttpHandle baseHandle)
                 { hDownloadFile = \_url -> do
                     liftIO $ atomicModifyIORef' downloadCounter (\c -> (c+1, ()))
                     return $ Right $ B8.fromStrict dummyArchiveData
                 }
-            , appAsyncHandle = (appAsyncHandle Handle.liveHandle)
+            , appAsyncHandle = (appAsyncHandle baseHandle)
                 { hWriteBChan = \_ _ -> return () -- Ignore UI events
                 }
             }
 
       -- 2. First Install: should download, cache, and extract
-      result1 <- downloadAndInstall testHandle (paths cfg) eventChan dummyGameVersion
+      result1 <- downloadAndInstall handleUnderTest (paths cfg) eventChan dummyGameVersion
       case result1 of
         Left err -> expectationFailure $ "First install failed: " ++ show err
         Right msg -> msg `shouldContain` "Successfully extracted"
@@ -69,7 +70,7 @@ spec = describe "Integration Download" $ do
       content `shouldBe` dummyFileContent
 
       -- 4. Second Install: should use cache
-      result2 <- downloadAndInstall testHandle (paths cfg) eventChan dummyGameVersion
+      result2 <- downloadAndInstall handleUnderTest (paths cfg) eventChan dummyGameVersion
       case result2 of
         Left err -> expectationFailure $ "Second install failed: " ++ show err
         Right msg -> msg `shouldContain` "Successfully extracted"

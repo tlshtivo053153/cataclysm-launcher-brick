@@ -36,6 +36,7 @@ import Types.Handles.Time (TimeHandle(..))
 import Types.Handles.Archive (ArchiveHandle(..))
 import Types.Handle (AppHandle(..))
 import Brick.BChan (BChan, writeBChan)
+import Logger (LogEnv, logDebug)
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
@@ -59,7 +60,9 @@ data SoundpackDeps m = SoundpackDeps
     -- | Configuration access dependencies.
     spdConfig :: ConfigDeps m,
     -- | Archive related dependencies.
-    spdArchive :: ArchiveDeps m
+    spdArchive :: ArchiveDeps m,
+    -- | Debug logging function.
+    spdLogDebug :: String -> m ()
   }
 
 -- | A record of functions abstracting file system operations.
@@ -145,13 +148,14 @@ toFileSystemDeps fsHandle = FileSystemDeps
 --   handle   - The AppHandle containing all handles
 --   chan     - The event channel for UI events
 --   config   - The application configuration
+--   logEnv   - Optional logger environment for debug logging
 --
 -- Returns:
 --   SoundpackDeps ready for use in soundpack operations
 --
 -- Note: This function is specialized to IO because writeBChan requires IO.
-toSoundpackDeps :: AppHandle IO -> BChan UIEvent -> Config -> SoundpackDeps IO
-toSoundpackDeps handle chan config = SoundpackDeps
+toSoundpackDeps :: AppHandle IO -> BChan UIEvent -> Config -> Maybe LogEnv -> SoundpackDeps IO
+toSoundpackDeps handle chan config logEnv = SoundpackDeps
     { spdFileSystem = toFileSystemDeps (appFileSystemHandle handle)
     , spdNetwork = NetworkDeps
         { ndDownloadAsset = hDownloadAsset (appHttpHandle handle)
@@ -174,4 +178,5 @@ toSoundpackDeps handle chan config = SoundpackDeps
                 Left err -> Left (show err)
                 Right _ -> Right ()
         }
+    , spdLogDebug = \msg -> logDebug logEnv (T.pack msg)
     }

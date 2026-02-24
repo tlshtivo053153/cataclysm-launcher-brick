@@ -104,7 +104,8 @@ createMockDeps mockTime mockCfg downloadResult extractResult cacheExists = do
   let mockArchive = ArchiveDeps
         { adExtractZip = \_ _ -> return extractResult
         }
-  let deps = SoundpackDeps mockFs mockNet mockTimeDep mockEvents mockConfigDeps mockArchive
+  let mockLogDebug = \_ -> return ()  -- No-op for tests
+  let deps = SoundpackDeps mockFs mockNet mockTimeDep mockEvents mockConfigDeps mockArchive mockLogDebug
   return (eventChan, deps)
 
 flushEvents :: Chan a -> IO [a]

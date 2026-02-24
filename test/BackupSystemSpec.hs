@@ -11,11 +11,10 @@ import System.IO.Temp (withSystemTempDirectory)
 import qualified Data.Text as T
 
 import BackupSystem (listBackups, createBackup, restoreBackup, deleteBackup)
-import Handle (liveHandle)
 import Types
 import Types.Error (ManagerError(..))
 
-import TestUtils (testConfig)
+import TestUtils (testConfig, testHandle)
 
 spec :: Spec
 spec = do
@@ -35,7 +34,7 @@ spec = do
         writeFile (profileBackupDir </> "backup2.tar") ""
         writeFile (profileBackupDir </> "not_a_backup.txt") ""
         
-        result <- listBackups liveHandle (paths config) profile
+        result <- listBackups testHandle (paths config) profile
         
         case result of
           Left err -> expectationFailure $ "listBackups failed: " ++ show err
@@ -59,7 +58,7 @@ spec = do
         
         let profile = SandboxProfile { spName = "TestProfile", spDataDirectory = profileDir }
         
-        result <- createBackup liveHandle (paths config) profile
+        result <- createBackup testHandle (paths config) profile
         
         case result of
           Left err -> expectationFailure $ "createBackup failed: " ++ show err
@@ -78,7 +77,7 @@ spec = do
         let config = testConfig tempDir
         let profile = SandboxProfile { spName = "TestProfile", spDataDirectory = tempDir </> "nonexistent" }
         
-        result <- createBackup liveHandle (paths config) profile
+        result <- createBackup testHandle (paths config) profile
         
         case result of
           Left (FileSystemError msg) -> 
@@ -103,7 +102,7 @@ spec = do
         let profile = SandboxProfile { spName = "TestProfile", spDataDirectory = profileDir }
         
         -- Create a backup
-        backupResult <- createBackup liveHandle (paths config) profile
+        backupResult <- createBackup testHandle (paths config) profile
         case backupResult of
           Left err -> expectationFailure $ "createBackup failed: " ++ show err
           Right _ -> do
@@ -112,7 +111,7 @@ spec = do
             writeFile (saveDir </> "new_file.txt") "new file"
             
             -- List backups and get the backup info
-            listResult <- listBackups liveHandle (paths config) profile
+            listResult <- listBackups testHandle (paths config) profile
             case listResult of
               Left err -> expectationFailure $ "listBackups failed: " ++ show err
               Right backups -> do
@@ -120,7 +119,7 @@ spec = do
                 let backupInfo = head backups
                 
                 -- Restore the backup
-                restoreResult <- restoreBackup liveHandle profile backupInfo
+                restoreResult <- restoreBackup testHandle profile backupInfo
                 case restoreResult of
                   Left err -> expectationFailure $ "restoreBackup failed: " ++ show err
                   Right _ -> do
@@ -144,7 +143,7 @@ spec = do
               , biFilePath = tempDir </> "nonexistent.tar"
               }
         
-        result <- restoreBackup liveHandle profile backupInfo
+        result <- restoreBackup testHandle profile backupInfo
         
         case result of
           Left (FileSystemError msg) -> 
@@ -168,12 +167,12 @@ spec = do
         let profile = SandboxProfile { spName = "TestProfile", spDataDirectory = profileDir }
         
         -- Create a backup
-        backupResult <- createBackup liveHandle (paths config) profile
+        backupResult <- createBackup testHandle (paths config) profile
         case backupResult of
           Left err -> expectationFailure $ "createBackup failed: " ++ show err
           Right _ -> do
             -- List backups and get the backup info
-            listResult <- listBackups liveHandle (paths config) profile
+            listResult <- listBackups testHandle (paths config) profile
             case listResult of
               Left err -> expectationFailure $ "listBackups failed: " ++ show err
               Right backups -> do
@@ -185,7 +184,7 @@ spec = do
                 backupExistsBefore `shouldBe` True
                 
                 -- Delete the backup
-                deleteResult <- deleteBackup liveHandle backupInfo
+                deleteResult <- deleteBackup testHandle backupInfo
                 case deleteResult of
                   Left err -> expectationFailure $ "deleteBackup failed: " ++ show err
                   Right deletedBackup -> do
@@ -204,7 +203,7 @@ spec = do
               , biFilePath = tempDir </> "nonexistent.tar"
               }
         
-        result <- deleteBackup liveHandle backupInfo
+        result <- deleteBackup testHandle backupInfo
         
         case result of
           Left (FileSystemError msg) -> 

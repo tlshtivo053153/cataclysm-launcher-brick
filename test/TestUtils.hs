@@ -7,7 +7,8 @@ module TestUtils (
   TestState(..),
   mockHandle,
   initialAppState,
-  testConfig
+  testConfig,
+  testHandle
 ) where
 
 import Brick.BChan (BChan)
@@ -24,6 +25,7 @@ import GHC.Natural (Natural)
 
 import Types
 import Types.Error (ManagerError)
+import Handle (liveHandle)
 
 testConfig :: FilePath -> Config
 testConfig tempDir =
@@ -131,7 +133,12 @@ mockHandle = AppHandle
         , hExtractZip = \_ _ _ -> return $ Right "zip extracted"
         , hCreateTarball = \_ _ _ -> return $ Right ()
         }
+    , appLogEnv = Nothing
     }
+
+-- | Test handle for IO tests (no debug logging)
+testHandle :: AppHandle IO
+testHandle = liveHandle Nothing
 
 initialAppState :: Config -> AppHandle IO -> BChan UIEvent -> AppState
 initialAppState config handle chan =

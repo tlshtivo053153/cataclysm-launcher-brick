@@ -70,7 +70,8 @@ spec = describe "installSoundpack" $ do
             spdArchive =
               ArchiveDeps
                 { adExtractZip = \_ _ -> return $ Right ()
-                }
+                },
+            spdLogDebug = \_ -> return ()
           }
 
   context "with cache enabled" $ do

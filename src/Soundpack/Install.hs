@@ -30,7 +30,6 @@ import System.FilePath (takeFileName)
 import Types.Domain (Config (..), InstalledSoundpack (..), SandboxProfile, SoundpackInfo (..))
 import Types.Error (ManagerError (..), SoundpackError (..))
 import Types.Event (UIEvent (..), DownloadInfo(..), DownloadProgress(..))
-import Debug.Trace (trace)
 
 -- | Installs a soundpack into a given sandbox profile.
 --
@@ -80,6 +79,7 @@ installSoundpack deps profile soundpackInfo = do
   let soundDir = ipSoundDir installPlan
   let cacheDir = ipCacheDir installPlan
   let shouldUseCache = ipUseCache installPlan
+  let logDebug = spdLogDebug deps
 
   zipDataResult <-
     if shouldUseCache
@@ -88,7 +88,7 @@ installSoundpack deps profile soundpackInfo = do
         let onCacheHit = edWriteEvent events $ CacheHit ("Using cached soundpack: " <> fileName)
         let onCacheMiss = do
                 -- DEBUG LOG: onCacheMissが呼ばれた（実際にダウンロードが開始される）
-                trace ("[DEBUG] Soundpack/Install onCacheMiss: " ++ T.unpack fileName) $ return ()
+                logDebug $ "Soundpack/Install onCacheMiss: " ++ T.unpack fileName
                 -- Send DownloadStarted event
                 startTime <- tdGetCurrentTime time
                 edWriteEvent events $ DownloadStarted DownloadInfo
@@ -105,7 +105,7 @@ installSoundpack deps profile soundpackInfo = do
                     , dpTotalBytes = total
                     }
 
-        cachePathEither <- downloadWithCache fs net cacheDir downloadUrl onCacheHit onCacheMiss progressCallback
+        cachePathEither <- downloadWithCache fs net cacheDir downloadUrl onCacheHit onCacheMiss progressCallback logDebug
         case cachePathEither of
           Left err -> do
             -- Check if this is "download already in progress" error
@@ -127,7 +127,7 @@ installSoundpack deps profile soundpackInfo = do
       else do
         let fileName = T.pack $ takeFileName (T.unpack downloadUrl)
         -- DEBUG LOG: キャッシュなしでのダウンロード
-        trace ("[DEBUG] Soundpack/Install NO CACHE: " ++ T.unpack fileName) $ return ()
+        logDebug $ "Soundpack/Install NO CACHE: " ++ T.unpack fileName
         -- Send DownloadStarted event
         startTime <- tdGetCurrentTime time
         edWriteEvent events $ DownloadStarted DownloadInfo
