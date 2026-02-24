@@ -14,6 +14,7 @@ import System.FilePath ((</>), makeRelative, takeFileName)
 import qualified Data.Map as Map
 import Data.List (foldl')
 import qualified Data.ByteString.Lazy as LBS
+import Debug.Trace (trace)
 
 import Soundpack.Deps (FileSystemDeps(..), NetworkDeps(..))
 import Types
@@ -70,21 +71,30 @@ downloadWithCache fs net cacheDir url onCacheHit onCacheMiss progressCallback = 
     let fileName = takeFileName (T.unpack url)
     let cacheFilePath = cacheDir </> fileName
 
+    -- DEBUG LOG: ダウンロード開始
+    let debugStart = trace ("[DEBUG] downloadWithCache START: " ++ fileName ++ " from " ++ T.unpack url) ()
+    debugStart `seq` return ()
+
     fsdCreateDirectoryIfMissing fs True cacheDir
 
     -- First check: Quick path for already cached files
     cacheExists <- fsdDoesFileExist fs cacheFilePath
     if cacheExists
     then do
+        -- DEBUG LOG: キャッシュヒット
+        trace ("[DEBUG] downloadWithCache CACHE HIT: " ++ fileName) $ return ()
         onCacheHit
         return $ Right cacheFilePath
     else do
         -- Try to acquire lock for downloading
         lockAcquired <- fsdTryAcquireFileLock fs cacheFilePath
+        -- DEBUG LOG: ロック取得結果
+        trace ("[DEBUG] downloadWithCache LOCK: " ++ fileName ++ " acquired=" ++ show lockAcquired) $ return ()
         if not lockAcquired
         then do
             -- Another thread is downloading, wait for it to complete
             -- by checking if the file exists (with polling)
+            trace ("[DEBUG] downloadWithCache WAITING: " ++ fileName ++ " - another thread is downloading") $ return ()
             waitForDownload fs cacheFilePath onCacheHit
         else do
             -- We have the lock, check again (double-check locking pattern)
@@ -93,14 +103,17 @@ downloadWithCache fs net cacheDir url onCacheHit onCacheMiss progressCallback = 
             if cacheExistsAfterLock
             then do
                 fsdReleaseFileLock fs cacheFilePath
+                trace ("[DEBUG] downloadWithCache CACHE HIT AFTER LOCK: " ++ fileName) $ return ()
                 onCacheHit
                 return $ Right cacheFilePath
             else do
                 -- Perform the actual download
+                trace ("[DEBUG] downloadWithCache DOWNLOADING: " ++ fileName) $ return ()
                 onCacheMiss
                 result <- doDownload fs net cacheFilePath url progressCallback
                 -- Always release the lock
                 fsdReleaseFileLock fs cacheFilePath
+                trace ("[DEBUG] downloadWithCache FINISHED: " ++ fileName ++ " result=" ++ either (const "LEFT") (const "RIGHT") result) $ return ()
                 return result
 
 -- | Wait for another thread to complete the download

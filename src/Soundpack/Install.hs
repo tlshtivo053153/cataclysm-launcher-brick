@@ -30,6 +30,7 @@ import System.FilePath (takeFileName)
 import Types.Domain (Config (..), InstalledSoundpack (..), SandboxProfile, SoundpackInfo (..))
 import Types.Error (ManagerError (..), SoundpackError (..))
 import Types.Event (UIEvent (..), DownloadInfo(..), DownloadProgress(..))
+import Debug.Trace (trace)
 
 -- | Installs a soundpack into a given sandbox profile.
 --
@@ -86,6 +87,8 @@ installSoundpack deps profile soundpackInfo = do
         let fileName = T.pack $ takeFileName (T.unpack downloadUrl)
         let onCacheHit = edWriteEvent events $ CacheHit ("Using cached soundpack: " <> fileName)
         let onCacheMiss = do
+                -- DEBUG LOG: onCacheMissが呼ばれた（実際にダウンロードが開始される）
+                trace ("[DEBUG] Soundpack/Install onCacheMiss: " ++ T.unpack fileName) $ return ()
                 -- Send DownloadStarted event
                 startTime <- tdGetCurrentTime time
                 edWriteEvent events $ DownloadStarted DownloadInfo
@@ -105,9 +108,17 @@ installSoundpack deps profile soundpackInfo = do
         cachePathEither <- downloadWithCache fs net cacheDir downloadUrl onCacheHit onCacheMiss progressCallback
         case cachePathEither of
           Left err -> do
-            -- Send DownloadFailed event
-            edWriteEvent events $ DownloadFailed fileName (T.pack $ show err)
-            return $ Left err
+            -- Check if this is "download already in progress" error
+            let errMsg = T.pack $ show err
+            if "Download in progress by another thread" `T.isInfixOf` errMsg
+            then do
+              -- Send DownloadAlreadyInProgress event (doesn't clear progress bar)
+              edWriteEvent events $ DownloadAlreadyInProgress fileName
+              return $ Left err
+            else do
+              -- Send DownloadFailed event (clears progress bar)
+              edWriteEvent events $ DownloadFailed fileName errMsg
+              return $ Left err
           Right path -> do
             -- Send DownloadFinished event
             edWriteEvent events $ DownloadFinished fileName
@@ -115,6 +126,8 @@ installSoundpack deps profile soundpackInfo = do
             return $ Right content
       else do
         let fileName = T.pack $ takeFileName (T.unpack downloadUrl)
+        -- DEBUG LOG: キャッシュなしでのダウンロード
+        trace ("[DEBUG] Soundpack/Install NO CACHE: " ++ T.unpack fileName) $ return ()
         -- Send DownloadStarted event
         startTime <- tdGetCurrentTime time
         edWriteEvent events $ DownloadStarted DownloadInfo

@@ -61,9 +61,17 @@ downloadAndInstall handle pathsConfig eventChan gv = do
             
             case assetDataEither of
                 Left err -> do
-                    -- Send DownloadFailed event
-                    hWriteBChan (appAsyncHandle handle) eventChan $ DownloadFailed fileName (T.pack $ show err)
-                    return $ Left err
+                    -- Check if this is "download already in progress" error
+                    let errMsg = T.pack $ show err
+                    if "Download in progress by another thread" `T.isInfixOf` errMsg
+                    then do
+                        -- Send DownloadAlreadyInProgress event (doesn't clear progress bar)
+                        hWriteBChan (appAsyncHandle handle) eventChan $ DownloadAlreadyInProgress fileName
+                        return $ Left err
+                    else do
+                        -- Send DownloadFailed event (clears progress bar)
+                        hWriteBChan (appAsyncHandle handle) eventChan $ DownloadFailed fileName errMsg
+                        return $ Left err
                 Right cacheFilePath -> do
                     -- Send DownloadFinished event
                     hWriteBChan (appAsyncHandle handle) eventChan $ DownloadFinished fileName

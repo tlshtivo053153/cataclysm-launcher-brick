@@ -34,6 +34,7 @@ import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
 import Data.Time (getCurrentTime, diffUTCTime)
 import Data.Vector (fromList)
+import Debug.Trace (trace)
 
 import Events.Mod (refreshActiveModsList, refreshAvailableModsList)
 import Events.Soundpack (refreshInstalledSoundpacksList, refreshInstalledSoundpacksList')
@@ -112,8 +113,15 @@ handleAppEvent (DownloadStarted info) = do
     st <- get
     -- 既にダウンロード中の場合は、新しいダウンロード開始イベントを無視する
     -- （ファイルロックにより実際にはダウンロードされないが、UIが乱れるのを防ぐ）
-    case appDownloadProgress st of
-        Just _ -> return ()
+    -- DEBUG LOG: DownloadStarted受信時の状態
+    let debugMsg = T.unpack $ "[DEBUG] DownloadStarted: " <> diName info 
+                 <> " (fileName: " <> diFileName info <> ")"
+    trace debugMsg $ case appDownloadProgress st of
+        Just existingAd -> do
+            -- DEBUG LOG: 既存のダウンロードがある場合
+            let ignoreMsg = T.unpack $ "[DEBUG] Ignoring DownloadStarted - already downloading: " 
+                          <> diName (adInfo existingAd)
+            trace ignoreMsg $ return ()
         Nothing -> do
             let ad = ActiveDownload
                     { adInfo = info
@@ -127,24 +135,47 @@ handleAppEvent (DownloadStarted info) = do
 handleAppEvent (DownloadProgressUpdate dp) = do
     st <- get
     case appDownloadProgress st of
-        Nothing -> return ()
+        Nothing -> do
+            -- DEBUG LOG: 進捗イベント受信時にダウンロード状態がない
+            let msg = T.unpack $ "[DEBUG] DownloadProgressUpdate ignored - no active download: " <> dpFileName dp
+            trace msg $ return ()
+            return ()
         Just ad -> do
-            now <- liftIO getCurrentTime
-            let elapsed = diffUTCTime now (adLastUpdateTime ad)
-                bytesDiff = dpDownloaded dp - adDownloaded ad
-                newSpeed = if elapsed > 0 
-                           then fromIntegral bytesDiff / realToFrac elapsed
-                           else adSpeed ad
-                -- 移動平均を使用して速度をスムーズに
-                smoothedSpeed = (adSpeed ad * 0.7) + (newSpeed * 0.3)
-                -- diTotalBytesを更新（初期値0から実際の値へ）
-                updatedInfo = (adInfo ad) { diTotalBytes = dpTotalBytes dp }
-                updatedAd = ad { adDownloaded = dpDownloaded dp
-                               , adLastUpdateTime = now
-                               , adSpeed = smoothedSpeed
-                               , adInfo = updatedInfo
-                               }
-            modify $ \s -> s { appDownloadProgress = Just updatedAd }
+            -- ファイル名が一致する場合のみ処理（複数スレッドからのイベント混在を防ぐ）
+            if diFileName (adInfo ad) /= dpFileName dp
+            then do
+                let msg = "[DEBUG] DownloadProgressUpdate ignored - file mismatch: expected " 
+                        ++ T.unpack (diFileName (adInfo ad)) ++ " but got " ++ T.unpack (dpFileName dp)
+                trace msg $ return ()
+                return ()
+            else do
+                now <- liftIO getCurrentTime
+                let elapsed = diffUTCTime now (adLastUpdateTime ad)
+                    bytesDiff = dpDownloaded dp - adDownloaded ad
+                    -- 負のbytesDiffは異常な状態（古いイベントなど）を示すため無視
+                    (actualBytesDiff, actualSpeed) = if bytesDiff < 0
+                        then (0, adSpeed ad)  -- 負の値の場合は前回の速度を維持
+                        else (bytesDiff, if elapsed > 0 
+                                         then fromIntegral bytesDiff / realToFrac elapsed
+                                         else adSpeed ad)
+                    -- 移動平均を使用して速度をスムーズに
+                    smoothedSpeed = (adSpeed ad * 0.7) + (actualSpeed * 0.3)
+                    -- diTotalBytesを更新（初期値0から実際の値へ）
+                    updatedInfo = (adInfo ad) { diTotalBytes = dpTotalBytes dp }
+                    updatedAd = ad { adDownloaded = dpDownloaded dp
+                                   , adLastUpdateTime = now
+                                   , adSpeed = smoothedSpeed
+                                   , adInfo = updatedInfo
+                                   }
+                -- DEBUG LOG: 進捗更新の詳細
+                let debugMsg = "[DEBUG] DownloadProgressUpdate: " ++ T.unpack (dpFileName dp)
+                            ++ " | dpDownloaded=" ++ show (dpDownloaded dp)
+                            ++ " | adDownloaded=" ++ show (adDownloaded ad)
+                            ++ " | bytesDiff=" ++ show bytesDiff
+                            ++ " | elapsed=" ++ show elapsed
+                            ++ " | newSpeed=" ++ show actualSpeed
+                            ++ " | smoothedSpeed=" ++ show smoothedSpeed
+                trace debugMsg $ modify $ \s -> s { appDownloadProgress = Just updatedAd }
 handleAppEvent (DownloadFinished name) = do
     st <- get
     -- 現在のダウンロードと同じファイル名の場合のみクリア
@@ -163,6 +194,9 @@ handleAppEvent (DownloadFailed name err) = do
     modify $ \s -> s { appDownloadProgress = if shouldClear then Nothing else appDownloadProgress s
                      , appStatus = "Download failed: " <> name <> " - " <> err
                      }
+handleAppEvent (DownloadAlreadyInProgress name) = do
+    -- 別スレッドがダウンロード中の場合は、プログレスバーをクリアせず、ステータスメッセージのみ更新
+    modify $ \s -> s { appStatus = "Download already in progress: " <> name }
 handleAppEvent event = modify (`handleAppEventPure` event)
 
 -- | A pure function to handle state changes based on UI events.

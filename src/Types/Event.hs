@@ -65,4 +65,5 @@ data UIEvent
   | DownloadProgressUpdate DownloadProgress
   | DownloadFinished T.Text
   | DownloadFailed T.Text T.Text  -- filename, error message
+  | DownloadAlreadyInProgress T.Text  -- filename (another thread is downloading)
   deriving (Show, Eq)

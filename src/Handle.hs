@@ -15,7 +15,7 @@ import           Control.Monad (void, when)
 import           Control.Monad.IO.Class (liftIO)
 import           System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, makeAbsolute, pathIsSymbolicLink, removeDirectoryRecursive, removeFile)
 import           System.Posix.Files (createSymbolicLink, readSymbolicLink)
-import           System.Posix.IO (createFile, closeFd)
+import           System.Posix.IO (closeFd, openFd, OpenFileFlags(..), defaultFileFlags, OpenMode(..))
 import           System.Posix.Types (FileMode(..), CMode(..))
 import           System.Process (callCommand, readProcessWithExitCode, createProcess, proc, cwd)
 import           Brick.BChan (writeBChan)
@@ -45,20 +45,26 @@ lockFileMode = CMode 0o644
 
 -- | Try to acquire a file lock by creating a lock file
 -- Returns True if the lock was acquired, False if already locked
+-- Uses O_EXCL flag for atomic lock acquisition
 tryAcquireFileLock :: FilePath -> IO Bool
 tryAcquireFileLock filePath = do
     let lockFile = filePath ++ lockFileSuffix
+    -- Ensure directory exists first (this is not atomic, but is safe)
+    createDirectoryIfMissing True (takeDirectory lockFile)
     -- Try to create the lock file exclusively
     -- If it already exists, the operation will fail
-    result <- try (createDirectoryIfMissing False (takeDirectory lockFile) >> createLockFile lockFile) :: IO (Either IOException ())
+    result <- try (createLockFile lockFile) :: IO (Either IOException ())
     return $ either (const False) (const True) result
   where
-    -- Create lock file exclusively using atomic operation
+    -- Create lock file exclusively using atomic operation with O_EXCL
     createLockFile :: FilePath -> IO ()
     createLockFile lockPath = do
-        -- Use createFile which is atomic on POSIX systems
-        -- It will fail if the file already exists
-        fd <- createFile lockPath lockFileMode
+        -- Use openFd with O_EXCL | O_CREAT for atomic lock acquisition
+        -- O_EXCL ensures the call fails if the file already exists
+        fd <- openFd lockPath WriteOnly defaultFileFlags
+            { creat = Just lockFileMode
+            , exclusive = True  -- This is the key: fail if file exists
+            }
         closeFd fd
 
 -- | Release a file lock by removing the lock file
